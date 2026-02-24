@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>阿胖早點 - 訂餐系統</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+    body { font-family: 'Noto Sans TC', sans-serif; background-color: #f9fafb; }
+    .category-btn.active { background-color: #ef4444; color: white; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    
+    .marquee-wrapper {
+      width: 100%;
+      overflow: hidden;
+      background: transparent;
+      padding: 15px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .marquee-text {
+      display: inline-block;
+      white-space: nowrap;
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #374151;
+      animation: marquee 22s linear infinite;
+      text-align: center;
+      width: 100%;
+    }
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+  </style>
+</head>
+
+<body class="pb-20">
+
+<header class="bg-red-600 text-white p-4 shadow-md sticky top-0 z-50">
+  <div class="container mx-auto flex justify-between items-center">
+    <h1 class="text-2xl font-bold">阿胖早點</h1>
+    
+    <div class="flex items-center gap-6 flex-grow justify-center">
+      <div class="text-lg bg-white/20 px-4 py-1 rounded-full scale-125">
+        桌號：<span id="table-no">-</span>
+      </div>
+      <div onclick="toggleCart()" class="relative cursor-pointer flex items-center gap-2 scale-125">
+        <span class="hidden md:inline-block font-bold">檢查購物車</span>
+        <i class="fas fa-shopping-cart text-2xl"></i>
+        <span id="cart-count" class="absolute -top-2 -right-2 bg-yellow-400 text-red-800 text-xs font-bold px-1.5 py-0.5 rounded-full">0</span>
+      </div>
+    </div>
+    <div class="w-10"></div>
+  </div>
+</header>
+
+<div class="marquee-wrapper">
+  <div class="marquee-text" id="marquee-info">正在載入公告資訊...</div>
+</div>
+
+<nav id="category-nav" class="sticky top-[72px] bg-white border-b overflow-x-auto whitespace-nowrap z-40 px-4 py-3 flex gap-2 no-scrollbar">
+  <button onclick="filterMenu('all')" class="category-btn active px-4 py-1.5 rounded-full border border-gray-300 text-sm">全部</button>
+</nav>
+
+<main class="container mx-auto p-4">
+  <div id="loading-spinner" class="text-center py-20 text-gray-500">
+    <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+    <p>正在載入菜單...</p>
+  </div>
+  <div id="menu-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+</main>
+
+<div id="cart-sidebar" class="fixed inset-y-0 right-0 w-80 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 z-[60] flex flex-col">
+  <div class="p-4 border-b flex justify-between items-center bg-gray-50">
+    <h3 class="font-bold text-xl">已選餐點</h3>
+    <button onclick="toggleCart()" class="text-gray-500 text-2xl">&times;</button>
+  </div>
+  <div id="cart-items" class="flex-grow overflow-y-auto p-4 space-y-4"></div>
+  <div class="p-4 border-t bg-gray-50">
+    <div class="flex justify-between mb-4"><span class="font-bold">總計：</span><span class="text-red-600 font-bold text-xl" id="total-price">$0</span></div>
+    <button id="btn-submit" onclick="submitOrder()" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold">送出訂單</button>
+  </div>
+</div>
+<div id="overlay" onclick="toggleCart()" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50"></div>
+
+<script>
+  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbznYZUkWWc-k38_0LodSYn9P3WGbcpB5OgZBXK6Nhb4LXa4fjLNQ9g4ieXE1mjsZ7sNCw/exec";
+
+  let menuData = [];
+  let cart = [];
+  let TABLE_NO = "";
+
+  async function postData(payload) {
+    const res = await fetch(GAS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  }
+
+  async function fetchConfig() {
+    try {
+      const res = await fetch(`${GAS_API_URL}?action=getConfig`);
+      const result = await res.json();
+      if (result.ok) {
+        document.getElementById('marquee-info').innerText = result.marqueeText || "歡迎光臨阿胖早點！";
+      }
+    } catch (e) {
+      document.getElementById('marquee-info').innerText = "今日招牌：酥脆蛋餅、法式吐司，開啟活力的一天！";
+    }
+  }
+
+  async function fetchMenu() {
+    try {
+      const res = await fetch(`${GAS_API_URL}?action=getMenu`);
+      const result = await res.json();
+      if (result.ok) {
+        menuData = result.data;
+        renderCats();
+        displayMenu('all');
+        document.getElementById('loading-spinner').style.display = 'none';
+      }
+    } catch (e) {
+      document.getElementById('loading-spinner').innerHTML = "菜單載入失敗，請確認網路連接";
+    }
+  }
+
+  function renderCats() {
+    const nav = document.getElementById('category-nav');
+    const cats = [...new Set(menuData.map(i => i.category))];
+    cats.forEach(c => {
+      const b = document.createElement('button');
+      b.className = "category-btn px-4 py-1.5 rounded-full border border-gray-300 text-sm";
+      b.innerText = c;
+      b.onclick = () => filterMenu(c);
+      nav.appendChild(b);
+    });
+  }
+
+  function displayMenu(f) {
+    const container = document.getElementById('menu-container');
+    container.innerHTML = '';
+    const items = f === 'all' ? menuData : menuData.filter(i => i.category === f);
+    
+    items.forEach((i, index) => {
+      // 使用餐點名稱作為判斷購物車數量的依據，避免 ID 重複造成影響
+      const cartItem = cart.find(c => c.name === i.name);
+      const qty = cartItem ? cartItem.qty : 0;
+      
+      const card = document.createElement('div');
+      card.className = "bg-white rounded-xl shadow-sm border p-4 flex justify-between items-center";
+      card.innerHTML = `
+          <div class="flex-grow">
+            <span class="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded">${i.category}</span>
+            <h3 class="font-bold mt-1 text-lg">${i.name}</h3>
+            <p class="text-xs text-gray-400">${i.desc}</p>
+            <p class="text-red-600 font-bold mt-2 text-lg">$${i.price}</p>
+          </div>
+          <div class="flex items-center gap-3 bg-gray-100 p-1.5 rounded-full border border-gray-200">
+            <button onclick="removeFromCart(this, '${i.name}')" class="bg-white text-gray-700 w-8 h-8 rounded-full shadow-sm flex items-center justify-center hover:bg-gray-200 active:scale-90 transition">-</button>
+            <span class="qty-display font-bold min-w-[20px] text-center text-lg">${qty}</span>
+            <button onclick="addToCart(this, '${i.name}')" class="bg-red-600 text-white w-8 h-8 rounded-full shadow-sm flex items-center justify-center hover:bg-red-700 active:scale-90 transition">+</button>
+          </div>`;
+      container.appendChild(card);
+    });
+  }
+
+  function addToCart(btn, itemName) {
+    const itemInfo = menuData.find(m => m.name === itemName);
+    let cartItem = cart.find(c => c.name === itemName);
+    
+    if (cartItem) {
+      cartItem.qty++;
+    } else {
+      cartItem = { ...itemInfo, qty: 1 };
+      cart.push(cartItem);
+    }
+    
+    // 更新介面
+    const qtySpan = btn.parentElement.querySelector('.qty-display');
+    qtySpan.innerText = cartItem.qty;
+    updateUI();
+  }
+
+  function removeFromCart(btn, itemName) {
+    const cartIdx = cart.findIndex(c => c.name === itemName);
+    let finalQty = 0;
+    
+    if (cartIdx > -1) {
+      cart[cartIdx].qty--;
+      finalQty = cart[cartIdx].qty;
+      if (cart[cartIdx].qty <= 0) {
+        cart.splice(cartIdx, 1);
+      }
+    }
+    
+    // 更新介面
+    const qtySpan = btn.parentElement.querySelector('.qty-display');
+    qtySpan.innerText = finalQty;
+    updateUI();
+  }
+
+  function updateUI() {
+    const list = document.getElementById('cart-items');
+    list.innerHTML = cart.length ? '' : '<p class="text-gray-400 text-center py-10">購物車目前是空的</p>';
+    let total = 0, count = 0;
+    
+    cart.forEach(c => {
+      total += c.price * c.qty; 
+      count += c.qty;
+      list.innerHTML += `
+        <div class="flex justify-between items-center text-sm border-b pb-2 mb-2">
+          <div>
+            <div class="font-bold text-gray-800">${c.name}</div>
+            <div class="text-gray-500">$${c.price} x ${c.qty}</div>
+          </div>
+          <span class="font-bold text-red-600 text-base">$${c.price*c.qty}</span>
+        </div>`;
+    });
+    
+    document.getElementById('cart-count').innerText = count;
+    document.getElementById('total-price').innerText = `$${total}`;
+  }
+
+  async function submitOrder() {
+    if(!TABLE_NO) return alert("請由桌上 QR Code 進入系統");
+    if(!cart.length) return alert("請先選擇餐點");
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true; btn.innerText = "傳送中...";
+    try {
+      const res = await postData({ action: "submitOrder", table: TABLE_NO, items: cart });
+      if(res.ok) { 
+        alert("訂單已送出！請稍候餐點"); 
+        cart = []; 
+        updateUI(); 
+        if(document.getElementById('cart-sidebar').classList.contains('translate-x-0')) toggleCart();
+        displayMenu('all');
+      }
+    } catch(e) { alert("連線失敗，請檢查網路"); }
+    btn.disabled = false; btn.innerText = "送出訂單";
+  }
+
+  function toggleCart() {
+    document.getElementById('cart-sidebar').classList.toggle('translate-x-full');
+    document.getElementById('overlay').classList.toggle('hidden');
+  }
+
+  function filterMenu(c) {
+    document.querySelectorAll('.category-btn').forEach(b => {
+      b.classList.toggle('active', b.innerText === c || (c==='all' && b.innerText==='全部'));
+    });
+    displayMenu(c);
+  }
+
+  window.onload = () => {
+    TABLE_NO = new URLSearchParams(window.location.search).get('table') || "";
+    document.getElementById('table-no').innerText = TABLE_NO || "待測";
+    fetchConfig();
+    fetchMenu();
+  };
+</script>
+
+</body>
+</html>
