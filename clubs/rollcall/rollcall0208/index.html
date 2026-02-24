@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>社團點名簿</title>
+  <style>
+    :root { --primary: #1a73e8; --success: #1e8e3e; --danger: #d93025; --gray: #5f6368; }
+    body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: #f1f3f4; padding: 10px; color: #3c4043; }
+    .card { max-width: 550px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    h2 { text-align: center; color: var(--primary); margin-top: 0; }
+    .tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
+    .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; color: var(--gray); font-weight: bold; transition: 0.3s; }
+    .tab.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+    .section { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #eee; }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button { padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .btn-club { background: #e8f0fe; color: var(--primary); font-size: 16px; }
+    .btn-club:hover { background: #d2e3fc; }
+    .btn-submit { background: var(--success); color: white; width: 100%; font-size: 18px; }
+    .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-danger { background: #fce8e6; color: var(--danger); width: 100%; margin-top: 10px; border: 1px solid var(--danger); }
+    .btn-outline-danger { background: white; color: var(--danger); border: 1px solid var(--danger); padding: 4px 6px; font-size: 11px; border-radius: 4px; white-space: nowrap; }
+    
+    #uncheckList, #checkedList { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .student-row { display: flex; align-items: center; justify-content: space-between; padding: 8px; border: 1px solid #eee; background: white; border-radius: 6px; font-size: 14px; }
+    .student-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px; }
+
+    input[type="date"], input[type="password"] { width: 100%; padding: 10px; margin-top: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
+    .hidden { display: none; }
+    #status { text-align: center; margin-top: 15px; padding: 10px; border-radius: 6px; font-weight: bold; min-height: 20px; }
+    .msg-success { background-color: #e6f4ea; color: var(--success); }
+    .msg-error { background-color: #fce8e6; color: var(--danger); }
+    .msg-loading { color: var(--gray); font-style: italic; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>社團點名系統</h2>
+
+  <div id="clubSelection">
+    <p style="text-align:center;">請選擇社團：</p>
+    <div id="clubBtns" class="btn-grid">讀取中...</div>
+  </div>
+
+  <div id="mainPage" class="hidden">
+    <button onclick="location.reload()" style="background:#eee; margin-bottom:15px; width: 100%;">← 返回選擇社團</button>
+    <h3 id="currentClubDisp" style="text-align:center;"></h3>
+
+    <div class="tabs">
+      <div id="tab1" class="tab active" onclick="switchTab('take')">點名登記</div>
+      <div id="tab2" class="tab" onclick="switchTab('query')">已點查詢</div>
+    </div>
+
+    <div class="section">
+      <label><b>上課日期：</b></label>
+      <input type="date" id="targetDate" onchange="refreshLists()">
+    </div>
+
+    <div id="takeAttendanceArea">
+      <div class="section">
+        <label><b>學生點名：</b></label>
+        <div id="uncheckList"></div>
+      </div>
+    </div>
+
+    <div id="queryAttendanceArea" class="hidden">
+      <div class="section">
+        <label><b>已點名學生：</b></label>
+        <div id="checkedList"></div>
+        <button class="btn-danger" onclick="confirmDeleteAll()">刪除全部紀錄</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <label><b>驗證密碼：</b></label>
+      <input type="password" id="adminPwd" placeholder="輸入驗證碼">
+    </div>
+
+    <button id="mainActionBtn" class="btn-submit" onclick="submitMulti()">確認送出</button>
+    <div id="status"></div>
+  </div>
+</div>
+
+<script>
+  // ⚠️ 請修改為你的 GAS API URL
+  const API_URL = "https://script.google.com/macros/s/AKfycbxFCLHRcXESMkQ2WSAZF23-_pM_SB8Q4DMpyA6owN7eo5jr3RBdLBabmLHzllxEdPNHiA/exec";
+  
+  let curClub = "";
+  let curMode = "take"; 
+
+  window.onload = () => {
+    fetchClubs();
+    document.getElementById('targetDate').value = new Date().toISOString().split('T')[0];
+  };
+
+  async function fetchClubs() {
+    try {
+      const r = await fetch(`${API_URL}?action=getClubList`);
+      const list = await r.json();
+      const div = document.getElementById('clubBtns');
+      div.innerHTML = "";
+      list.forEach(c => {
+        let b = document.createElement('button');
+        b.className = "btn-club";
+        b.innerText = c;
+        b.onclick = () => { curClub = c; showMain(); };
+        div.appendChild(b);
+      });
+    } catch(e) { showStatus("連線失敗", "error"); }
+  }
+
+  function showMain() {
+    document.getElementById('clubSelection').classList.add('hidden');
+    document.getElementById('mainPage').classList.remove('hidden');
+    document.getElementById('currentClubDisp').innerText = "社團：" + curClub;
+    refreshLists();
+  }
+
+  function switchTab(m) {
+    curMode = m;
+    document.getElementById('tab1').className = m === 'take' ? 'tab active' : 'tab';
+    document.getElementById('tab2').className = m === 'query' ? 'tab active' : 'tab';
+    document.getElementById('takeAttendanceArea').className = m === 'take' ? '' : 'hidden';
+    document.getElementById('queryAttendanceArea').className = m === 'query' ? '' : 'hidden';
+    document.getElementById('mainActionBtn').className = m === 'take' ? 'btn-submit' : 'hidden';
+    clearStatus();
+    refreshLists();
+  }
+
+  async function refreshLists() {
+    const date = document.getElementById('targetDate').value;
+    if(!curClub || !date) return;
+    document.getElementById('uncheckList').innerHTML = "<p style='grid-column:span 2;text-align:center;'>載入中...</p>";
+    document.getElementById('checkedList').innerHTML = "<p style='grid-column:span 2;text-align:center;'>載入中...</p>";
+    try {
+      const [r1, r2] = await Promise.all([
+        fetch(`${API_URL}?action=getStudents&clubName=${encodeURIComponent(curClub)}&date=${date}&mode=unchecked`),
+        fetch(`${API_URL}?action=getStudents&clubName=${encodeURIComponent(curClub)}&date=${date}&mode=checked`)
+      ]);
+      renderList('uncheckList', await r1.json(), 'checkbox');
+      renderList('checkedList', await r2.json(), 'delete');
+    } catch(e) { showStatus("讀取失敗", "error"); }
+  }
+
+  function renderList(id, data, type) {
+    const container = document.getElementById(id);
+    if (!data.length) {
+      container.innerHTML = "<p style='grid-column:span 2;color:gray;text-align:center;font-size:14px;'>無資料</p>";
+      return;
+    }
+    container.innerHTML = "";
+    data.forEach(name => {
+      let d = document.createElement('div');
+      d.className = "student-row";
+      if(type === 'checkbox') d.innerHTML = `<span>${name}</span><input type="checkbox" name="stu" value="${name}" style="transform:scale(1.2);">`;
+      else d.innerHTML = `<span>${name}</span><button class="btn-outline-danger" onclick="deleteSingle('${name}')">刪除</button>`;
+      container.appendChild(d);
+    });
+  }
+
+  function showStatus(msg, type) {
+    const s = document.getElementById('status');
+    s.innerText = msg;
+    s.className = "";
+    if (type === "success") s.classList.add('msg-success');
+    else if (type === "error") s.classList.add('msg-error');
+    else s.classList.add('msg-loading');
+  }
+
+  function clearStatus() { const s = document.getElementById('status'); s.innerText = ""; s.className = ""; }
+
+  async function callPost(data) {
+    const pwd = document.getElementById('adminPwd').value;
+    if(!pwd) return showStatus("請輸入驗證碼", "error");
+    showStatus("處理中...", "loading");
+    document.getElementById('mainActionBtn').disabled = true;
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({...data, clubName: curClub, password: pwd, date: document.getElementById('targetDate').value})
+      });
+      const res = await r.json();
+      if(res.status === 'success') {
+        showStatus(res.message, "success");
+        document.getElementById('adminPwd').value = "";
+        setTimeout(refreshLists, 1000);
+      } else showStatus(res.message, "error");
+    } catch(e) { showStatus("系統錯誤", "error"); }
+    finally { document.getElementById('mainActionBtn').disabled = false; }
+  }
+
+  function submitMulti() {
+    const box = document.querySelectorAll('input[name="stu"]:checked');
+    const stuList = Array.from(box).map(b => b.value);
+    if(!stuList.length) return showStatus("請勾選學生", "error");
+    callPost({ action: 'submit', students: stuList });
+  }
+
+  function deleteSingle(name) {
+    if(!document.getElementById('adminPwd').value) return showStatus("請先輸入驗證碼再點刪除", "error");
+    callPost({ action: 'deleteSingle', studentName: name });
+  }
+
+  function confirmDeleteAll() {
+    if(!document.getElementById('adminPwd').value) return showStatus("請先輸入驗證碼再執行", "error");
+    if(confirm("確定要刪除全部紀錄嗎？")) callPost({ action: 'deleteAll' });
+  }
+</script>
+
+</body>
+</html>
