@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>社團點名簿</title>
+  <style>
+    :root{
+      --primary:#ff6ea9;
+      --primary-2:#ff9ec9;
+      --success:#35b96f;
+      --danger:#ff4d6d;
+      --gray:#6b7280;
+
+      --bg1:#fff1f7;
+      --bg2:#f1fbff;
+      --card:#ffffffcc;
+
+      --border:#ffd6e8;
+      --soft-shadow: 0 14px 40px rgba(255, 110, 169, 0.15);
+      --soft-shadow-2: 0 10px 22px rgba(0,0,0,0.08);
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      font-family:'PingFang TC','Microsoft JhengHei',sans-serif;
+      padding: 12px;
+      color:#3c4043;
+      min-height:100vh;
+      background:
+        radial-gradient(900px 420px at 15% 15%, rgba(255, 158, 201, 0.35), transparent 60%),
+        radial-gradient(900px 420px at 85% 10%, rgba(170, 232, 255, 0.45), transparent 60%),
+        radial-gradient(900px 420px at 70% 85%, rgba(255, 216, 120, 0.25), transparent 60%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      overflow-x:hidden;
+    }
+
+    /* 背景漂浮花朵 */
+    body::before, body::after{
+      content:"";
+      position:fixed;
+      inset:-80px;
+      pointer-events:none;
+      opacity:.55;
+      background-repeat:repeat;
+      background-size: 160px 160px;
+      filter: blur(.2px);
+      z-index:-1;
+    }
+
+    body::before{
+      background-image:
+        radial-gradient(circle at 22px 28px, rgba(255,110,169,.25) 0 10px, transparent 11px),
+        radial-gradient(circle at 62px 70px, rgba(255,174,214,.28) 0 9px, transparent 10px),
+        radial-gradient(circle at 120px 38px, rgba(255,210,230,.35) 0 8px, transparent 9px);
+      animation: floatBg 12s ease-in-out infinite;
+    }
+
+    body::after{
+      background-image:
+        radial-gradient(circle at 35px 95px, rgba(170,232,255,.35) 0 9px, transparent 10px),
+        radial-gradient(circle at 110px 105px, rgba(255,216,120,.22) 0 10px, transparent 11px);
+      animation: floatBg2 15s ease-in-out infinite;
+    }
+
+    @keyframes floatBg{
+      0%,100%{ transform: translate(0,0); }
+      50%{ transform: translate(18px, -12px); }
+    }
+    @keyframes floatBg2{
+      0%,100%{ transform: translate(0,0); }
+      50%{ transform: translate(-16px, 10px); }
+    }
+
+    .card{
+      max-width: 560px;
+      margin: 10px auto;
+      padding: 18px 18px 16px;
+      border-radius: 22px;
+      background: var(--card);
+      border: 1px solid rgba(255, 214, 232, 0.9);
+      box-shadow: var(--soft-shadow);
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow:hidden;
+    }
+
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(240px 120px at 15% 10%, rgba(255, 158, 201, 0.35), transparent 60%),
+        radial-gradient(260px 120px at 85% 0%, rgba(170, 232, 255, 0.35), transparent 60%);
+      pointer-events:none;
+    }
+
+    h2{
+      text-align:center;
+      margin: 4px 0 12px;
+      font-size: 26px;
+      letter-spacing: 1px;
+      color: #ff4f9a;
+      text-shadow: 0 10px 18px rgba(255,110,169,.15);
+      position: relative;
+      z-index: 1;
+    }
+
+    h2::after{
+      content:"🌸";
+      margin-left: 6px;
+      display:inline-block;
+      transform: translateY(1px);
+      animation: bloom 1.8s ease-in-out infinite;
+    }
+
+    @keyframes bloom{
+      0%,100%{ transform: translateY(1px) rotate(0deg) scale(1); }
+      50%{ transform: translateY(-2px) rotate(-6deg) scale(1.05); }
+    }
+
+    .tabs{
+      display:flex;
+      gap:10px;
+      margin: 6px 0 18px;
+      padding: 8px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.6);
+      border: 1px solid rgba(255,214,232,0.8);
+      box-shadow: var(--soft-shadow-2);
+      position: relative;
+      z-index:1;
+    }
+
+    .tab{
+      flex:1;
+      padding: 12px 10px;
+      text-align:center;
+      cursor:pointer;
+      color: var(--gray);
+      font-weight: 800;
+      border-radius: 16px;
+      transition: 0.25s;
+      position: relative;
+      user-select:none;
+      overflow:hidden;
+    }
+
+    .tab:hover{
+      transform: translateY(-1px);
+      background: rgba(255, 240, 248, 0.75);
+    }
+
+    /* Tab 花朵 icon */
+    .tab::before{
+      content:"🌼";
+      margin-right: 6px;
+      display:inline-block;
+      transform: translateY(1px);
+      opacity:.85;
+      filter: drop-shadow(0 10px 12px rgba(255,110,169,.12));
+    }
+
+    /* Active Tab 春季高亮 */
+    .tab.active{
+      color:#ff2f86;
+      background:
+        linear-gradient(135deg, rgba(255, 158, 201, 0.35), rgba(170, 232, 255, 0.25));
+      border: 1px solid rgba(255, 110, 169, 0.25);
+      box-shadow: 0 10px 22px rgba(255,110,169,.12);
+    }
+
+    /* Active Tab 小花動畫 */
+    .tab.active::after{
+      content:"🌸";
+      position:absolute;
+      right: 14px;
+      top: 10px;
+      font-size: 18px;
+      animation: tabFlower 1.3s ease-in-out infinite;
+      opacity: 0.95;
+    }
+
+    @keyframes tabFlower{
+      0%,100%{ transform: translateY(0) rotate(0deg) scale(1); }
+      50%{ transform: translateY(-3px) rotate(10deg) scale(1.08); }
+    }
+
+    .section{
+      background: rgba(255,255,255,0.72);
+      padding: 14px 14px;
+      border-radius: 18px;
+      margin-bottom: 14px;
+      border: 1px solid rgba(255,214,232,0.8);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.05);
+      position: relative;
+      z-index: 1;
+    }
+
+    label b{
+      color:#ff3f90;
+    }
+
+    .btn-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    button{
+      padding: 12px 12px;
+      border:none;
+      border-radius: 16px;
+      cursor:pointer;
+      font-weight: 900;
+      transition: transform .18s, box-shadow .18s, filter .18s;
+      position: relative;
+      overflow:hidden;
+    }
+
+    /* 按鈕 hover 飄花效果 */
+    button::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      opacity:0;
+      background:
+        radial-gradient(circle at 20% 80%, rgba(255, 110, 169, 0.55) 0 4px, transparent 5px),
+        radial-gradient(circle at 40% 70%, rgba(255, 200, 230, 0.75) 0 4px, transparent 5px),
+        radial-gradient(circle at 70% 85%, rgba(170, 232, 255, 0.6) 0 4px, transparent 5px),
+        radial-gradient(circle at 85% 65%, rgba(255, 216, 120, 0.35) 0 4px, transparent 5px);
+      transform: translateY(8px);
+      transition: .2s;
+      filter: blur(.1px);
+    }
+
+    button:hover::after{
+      opacity: 1;
+      animation: petals 0.75s ease-out forwards;
+    }
+
+    @keyframes petals{
+      0%{ transform: translateY(10px); opacity:.0; }
+      40%{ opacity:1; }
+      100%{ transform: translateY(-18px); opacity:0; }
+    }
+
+    button:hover{
+      transform: translateY(-2px);
+      box-shadow: 0 16px 28px rgba(255,110,169,.16);
+      filter: saturate(1.05);
+    }
+
+    /* 社團按鈕 */
+    .btn-club{
+      background: linear-gradient(135deg, rgba(255, 158, 201, 0.28), rgba(170, 232, 255, 0.25));
+      color: #ff2f86;
+      font-size: 16px;
+      border: 1px solid rgba(255, 110, 169, 0.22);
+      box-shadow: 0 10px 18px rgba(255,110,169,.10);
+    }
+
+    .btn-club::before{
+      content:"🌷";
+      margin-right: 6px;
+    }
+
+    /* 主送出按鈕 */
+    .btn-submit{
+      width:100%;
+      font-size: 18px;
+      color: #fff;
+      background: linear-gradient(135deg, #ff5aa2, #ff9ec9);
+      box-shadow: 0 18px 28px rgba(255, 90, 162, 0.22);
+      border: 1px solid rgba(255,255,255,0.45);
+    }
+
+    .btn-submit::before{
+      content:"🌸";
+      margin-right: 6px;
+    }
+
+    .btn-submit:disabled{
+      background: #ffd2e6;
+      cursor:not-allowed;
+      box-shadow:none;
+      transform:none;
+    }
+
+    /* 危險按鈕 */
+    .btn-danger{
+      width:100%;
+      margin-top: 10px;
+      background: rgba(255, 77, 109, 0.10);
+      color: #ff2d55;
+      border: 1px solid rgba(255, 77, 109, 0.45);
+      box-shadow: 0 12px 20px rgba(255,77,109,.12);
+    }
+
+    .btn-danger::before{
+      content:"🌺";
+      margin-right: 6px;
+    }
+
+    .btn-outline-danger{
+      background: rgba(255,255,255,0.8);
+      color: #ff2d55;
+      border: 1px solid rgba(255, 77, 109, 0.55);
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 999px;
+      white-space: nowrap;
+      box-shadow: 0 10px 18px rgba(255,77,109,.10);
+    }
+
+    .btn-outline-danger::before{
+      content:"🧺";
+      margin-right: 4px;
+    }
+
+    /* 更換社團按鈕（保留原功能，但改可愛） */
+    .btn-back{
+      width:100%;
+      margin-bottom: 14px;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(255,214,232,0.9);
+      color: #ff2f86;
+      box-shadow: 0 12px 18px rgba(0,0,0,0.05);
+    }
+
+    .btn-back::before{
+      content:"🌿";
+      margin-right: 6px;
+    }
+
+    /* 名單兩欄排列樣式（維持不變） */
+    #uncheckList, #checkedList{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .student-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 10px 10px;
+      border-radius: 16px;
+      font-size: 14px;
+      background: rgba(255,255,255,0.85);
+      border: 1px solid rgba(255,214,232,0.85);
+      box-shadow: 0 10px 16px rgba(0,0,0,0.04);
+      transition: .2s;
+      position: relative;
+      overflow:hidden;
+    }
+
+    .student-row:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 14px 22px rgba(255,110,169,.10);
+    }
+
+    .student-row span{
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      margin-right: 6px;
+      font-weight: 800;
+      color:#374151;
+    }
+
+    .student-row input[type="checkbox"]{
+      transform: scale(1.25);
+      accent-color: #ff5aa2;
+      cursor:pointer;
+    }
+
+    input[type="date"], input[type="password"]{
+      width:100%;
+      padding: 11px 12px;
+      margin-top: 8px;
+      border-radius: 16px;
+      font-size: 16px;
+      border: 1px solid rgba(255,214,232,0.95);
+      background: rgba(255,255,255,0.85);
+      outline:none;
+      transition: .2s;
+      box-shadow: 0 10px 18px rgba(0,0,0,0.03);
+    }
+
+    input[type="date"]:focus, input[type="password"]:focus{
+      border-color: rgba(255, 90, 162, 0.55);
+      box-shadow: 0 16px 26px rgba(255,90,162,0.12);
+      transform: translateY(-1px);
+    }
+
+    .hidden{ display:none; }
+
+    #status{
+      text-align:center;
+      margin-top: 14px;
+      padding: 12px 12px;
+      border-radius: 18px;
+      font-weight: 900;
+      min-height: 22px;
+      border: 1px solid transparent;
+      background: rgba(255,255,255,0.65);
+      box-shadow: 0 12px 18px rgba(0,0,0,0.04);
+    }
+
+    .msg-success{
+      background-color: rgba(53, 185, 111, 0.10);
+      color: #138a49;
+      border-color: rgba(53,185,111,0.25);
+    }
+
+    .msg-error{
+      background-color: rgba(255, 77, 109, 0.10);
+      color: #d61f44;
+      border-color: rgba(255,77,109,0.25);
+    }
+
+    .msg-loading{
+      color: #6b7280;
+      font-style: italic;
+      border-color: rgba(255,214,232,0.5);
+    }
+
+    /* 手機更順 */
+    @media (max-width: 420px){
+      h2{ font-size: 24px; }
+      .tab{ font-size: 14px; padding: 11px 8px; }
+      .student-row{ padding: 10px 9px; }
+      button{ border-radius: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>社團點名簿</h2>
+
+  <div id="clubSelection">
+    <p style="text-align:center; font-weight:800; color:#ff2f86;">請選擇社團：</p>
+    <div id="clubBtns" class="btn-grid">讀取社團清單中...</div>
+  </div>
+
+  <div id="mainPage" class="hidden">
+    <button onclick="location.reload()" class="btn-back">← 更換社團</button>
+    <h3 id="currentClubDisp" style="text-align:center; margin: 0 0 12px; color:#ff2f86; font-weight:900;"></h3>
+
+    <div class="tabs">
+      <div id="tab1" class="tab active" onclick="switchTab('take')">點名登記</div>
+      <div id="tab2" class="tab" onclick="switchTab('query')">已點查詢</div>
+    </div>
+
+    <div class="section">
+      <label><b>上課日期：</b></label>
+      <input type="date" id="targetDate" onchange="refreshLists()">
+    </div>
+
+    <div id="takeAttendanceArea">
+      <div class="section">
+        <label><b>未點名學生：</b></label>
+        <div id="uncheckList"></div>
+      </div>
+    </div>
+
+    <div id="queryAttendanceArea" class="hidden">
+      <div class="section">
+        <label><b>已點名學生：</b></label>
+        <div id="checkedList"></div>
+        <button class="btn-danger" onclick="confirmDeleteAll()">刪除全部紀錄</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <label><b>管理員密碼：</b></label>
+      <input type="password" id="adminPwd" placeholder="請輸入驗證碼">
+    </div>
+
+    <button id="mainActionBtn" class="btn-submit" onclick="submitMulti()">確認送出點名</button>
+    <div id="status"></div>
+  </div>
+</div>
+
+<script>
+  // ⚠️ 請修改為你的 GAS 部署網頁應用程式 URL
+  const API_URL = "https://script.google.com/macros/s/AKfycbzAnoADPE5EJor6azhRrYJTWsOOjb4SAtSPaj1-EnRHPaI7_OiGcdED_J-6N-hT__zB/exec";
+  
+  let curClub = "";
+  let curMode = "take"; 
+
+  window.onload = () => {
+    fetchClubs();
+    document.getElementById('targetDate').value = new Date().toISOString().split('T')[0];
+  };
+
+  async function fetchClubs() {
+    try {
+      const r = await fetch(`${API_URL}?action=getClubList`);
+      const list = await r.json();
+      const div = document.getElementById('clubBtns');
+      div.innerHTML = "";
+      list.forEach(c => {
+        let b = document.createElement('button');
+        b.className = "btn-club";
+        b.innerText = c;
+        b.onclick = () => { curClub = c; showMain(); };
+        div.appendChild(b);
+      });
+    } catch(e) { showStatus("連線失敗，請檢查 API URL", "error"); }
+  }
+
+  function showMain() {
+    document.getElementById('clubSelection').classList.add('hidden');
+    document.getElementById('mainPage').classList.remove('hidden');
+    document.getElementById('currentClubDisp').innerText = "社團：" + curClub;
+    refreshLists();
+  }
+
+  function switchTab(m) {
+    curMode = m;
+    document.getElementById('tab1').className = m === 'take' ? 'tab active' : 'tab';
+    document.getElementById('tab2').className = m === 'query' ? 'tab active' : 'tab';
+    document.getElementById('takeAttendanceArea').className = m === 'take' ? '' : 'hidden';
+    document.getElementById('queryAttendanceArea').className = m === 'query' ? '' : 'hidden';
+    document.getElementById('mainActionBtn').className = m === 'take' ? 'btn-submit' : 'hidden';
+    clearStatus();
+    refreshLists();
+  }
+
+  async function refreshLists() {
+    const date = document.getElementById('targetDate').value;
+    if(!curClub || !date) return;
+    document.getElementById('uncheckList').innerHTML = "<p style='grid-column:span 2;text-align:center; font-weight:800; color:#ff2f86;'>載入中... 🌷</p>";
+    document.getElementById('checkedList').innerHTML = "<p style='grid-column:span 2;text-align:center; font-weight:800; color:#ff2f86;'>載入中... 🌸</p>";
+    try {
+      const [r1, r2] = await Promise.all([
+        fetch(`${API_URL}?action=getStudents&clubName=${encodeURIComponent(curClub)}&date=${date}&mode=unchecked`),
+        fetch(`${API_URL}?action=getStudents&clubName=${encodeURIComponent(curClub)}&date=${date}&mode=checked`)
+      ]);
+      renderList('uncheckList', await r1.json(), 'checkbox');
+      renderList('checkedList', await r2.json(), 'delete');
+    } catch(e) { showStatus("讀取名單失敗", "error"); }
+  }
+
+  function renderList(id, data, type) {
+    const container = document.getElementById(id);
+    if (!data.length) {
+      container.innerHTML = "<p style='grid-column:span 2;color:#9ca3af;text-align:center;font-size:14px;font-weight:800;'>無資料</p>";
+      return;
+    }
+    container.innerHTML = "";
+    data.forEach(name => {
+      let d = document.createElement('div');
+      d.className = "student-row";
+      if(type === 'checkbox') d.innerHTML = `<span>${name}</span><input type="checkbox" name="stu" value="${name}">`;
+      else d.innerHTML = `<span>${name}</span><button class="btn-outline-danger" onclick="deleteSingle('${name}')">刪除</button>`;
+      container.appendChild(d);
+    });
+  }
+
+  function showStatus(msg, type) {
+    const s = document.getElementById('status');
+    s.innerText = msg;
+    s.className = "";
+    if (type === "success") s.classList.add('msg-success');
+    else if (type === "error") s.classList.add('msg-error');
+    else s.classList.add('msg-loading');
+  }
+
+  function clearStatus() { 
+    const s = document.getElementById('status'); 
+    s.innerText = ""; 
+    s.className = ""; 
+  }
+
+  async function callPost(data) {
+    const pwd = document.getElementById('adminPwd').value;
+    if(!pwd) return showStatus("請輸入驗證碼", "error");
+    showStatus("處理中，請稍候...", "loading");
+    document.getElementById('mainActionBtn').disabled = true;
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({...data, clubName: curClub, password: pwd, date: document.getElementById('targetDate').value})
+      });
+      const res = await r.json();
+      if(res.status === 'success') {
+        showStatus(res.message, "success");
+        document.getElementById('adminPwd').value = "";
+        setTimeout(refreshLists, 1000);
+      } else showStatus(res.message, "error");
+    } catch(e) { showStatus("連線系統錯誤", "error"); }
+    finally { document.getElementById('mainActionBtn').disabled = false; }
+  }
+
+  function submitMulti() {
+    const box = document.querySelectorAll('input[name="stu"]:checked');
+    const stuList = Array.from(box).map(b => b.value);
+    if(!stuList.length) return showStatus("請至少勾選一位學生", "error");
+    callPost({ action: 'submit', students: stuList });
+  }
+
+  function deleteSingle(name) {
+    if(!document.getElementById('adminPwd').value) return showStatus("先輸入驗證碼再點選刪除", "error");
+    callPost({ action: 'deleteSingle', studentName: name });
+  }
+
+  function confirmDeleteAll() {
+    if(!document.getElementById('adminPwd').value) return showStatus("先輸入驗證碼再點刪除", "error");
+    if(confirm("確定刪除全部紀錄嗎？")) {
+      callPost({ action: 'deleteAll' });
+    }
+  }
+</script>
+
+</body>
+</html>
