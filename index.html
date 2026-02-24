@@ -1,49 +1,115 @@
-<h1>chienmu27系統首頁</h1>
-<ul>
-  <li>
-    <strong>Breakfast 系統</strong>
-    
-    <ul>      
-      <li>
-        <strong>breakfast260222</strong>
- 
-        <ul>
-          <li>
-            <a href="breakfast/breakfast260222/" target="_blank" rel="noopener noreferrer">前台訂餐</a>
-          </li>
-        </ul>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>chienmu27 系統首頁</title>
 
-      </li>
-    </ul>
-    
-    <ul>
-      <li>
-        <strong>breakfast0222</strong>
- 
-        <ul>
-          <li>
-            <a href="breakfast/breakfast0222/admin.html" target="_blank" rel="noopener noreferrer">後台管理</a>
-          </li>
-        </ul>
+<style>
+body{
+  font-family: Arial, Helvetica, sans-serif;
+  background:#f4f6f9;
+  margin:0;
+  padding:30px;
+}
 
-      </li>
-    </ul>
-  </li>
-  
+h1{
+  text-align:center;
+  margin-bottom:40px;
+}
 
-  <li>
-    社團系統
-    <ul>
-      <li>
-        點名系統
-        <ul>
-          <li>
-            <a href="clubs/rollcall/rollcall0208/" target="_blank" rel="noopener noreferrer">GITHUB設定匯入版
-            </a>
-          </li>
-        </ul>
-      </li>
-    </ul>
-  </li>
-  
-</ul>
+.container{
+  display:flex;
+  flex-wrap:wrap;
+  gap:20px;
+  justify-content:center;
+}
+
+.card{
+  background:white;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.08);
+  width:300px;
+}
+
+.card h2{
+  margin-top:0;
+  border-bottom:1px solid #eee;
+  padding-bottom:8px;
+}
+
+.section{
+  margin:10px 0;
+}
+
+.section-title{
+  font-weight:bold;
+  margin-bottom:5px;
+}
+
+.links a{
+  display:inline-block;
+  margin:4px 6px 4px 0;
+  padding:6px 12px;
+  background:#007bff;
+  color:white;
+  text-decoration:none;
+  border-radius:6px;
+  font-size:14px;
+}
+
+.links a:hover{
+  background:#0056b3;
+}
+</style>
+</head>
+
+<body>
+
+<h1>chienmu27 系統首頁</h1>
+
+<div class="container">
+
+  <!-- Breakfast -->
+  <div class="card">
+    <h2>🍳 Breakfast 系統</h2>
+
+    <div class="section">
+      <div class="section-title">breakfast260222</div>
+      <div class="links">
+        <a href="breakfast/breakfast260222/" target="_blank" rel="noopener noreferrer">
+          前台訂餐
+        </a>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">breakfast0222</div>
+      <div class="links">
+        <a href="breakfast/breakfast0222/admin.html" target="_blank" rel="noopener noreferrer">
+          後台管理
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clubs -->
+  <div class="card">
+    <h2>🏫 社團系統</h2>
+
+    <div class="section">
+      <div class="section-title">點名系統</div>
+      <div class="links">
+        <a href="clubs/rollcall/rollcall0208/" target="_blank" rel="noopener noreferrer">
+          GITHUB設定匯入版
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>
