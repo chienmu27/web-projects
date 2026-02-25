@@ -274,8 +274,8 @@
     function updateAnnouncement() {
         const announcementEl = document.getElementById('announcement');
         // 檢查是否有第 2 列以及第 I 欄 (索引 8)
-        if (rows.length > 1 && rows[1][8]) {
-            announcementEl.textContent = "📢 " + rows[1][8].trim();
+        if (rows.length > 1 && rows[0][8]) {
+            announcementEl.textContent = "📢 " + rows[0][8].trim();
         } else {
             announcementEl.textContent = "目前無最新公告";
         }
