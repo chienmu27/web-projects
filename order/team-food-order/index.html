@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>學生訂餐系統</title>
+<style>
+  body { font-family: "Microsoft JhengHei", sans-serif; padding: 0; margin: 0; background: #fafafa; }
+  
+  /* 分頁按鈕樣式 */
+  .tabs { display: flex; background: #333; }
+  .tab-btn { 
+    flex: 1; padding: 15px; border: none; background: #333; color: white; 
+    cursor: pointer; font-size: 16px; transition: 0.3s;
+  }
+  .tab-btn:hover { background: #555; }
+  .tab-btn.active { background: #007bff; font-weight: bold; }
+
+  /* 內容區域 */
+  .content { display: none; padding: 20px; }
+  .content.active { display: block; }
+
+  /* 表單容器 */
+  .iframe-container { width: 100%; height: 800px; border: none; }
+
+  /* 查詢頁面樣式 */
+  h2 { color: #333; margin-top: 0; }
+  select { font-size: 16px; padding: 6px; margin: 10px 0; width: 200px; border-radius: 4px; border: 1px solid #ccc; }
+  table { border-collapse: collapse; width: 100%; background: #fff; margin-top: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+  th, td { border: 1px solid #eee; padding: 12px; text-align: center; font-size: 15px; }
+  th { background-color: #f8f9fa; color: #555; }
+
+  #countInline {
+    display: inline-block;
+    margin-left: 12px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #007bff;
+  }
+  .controls { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="openTab('form-tab', this)">我要訂餐</button>
+  <button class="tab-btn" onclick="openTab('search-tab', this)">訂餐查詢</button>
+</div>
+
+<div id="form-tab" class="content active">
+  <iframe class="iframe-container" src="https://docs.google.com/forms/d/e/1FAIpQLSdO7i6Y_YgYhD0mS0-P8m3TshvI_UonD78F_C0S8zYyV_1B_A/viewform?embedded=true">載入中…</iframe>
+</div>
+
+<div id="search-tab" class="content">
+  <div class="controls">
+    <h2>訂餐紀錄查詢</h2>
+    <label>選擇日期：</label>
+    <select id="dateSelect">
+      <option value="">--請載入中--</option>
+    </select>
+    <span id="countInline"></span>
+    <br>
+    <label>選擇學生：</label>
+    <select id="studentSelect">
+      <option value="">--請載入中--</option>
+    </select>
+  </div>
+
+  <table id="resultTable">
+    <thead>
+      <tr><th>訂餐日期</th><th>學生姓名</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+// 注意：此處需更換為您試算表「表單回應 1」工作表的 CSV 發佈連結
+// 索引：G欄為 r[6], H欄為 r[7]
+const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTUnpp7ywdL_MDPC4l8_qcehjnmmm3ZcihJfbNkAPr8-g7gkigalKEH7Dsebg5pc0xrXHwRjOayo8iy/pub?gid=1115559903&single=true&output=csv";
+
+let rows = [];
+
+// 分頁切換函式
+function openTab(tabId, btn) {
+  const contents = document.querySelectorAll('.content');
+  const buttons = document.querySelectorAll('.tab-btn');
+  
+  contents.forEach(c => c.classList.remove('active'));
+  buttons.forEach(b => b.classList.remove('active'));
+  
+  document.getElementById(tabId).classList.add('active');
+  btn.classList.add('active');
+
+  // 如果切換到查詢頁，重新抓取最新資料
+  if(tabId === 'search-tab') loadCSV();
+}
+
+// 解析 CSV
+function parseCSV(text) {
+  const result = [];
+  let cur = [], curVal = "", inQuotes = false;
+  const lines = text.split(/\r?\n/);
+  
+  lines.forEach(line => {
+    let cells = [];
+    let cell = "";
+    let insideQuote = false;
+    for (let i = 0; i < line.length; i++) {
+      let char = line[i];
+      if (char === '"' && line[i+1] === '"') { cell += '"'; i++; }
+      else if (char === '"') { insideQuote = !insideQuote; }
+      else if (char === ',' && !insideQuote) { cells.push(cell); cell = ""; }
+      else { cell += char; }
+    }
+    cells.push(cell);
+    result.push(cells);
+  });
+  return result;
+}
+
+// 載入資料
+async function loadCSV() {
+  try {
+    const res = await fetch(csvUrl);
+    const text = await res.text();
+    rows = parseCSV(text).filter(r => r.length > 7); // 確保至少有到 H 欄
+    buildDropdowns();
+  } catch (e) {
+    console.error("資料載入失敗", e);
+  }
+}
+
+// 建立下拉選單 (G欄=索引6, H欄=索引7)
+function buildDropdowns() {
+  const dateSet = new Set(), studentSet = new Set();
+  const dateSel = document.getElementById("dateSelect");
+  const studentSel = document.getElementById("studentSelect");
+
+  rows.forEach((r, i) => {
+    if (i > 0) { // 跳過標題列
+      if (r[6]) dateSet.add(r[6].trim());
+      if (r[7]) studentSet.add(r[7].trim());
+    }
+  });
+
+  const dates = Array.from(dateSet).sort((a, b) => new Date(b) - new Date(a));
+  const students = Array.from(studentSet).sort();
+
+  dateSel.innerHTML = '<option value="">--請選擇日期--</option>';
+  studentSel.innerHTML = '<option value="">--請選擇學生--</option>';
+
+  dates.forEach(d => dateSel.add(new Option(d, d)));
+  students.forEach(s => studentSel.add(new Option(s, s)));
+}
+
+// 篩選與渲染
+function runFilter() {
+  const dateValue = document.getElementById("dateSelect").value;
+  const studentValue = document.getElementById("studentSelect").value;
+  const tbody = document.querySelector("#resultTable tbody");
+  const countSpan = document.getElementById("countInline");
+  
+  const matches = rows.filter((r, i) => {
+    if (i === 0) return false;
+    const dMatch = !dateValue || r[6].trim() === dateValue;
+    const sMatch = !studentValue || r[7].trim() === studentValue;
+    return dMatch && sMatch;
+  });
+
+  // 更新人數統計（僅計算選中日期的不重複學生）
+  if (dateValue) {
+    const studentCount = new Set(matches.map(r => r[7].trim())).size;
+    countSpan.textContent = `📌 該日訂餐人數：${studentCount} 人`;
+  } else {
+    countSpan.textContent = "";
+  }
+
+  // 渲染表格
+  tbody.innerHTML = "";
+  if (matches.length === 0) {
+    tbody.innerHTML = "<tr><td colspan='2'>無符合紀錄</td></tr>";
+  } else {
+    matches.forEach(r => {
+      tbody.insertAdjacentHTML("beforeend", `<tr><td>${r[6]}</td><td>${r[7]}</td></tr>`);
+    });
+  }
+}
+
+document.getElementById("dateSelect").addEventListener("change", runFilter);
+document.getElementById("studentSelect").addEventListener("change", runFilter);
+
+// 初始化載入
+loadCSV();
+</script>
+
+</body>
+</html>
