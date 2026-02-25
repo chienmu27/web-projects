@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>羽球臨打報名系統</title>
+
+<style>
+body{
+  font-family: Arial;
+  margin:0;
+  background:#f2f2f2;
+}
+
+header{
+  background:#1976d2;
+  color:white;
+  padding:15px;
+  text-align:center;
+}
+
+.tabs{
+  display:flex;
+}
+
+.tabs button{
+  flex:1;
+  padding:12px;
+  border:none;
+  background:#ddd;
+  cursor:pointer;
+}
+
+.tabs button.active{
+  background:#1976d2;
+  color:white;
+}
+
+.section{
+  display:none;
+  padding:20px;
+}
+
+.section.active{
+  display:block;
+}
+
+.card{
+  background:white;
+  padding:15px;
+  margin:10px 0;
+  border-radius:8px;
+  box-shadow:0 2px 5px rgba(0,0,0,0.1);
+  cursor:pointer;
+}
+
+.paid{
+  background:#d4edda;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  🏸 羽球臨打報名系統
+</header>
+
+<div class="tabs">
+  <button onclick="switchTab('signup')" class="active">臨打報名</button>
+  <button onclick="switchTab('admin')">開團管理</button>
+</div>
+
+<!-- ================= 臨打報名 ================= -->
+<div id="signup" class="section active">
+
+<h3>參加者姓名</h3>
+<input type="text" id="username" placeholder="請輸入姓名">
+<button onclick="saveName()">儲存姓名</button>
+
+<h3>目前開團</h3>
+<div id="groupInfo"></div>
+
+<button onclick="join()">送出參加</button>
+
+<h3>報名名單</h3>
+<div id="signupCards"></div>
+
+</div>
+
+<!-- ================= 開團管理 ================= -->
+<div id="admin" class="section">
+
+<div id="loginArea">
+  <h3>管理登入</h3>
+  <input type="password" id="verifyCode" placeholder="輸入驗證碼">
+  <button onclick="login()">登入</button>
+</div>
+
+<div id="adminPanel" style="display:none;">
+
+  <h3>開團設定</h3>
+  日期：<input type="date" id="groupDate"><br><br>
+  費用：<input type="number" id="groupFee"><br><br>
+  人數：<input type="number" id="groupMax"><br><br>
+  <button onclick="updateGroup()">送出</button>
+
+  <h3>報名名單</h3>
+  <div id="adminCards"></div>
+
+</div>
+
+</div>
+
+<script>
+
+// ===== 修改成你的 GAS 網址 =====
+const GAS_URL = "https://script.google.com/macros/s/AKfycbx9llvBGQUOdphtJxjlqPfJuQhwKqT7_X3Xtn2S78BWka-Aao-188W7bAiR3Ft8msEqzA/exec";
+
+let groupData = {};
+
+function switchTab(tab){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
+  
+  document.getElementById(tab).classList.add("active");
+  event.target.classList.add("active");
+}
+
+// 儲存姓名
+function saveName(){
+  const name = document.getElementById("username").value;
+  localStorage.setItem("badmintonName", name);
+  alert("姓名已儲存");
+}
+
+// 載入姓名
+window.onload = function(){
+  const name = localStorage.getItem("badmintonName");
+  if(name) document.getElementById("username").value = name;
+  loadData();
+}
+
+function loadData(){
+  fetch(GAS_URL + "?action=get")
+  .then(r=>r.json())
+  .then(data=>{
+    groupData = data;
+    render();
+  });
+}
+
+function render(){
+  document.getElementById("groupInfo").innerHTML =
+    `日期：${formatDate(groupData.date)}<br>
+     費用：${groupData.fee} 元<br>
+     人數：${groupData.currentCount}/${groupData.maxPeople}`;
+  
+  renderCards(groupData.participants, "signupCards");
+  renderCards(groupData.participants, "adminCards");
+}
+
+function renderCards(data, containerId){
+  const container = document.getElementById(containerId);
+  container.innerHTML = "";
+  
+  data.forEach(row=>{
+    const card = document.createElement("div");
+    card.className = "card";
+    if(row[3]=="已繳費") card.classList.add("paid");
+    
+    card.innerHTML = `
+      <b>${row[1]}</b><br>
+      ${formatDate(row[0])}<br>
+      ${row[2]} 元<br>
+      ${row[3]||"未繳費"}
+    `;
+    
+    card.onclick = ()=>{
+      if(containerId=="adminCards"){
+        fetch(GAS_URL + "?action=paid&name=" + row[1])
+        .then(()=>loadData());
+      }
+    };
+    
+    container.appendChild(card);
+  });
+}
+
+function join(){
+  const name = document.getElementById("username").value;
+  if(!name) return alert("請輸入姓名");
+  
+  fetch(GAS_URL + "?action=join&name=" + name)
+  .then(r=>r.json())
+  .then(res=>{
+    if(!res.success) alert(res.message);
+    loadData();
+  });
+}
+
+function login(){
+  if(document.getElementById("verifyCode").value == groupData.verifyCode){
+    document.getElementById("loginArea").style.display="none";
+    document.getElementById("adminPanel").style.display="block";
+  }else{
+    alert("驗證碼錯誤");
+  }
+}
+
+function updateGroup(){
+  const date = document.getElementById("groupDate").value;
+  const fee = document.getElementById("groupFee").value;
+  const max = document.getElementById("groupMax").value;
+  
+  fetch(`${GAS_URL}?action=update&date=${date}&fee=${fee}&max=${max}`)
+  .then(()=>loadData());
+}
+
+function formatDate(d){
+  const date = new Date(d);
+  return (date.getMonth()+1)+"月"+date.getDate()+"日";
+}
+
+</script>
+
+</body>
+</html>
