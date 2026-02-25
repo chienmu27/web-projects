@@ -8,12 +8,34 @@
     <style>
         body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 15px; }
+        
+        /* 公告說明樣式：改為兩欄排列 */
+        #announcement { 
+            color: #0056b3; 
+            font-weight: bold; 
+            font-size: 1em; 
+            margin-bottom: 20px; 
+            white-space: pre-wrap; 
+            line-height: 1.6;
+            
+            /* 核心修改：設定兩欄與欄間距 */
+            column-count: 2;
+            column-gap: 40px;
+            column-rule: 1px dashed #d1e3f8; /* 增加中間分隔線(選用) */
+            text-align: left; /* 靠左排列 */
+        }
+
+        /* 手機版自動切換回單欄，避免太擠 */
+        @media (max-width: 600px) {
+            #announcement { column-count: 1; }
+        }
+
         .controls { margin-bottom: 20px; background: #e9ecef; padding: 20px; border-radius: 8px; }
         label { display: block; margin-bottom: 8px; font-weight: bold; }
         select { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #ced4da; }
         .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 600px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 700px; }
         th, td { border: 1px solid #dee2e6; padding: 12px 8px; text-align: center; }
         th { background: #2c3e50; color: white; white-space: nowrap; }
         tr:nth-child(even) { background: #f8f9fa; }
@@ -29,6 +51,8 @@
 
 <div class="container">
     <h1>東海國小114下社團報名結果</h1>
+    
+    <div id="announcement">正在載入公告內容...</div>
     
     <div id="mainContent">
         <div class="controls">
@@ -49,12 +73,9 @@
 </div>
 
 <script>
-    // --- 【管理員設定區：直覺輸入法】 ---
     const config = {
-        // 直接輸入國曆月份即可 (例如: 2 代表 2月)
         start: { y: 2026, m: 2, d: 26, hr: 18, min: 0 }, 
         end:   { y: 2026, m: 3, d: 6, hr: 17, min: 0 },
-        
         csvURL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSIzS-_hGz-62j8Ky4aUuJSpeaPTjSHOx85BGfjowRx4-wQQS6gk4ulyNI8GjD1SPhrQLeQpuVtOR9o/pub?gid=0&single=true&output=csv"
     };
 
@@ -75,6 +96,7 @@
         const mainContent = document.getElementById("mainContent");
         const timeMessage = document.getElementById("timeMessage");
         const timerInfo = document.getElementById("timerInfo");
+        const announcementDiv = document.getElementById("announcement");
 
         const displayStart = formatTimeDisplay(startTime);
         const displayEnd = formatTimeDisplay(endTime);
@@ -83,10 +105,12 @@
 
         if (now < startTime) {
             mainContent.style.display = "none";
+            announcementDiv.style.display = "none";
             timeMessage.style.display = "block";
             timeMessage.innerHTML = `<div class="no-data">目前尚未開放查詢。<br>公告開始時間：${displayStart}</div>`;
         } else if (now > endTime) {
             mainContent.style.display = "none";
+            announcementDiv.style.display = "none";
             timeMessage.style.display = "block";
             timeMessage.innerHTML = `<div class="no-data">公告查詢期限已過 (${displayEnd})。<br>如有疑問請洽本校教務處。</div>`;
         } else {
@@ -94,7 +118,6 @@
         }
     }
 
-    // --- 資料處理區 ---
     let allData = [];
 
     function loadData() {
@@ -104,10 +127,16 @@
             skipEmptyLines: true,
             complete: function(results) {
                 allData = results.data;
+                
+                if (allData.length > 0) {
+                    const info = allData[0]["公告說明"] || "歡迎查詢社團報名結果";
+                    document.getElementById("announcement").textContent = info;
+                }
                 renderClubOptions();
             },
             error: function() {
-                document.getElementById("resultArea").innerHTML = "<div class='no-data' style='color:red;'>資料讀取失敗，請檢查網路。</div>";
+                document.getElementById("resultArea").innerHTML = "<div class='no-data' style='color:red;'>資料讀取失敗。</div>";
+                document.getElementById("announcement").textContent = "無法載入公告內容";
             }
         });
     }
@@ -141,23 +170,15 @@
         }
 
         const filtered = allData.filter(row => row["社團名稱"] === selectedClub);
-        
-        // 修改表格標題，新增「開課日期」與「上課地點」
         let tableHtml = `
             <table>
                 <thead>
                     <tr>
-                        <th>年級</th>
-                        <th>班級</th>
-                        <th>座號</th>
-                        <th>姓名</th>
-                        <th>報名結果</th>
-                        <th>開課日期</th>
-                        <th>上課地點</th>
+                        <th>年級</th><th>班級</th><th>座號</th><th>姓名</th><th>報名結果</th><th>開課日期</th><th>上課地點</th>
                     </tr>
                 </thead>
                 <tbody>`;
-
+        
         filtered.forEach(row => {
             const rawName = row["姓名(姓名中間字需顯示\"○\")"] || row["姓名"] || "";
             const status = row["報名結果"] || "";
@@ -175,7 +196,6 @@
                     <td>${location}</td>
                 </tr>`;
         });
-        
         tableHtml += '</tbody></table>';
         resultArea.innerHTML = tableHtml;
     });
