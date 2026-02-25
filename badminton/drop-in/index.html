@@ -3,86 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏸 羽球臨打報名系統</title>
+    <title>🏸 羽球報名系統</title>
     <style>
-        :root { --primary: #1976d2; --bg: #f5f7fa; }
-        body { font-family: 'Segoe UI', 微軟正黑體, sans-serif; margin: 0; background: var(--bg); color: #333; }
-        header { background: var(--primary); color: white; padding: 20px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        :root { --primary: #1976d2; --accent: #e91e63; --bg: #f5f7fa; }
+        body { font-family: 'Segoe UI', 微軟正黑體, sans-serif; margin: 0; background: var(--bg); }
+        header { background: var(--primary); color: white; padding: 15px; text-align: center; }
         
-        .tabs { display: flex; background: #e0e0e0; position: sticky; top: 0; z-index: 100; }
-        .tabs button { flex: 1; padding: 15px; border: none; background: none; font-size: 16px; cursor: pointer; transition: 0.3s; }
+        .tabs { display: flex; background: #ddd; position: sticky; top: 0; z-index: 100; }
+        .tabs button { flex: 1; padding: 12px; border: none; cursor: pointer; font-size: 15px; }
         .tabs button.active { background: white; color: var(--primary); font-weight: bold; border-bottom: 3px solid var(--primary); }
         
-        .container { max-width: 600px; margin: 20px auto; padding: 0 15px; }
-        .section { display: none; animation: fadeIn 0.4s; }
+        .container { max-width: 800px; margin: 20px auto; padding: 0 15px; }
+        .section { display: none; }
         .section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        .form-group { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button.btn-main { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-        button.btn-main:disabled { background: #ccc; }
-
-        .info-board { background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 5px solid #ff9800; margin-bottom: 20px; }
+        .form-group { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        input { padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
         
-        .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .card { background: white; padding: 15px; border-radius: 10px; border: 1px solid #eee; position: relative; transition: 0.2s; }
-        .card.paid { background: #e8f5e9; border-color: #4caf50; }
-        .card.paid::after { content: "✓ 已繳費"; position: absolute; top: 5px; right: 8px; font-size: 12px; color: #2e7d32; font-weight: bold; }
-        .card b { font-size: 18px; color: var(--primary); }
-        .admin-mode .card { cursor: pointer; }
-        .admin-mode .card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        /* 橫向排列設定 */
+        .admin-flex-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+        .admin-flex-row div { flex: 1; min-width: 140px; }
+        .admin-flex-row label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+        .admin-flex-row input { width: 100%; }
 
-        .loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; z-index:999; }
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; transition: 0.2s; }
+        .btn-blue { background: var(--primary); width: 100%; font-size: 16px; }
+        .btn-update { background: #4caf50; height: 40px; }
+        .btn-danger { background: var(--accent); margin-top: 10px; font-size: 13px; }
+
+        .info-board { background: #fff3e0; padding: 12px; border-left: 5px solid #ff9800; border-radius: 4px; margin-bottom: 15px; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+        .card { background: white; padding: 12px; border-radius: 8px; border: 1px solid #eee; position: relative; }
+        .card.paid { background: #e8f5e9; border-color: #4caf50; }
+        .card.paid::after { content: "✓ 已繳"; position: absolute; top: 4px; right: 4px; font-size: 10px; color: #2e7d32; font-weight: bold; }
+        .admin-mode .card { cursor: pointer; }
+
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
     </style>
 </head>
 <body>
 
-<div id="loading" class="loading-overlay">讀取中...</div>
-
-<header>
-    <h2>🏸 羽球臨打報名</h2>
-</header>
+<div id="loading">載入中...</div>
+<header>🏸 羽球臨打報名系統</header>
 
 <div class="tabs">
-    <button id="tab-signup" onclick="switchTab('signup')" class="active">臨打報名</button>
-    <button id="tab-admin" onclick="switchTab('admin')">開團管理</button>
+    <button id="t1" onclick="switchTab('signup')" class="active">臨打報名</button>
+    <button id="t2" onclick="switchTab('admin')">開團管理</button>
 </div>
 
 <div class="container">
     <div id="signup" class="section active">
         <div class="form-group">
-            <label>你的大名：</label>
-            <input type="text" id="username" placeholder="請輸入姓名" onchange="saveName()">
-            <small style="color: #666;">* 姓名會自動儲存，下次免填</small>
+            <label>參加者姓名：</label>
+            <input type="text" id="username" style="width:100%" placeholder="請輸入姓名" onchange="saveName()">
         </div>
-
-        <div id="infoArea" class="info-board">讀取開團資訊中...</div>
-
-        <button id="joinBtn" class="btn-main" onclick="join()">確認報名送出</button>
-
-        <h3 style="margin-top:30px;">目前報名名單</h3>
+        <div id="infoArea" class="info-board">連線中...</div>
+        <button id="joinBtn" class="btn btn-blue" onclick="join()">確認報名</button>
+        <h3 style="border-bottom: 2px solid #ddd; padding-bottom: 5px;">報名名單</h3>
         <div id="signupCards" class="card-grid"></div>
     </div>
 
     <div id="admin" class="section">
         <div id="loginArea" class="form-group">
-            <h3>管理員登入</h3>
-            <input type="password" id="verifyCode" placeholder="請輸入工作表H2的驗證碼">
-            <button class="btn-main" onclick="login()">登入管理介面</button>
+            <h3>管理登入</h3>
+            <input type="password" id="verifyCode" placeholder="輸入驗證碼" style="width:100%">
+            <button class="btn btn-blue" style="margin-top:10px" onclick="login()">登入</button>
         </div>
 
         <div id="adminPanel" style="display:none;">
             <div class="form-group">
-                <h3>開團設定</h3>
-                日期：<input type="date" id="groupDate">
-                費用：<input type="number" id="groupFee" placeholder="每人費用">
-                人數上限：<input type="number" id="groupMax" placeholder="上限人數">
-                <button class="btn-main" onclick="updateGroup()">更新開團資訊</button>
+                <h3>開團參數設定</h3>
+                <div class="admin-flex-row">
+                    <div><label>開團日期</label><input type="date" id="groupDate"></div>
+                    <div><label>費用</label><input type="number" id="groupFee"></div>
+                    <div><label>人數上限</label><input type="number" id="groupMax"></div>
+                    <button class="btn btn-update" onclick="updateGroup()">更新</button>
+                </div>
+                <button class="btn btn-danger" onclick="clearData()">⚠️ 清除本團所有報名資料</button>
             </div>
 
             <div class="form-group admin-mode">
-                <h3>收費管理 (點擊卡片標記已繳費)</h3>
+                <h3>收費紀錄 (點擊卡片標記已繳費)</h3>
                 <div id="adminCards" class="card-grid"></div>
             </div>
         </div>
@@ -90,24 +91,18 @@
 </div>
 
 <script>
-// !!! 請務必替換成你部署後的 GAS 網址 !!!
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyCSZR1QM7xcVQ3zjtc4xXNc8IYkrR0OO85tgRdQl-YLyhhLTnBJ_zClhtG-hnK5uwQ/exec"; 
 
 let groupData = { participants: [] };
 
-// 切換分頁
 function switchTab(tab){
     document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
     document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
     document.getElementById(tab).classList.add("active");
-    document.getElementById('tab-' + tab).classList.add("active");
+    event.target.classList.add("active");
 }
 
-// 儲存姓名到瀏覽器
-function saveName(){
-    const name = document.getElementById("username").value;
-    localStorage.setItem("badmintonName", name);
-}
+function saveName(){ localStorage.setItem("badmintonName", document.getElementById("username").value); }
 
 window.onload = function(){
     const name = localStorage.getItem("badmintonName");
@@ -115,42 +110,23 @@ window.onload = function(){
     loadData();
 }
 
-function showLoading(show) {
-    document.getElementById("loading").style.display = show ? "flex" : "none";
-}
-
-// 讀取資料
 function loadData(){
-    showLoading(true);
-    fetch(`${GAS_URL}?action=get`)
-    .then(r => r.json())
-    .then(data => {
+    document.getElementById("loading").style.display = "flex";
+    fetch(`${GAS_URL}?action=get`).then(r => r.json()).then(data => {
         groupData = data;
         render();
-        showLoading(false);
-    }).catch(e => alert("連線錯誤：" + e));
+        document.getElementById("loading").style.display = "none";
+    });
 }
 
 function render(){
-    // 更新資訊看板
-    const dateObj = new Date(groupData.date);
-    const dateStr = groupData.date ? `${dateObj.getMonth()+1}月${dateObj.getDate()}日` : "未定";
+    const d = new Date(groupData.date);
+    const dateStr = groupData.date ? `${d.getMonth()+1}/${d.getDate()}` : "未設定";
+    document.getElementById("infoArea").innerHTML = `<b>📅 日期：</b>${dateStr} | <b>💰 費用：</b>${groupData.fee}元 | <b>👥 人數：</b>${groupData.currentCount}/${groupData.maxPeople}`;
     
-    document.getElementById("infoArea").innerHTML = `
-        <b>📅 開團日期：</b>${dateStr}<br>
-        <b>💰 報名費用：</b>${groupData.fee} 元<br>
-        <b>👥 報名人數：</b>${groupData.currentCount} / ${groupData.maxPeople}
-    `;
-
-    // 判斷是否額滿
     const joinBtn = document.getElementById("joinBtn");
-    if(groupData.currentCount >= groupData.maxPeople) {
-        joinBtn.disabled = true;
-        joinBtn.innerText = "已額滿，停止報名";
-    } else {
-        joinBtn.disabled = false;
-        joinBtn.innerText = "確認報名送出";
-    }
+    joinBtn.disabled = (groupData.currentCount >= groupData.maxPeople);
+    joinBtn.innerText = joinBtn.disabled ? "已額滿" : "確認報名";
 
     renderCards(groupData.participants, "signupCards", false);
     renderCards(groupData.participants, "adminCards", true);
@@ -159,26 +135,15 @@ function render(){
 function renderCards(data, containerId, isAdmin){
     const container = document.getElementById(containerId);
     container.innerHTML = "";
-    
     data.forEach(row => {
         const isPaid = row[3] === "已繳費";
         const card = document.createElement("div");
         card.className = `card ${isPaid ? 'paid' : ''}`;
-        
-        const dateObj = new Date(row[0]);
-        const shortDate = `${dateObj.getMonth()+1}/${dateObj.getDate()}`;
-
-        card.innerHTML = `
-            <b>${row[1]}</b><br>
-            <small>${shortDate} | ${row[2]}元</small>
-        `;
-        
+        card.innerHTML = `<b>${row[1]}</b><br><small>${row[2]}元 | ${isPaid?'已繳':'未繳'}</small>`;
         if(isAdmin && !isPaid){
             card.onclick = () => {
-                if(confirm(`確認 ${row[1]} 已繳費？`)){
-                    showLoading(true);
-                    fetch(`${GAS_URL}?action=paid&name=${encodeURIComponent(row[1])}`)
-                    .then(() => loadData());
+                if(confirm(`標記 ${row[1]} 已繳費？`)){
+                    fetch(`${GAS_URL}?action=paid&name=${encodeURIComponent(row[1])}`).then(() => loadData());
                 }
             };
         }
@@ -189,46 +154,34 @@ function renderCards(data, containerId, isAdmin){
 function join(){
     const name = document.getElementById("username").value.trim();
     if(!name) return alert("請輸入姓名");
-    
-    showLoading(true);
-    fetch(`${GAS_URL}?action=join&name=${encodeURIComponent(name)}`)
-    .then(r => r.json())
-    .then(res => {
+    fetch(`${GAS_URL}?action=join&name=${encodeURIComponent(name)}`).then(r => r.json()).then(res => {
         if(!res.success) alert(res.message);
         loadData();
     });
 }
 
 function login(){
-    const inputCode = document.getElementById("verifyCode").value;
-    if(inputCode == groupData.verifyCode){
+    if(document.getElementById("verifyCode").value == groupData.verifyCode){
         document.getElementById("loginArea").style.display="none";
         document.getElementById("adminPanel").style.display="block";
-        // 預填目前設定
-        if(groupData.date) {
-            const d = new Date(groupData.date);
-            document.getElementById("groupDate").value = d.toISOString().split('T')[0];
-        }
+        if(groupData.date) document.getElementById("groupDate").value = new Date(groupData.date).toISOString().split('T')[0];
         document.getElementById("groupFee").value = groupData.fee;
         document.getElementById("groupMax").value = groupData.maxPeople;
-    } else {
-        alert("驗證碼錯誤！請查看試算表 H2 儲存格");
-    }
+    } else { alert("驗證碼錯誤"); }
 }
 
 function updateGroup(){
     const date = document.getElementById("groupDate").value;
     const fee = document.getElementById("groupFee").value;
     const max = document.getElementById("groupMax").value;
-    
-    showLoading(true);
-    fetch(`${GAS_URL}?action=update&date=${date}&fee=${fee}&max=${max}`)
-    .then(() => {
-        alert("設定已更新");
-        loadData();
-    });
+    fetch(`${GAS_URL}?action=update&date=${date}&fee=${fee}&max=${max}`).then(() => { alert("更新成功"); loadData(); });
+}
+
+function clearData(){
+    if(confirm("確定要刪除工作表 A2:D 的所有報名資料嗎？此操作不可還原。")){
+        fetch(`${GAS_URL}?action=clear`).then(() => { alert("已清空"); loadData(); });
+    }
 }
 </script>
-
 </body>
 </html>
