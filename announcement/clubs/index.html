@@ -7,15 +7,15 @@
 
     <style>
         body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
         .controls { margin-bottom: 20px; background: #e9ecef; padding: 20px; border-radius: 8px; }
         label { display: block; margin-bottom: 8px; font-weight: bold; }
         select { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #ced4da; }
         .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 600px; }
         th, td { border: 1px solid #dee2e6; padding: 12px 8px; text-align: center; }
-        th { background: #2c3e50; color: white; }
+        th { background: #2c3e50; color: white; white-space: nowrap; }
         tr:nth-child(even) { background: #f8f9fa; }
         .no-data { text-align: center; padding: 40px; color: #6c757d; font-size: 18px; line-height: 1.6; }
         .status-pass { color: #28a745; font-weight: bold; }
@@ -58,12 +58,10 @@
         csvURL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSIzS-_hGz-62j8Ky4aUuJSpeaPTjSHOx85BGfjowRx4-wQQS6gk4ulyNI8GjD1SPhrQLeQpuVtOR9o/pub?gid=0&single=true&output=csv"
     };
 
-    // 轉換為 JS Date 物件 (在此統一處理月份減 1 的問題)
     const startTime = new Date(config.start.y, config.start.m - 1, config.start.d, config.start.hr, config.start.min);
     const endTime = new Date(config.end.y, config.end.m - 1, config.end.d, config.end.hr, config.end.min);
 
     function formatTimeDisplay(dateObj) {
-        // 自定義格式化，避免瀏覽器 Locale 差異導致顯示錯誤
         const y = dateObj.getFullYear();
         const m = dateObj.getMonth() + 1;
         const d = dateObj.getDate();
@@ -143,12 +141,41 @@
         }
 
         const filtered = allData.filter(row => row["社團名稱"] === selectedClub);
-        let tableHtml = `<table><thead><tr><th>年級</th><th>班級</th><th>座號</th><th>姓名</th><th>報名結果</th></tr></thead><tbody>`;
+        
+        // 修改表格標題，新增「開課日期」與「上課地點」
+        let tableHtml = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>年級</th>
+                        <th>班級</th>
+                        <th>座號</th>
+                        <th>姓名</th>
+                        <th>報名結果</th>
+                        <th>開課日期</th>
+                        <th>上課地點</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
         filtered.forEach(row => {
             const rawName = row["姓名(姓名中間字需顯示\"○\")"] || row["姓名"] || "";
             const status = row["報名結果"] || "";
-            tableHtml += `<tr><td>${row["年級"] || ""}</td><td>${row["班級"] || ""}</td><td>${row["座號"] || ""}</td><td>${maskName(rawName)}</td><td class="${status.includes('錄取') ? 'status-pass' : ''}">${status}</td></tr>`;
+            const startDate = row["開課日期"] || "";
+            const location = row["上課地點"] || "";
+            
+            tableHtml += `
+                <tr>
+                    <td>${row["年級"] || ""}</td>
+                    <td>${row["班級"] || ""}</td>
+                    <td>${row["座號"] || ""}</td>
+                    <td>${maskName(rawName)}</td>
+                    <td class="${status.includes('錄取') ? 'status-pass' : ''}">${status}</td>
+                    <td>${startDate}</td>
+                    <td>${location}</td>
+                </tr>`;
         });
+        
         tableHtml += '</tbody></table>';
         resultArea.innerHTML = tableHtml;
     });
