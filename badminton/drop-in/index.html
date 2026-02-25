@@ -1,227 +1,233 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>羽球臨打報名系統</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏸 羽球臨打報名系統</title>
+    <style>
+        :root { --primary: #1976d2; --bg: #f5f7fa; }
+        body { font-family: 'Segoe UI', 微軟正黑體, sans-serif; margin: 0; background: var(--bg); color: #333; }
+        header { background: var(--primary); color: white; padding: 20px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        
+        .tabs { display: flex; background: #e0e0e0; position: sticky; top: 0; z-index: 100; }
+        .tabs button { flex: 1; padding: 15px; border: none; background: none; font-size: 16px; cursor: pointer; transition: 0.3s; }
+        .tabs button.active { background: white; color: var(--primary); font-weight: bold; border-bottom: 3px solid var(--primary); }
+        
+        .container { max-width: 600px; margin: 20px auto; padding: 0 15px; }
+        .section { display: none; animation: fadeIn 0.4s; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-<style>
-body{
-  font-family: Arial;
-  margin:0;
-  background:#f2f2f2;
-}
+        .form-group { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button.btn-main { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        button.btn-main:disabled { background: #ccc; }
 
-header{
-  background:#1976d2;
-  color:white;
-  padding:15px;
-  text-align:center;
-}
+        .info-board { background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 5px solid #ff9800; margin-bottom: 20px; }
+        
+        .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .card { background: white; padding: 15px; border-radius: 10px; border: 1px solid #eee; position: relative; transition: 0.2s; }
+        .card.paid { background: #e8f5e9; border-color: #4caf50; }
+        .card.paid::after { content: "✓ 已繳費"; position: absolute; top: 5px; right: 8px; font-size: 12px; color: #2e7d32; font-weight: bold; }
+        .card b { font-size: 18px; color: var(--primary); }
+        .admin-mode .card { cursor: pointer; }
+        .admin-mode .card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
-.tabs{
-  display:flex;
-}
-
-.tabs button{
-  flex:1;
-  padding:12px;
-  border:none;
-  background:#ddd;
-  cursor:pointer;
-}
-
-.tabs button.active{
-  background:#1976d2;
-  color:white;
-}
-
-.section{
-  display:none;
-  padding:20px;
-}
-
-.section.active{
-  display:block;
-}
-
-.card{
-  background:white;
-  padding:15px;
-  margin:10px 0;
-  border-radius:8px;
-  box-shadow:0 2px 5px rgba(0,0,0,0.1);
-  cursor:pointer;
-}
-
-.paid{
-  background:#d4edda;
-}
-</style>
+        .loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; z-index:999; }
+    </style>
 </head>
-
 <body>
 
+<div id="loading" class="loading-overlay">讀取中...</div>
+
 <header>
-  🏸 羽球臨打報名系統
+    <h2>🏸 羽球臨打報名</h2>
 </header>
 
 <div class="tabs">
-  <button onclick="switchTab('signup')" class="active">臨打報名</button>
-  <button onclick="switchTab('admin')">開團管理</button>
+    <button id="tab-signup" onclick="switchTab('signup')" class="active">臨打報名</button>
+    <button id="tab-admin" onclick="switchTab('admin')">開團管理</button>
 </div>
 
-<!-- ================= 臨打報名 ================= -->
-<div id="signup" class="section active">
+<div class="container">
+    <div id="signup" class="section active">
+        <div class="form-group">
+            <label>你的大名：</label>
+            <input type="text" id="username" placeholder="請輸入姓名" onchange="saveName()">
+            <small style="color: #666;">* 姓名會自動儲存，下次免填</small>
+        </div>
 
-<h3>參加者姓名</h3>
-<input type="text" id="username" placeholder="請輸入姓名">
-<button onclick="saveName()">儲存姓名</button>
+        <div id="infoArea" class="info-board">讀取開團資訊中...</div>
 
-<h3>目前開團</h3>
-<div id="groupInfo"></div>
+        <button id="joinBtn" class="btn-main" onclick="join()">確認報名送出</button>
 
-<button onclick="join()">送出參加</button>
+        <h3 style="margin-top:30px;">目前報名名單</h3>
+        <div id="signupCards" class="card-grid"></div>
+    </div>
 
-<h3>報名名單</h3>
-<div id="signupCards"></div>
+    <div id="admin" class="section">
+        <div id="loginArea" class="form-group">
+            <h3>管理員登入</h3>
+            <input type="password" id="verifyCode" placeholder="請輸入工作表H2的驗證碼">
+            <button class="btn-main" onclick="login()">登入管理介面</button>
+        </div>
 
-</div>
+        <div id="adminPanel" style="display:none;">
+            <div class="form-group">
+                <h3>開團設定</h3>
+                日期：<input type="date" id="groupDate">
+                費用：<input type="number" id="groupFee" placeholder="每人費用">
+                人數上限：<input type="number" id="groupMax" placeholder="上限人數">
+                <button class="btn-main" onclick="updateGroup()">更新開團資訊</button>
+            </div>
 
-<!-- ================= 開團管理 ================= -->
-<div id="admin" class="section">
-
-<div id="loginArea">
-  <h3>管理登入</h3>
-  <input type="password" id="verifyCode" placeholder="輸入驗證碼">
-  <button onclick="login()">登入</button>
-</div>
-
-<div id="adminPanel" style="display:none;">
-
-  <h3>開團設定</h3>
-  日期：<input type="date" id="groupDate"><br><br>
-  費用：<input type="number" id="groupFee"><br><br>
-  人數：<input type="number" id="groupMax"><br><br>
-  <button onclick="updateGroup()">送出</button>
-
-  <h3>報名名單</h3>
-  <div id="adminCards"></div>
-
-</div>
-
+            <div class="form-group admin-mode">
+                <h3>收費管理 (點擊卡片標記已繳費)</h3>
+                <div id="adminCards" class="card-grid"></div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
+// !!! 請務必替換成你部署後的 GAS 網址 !!!
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyCSZR1QM7xcVQ3zjtc4xXNc8IYkrR0OO85tgRdQl-YLyhhLTnBJ_zClhtG-hnK5uwQ/exec"; 
 
-// ===== 修改成你的 GAS 網址 =====
-const GAS_URL = "https://script.google.com/macros/s/AKfycbx9llvBGQUOdphtJxjlqPfJuQhwKqT7_X3Xtn2S78BWka-Aao-188W7bAiR3Ft8msEqzA/exec";
+let groupData = { participants: [] };
 
-let groupData = {};
-
+// 切換分頁
 function switchTab(tab){
-  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
-  document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
-  
-  document.getElementById(tab).classList.add("active");
-  event.target.classList.add("active");
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
+    document.getElementById(tab).classList.add("active");
+    document.getElementById('tab-' + tab).classList.add("active");
 }
 
-// 儲存姓名
+// 儲存姓名到瀏覽器
 function saveName(){
-  const name = document.getElementById("username").value;
-  localStorage.setItem("badmintonName", name);
-  alert("姓名已儲存");
+    const name = document.getElementById("username").value;
+    localStorage.setItem("badmintonName", name);
 }
 
-// 載入姓名
 window.onload = function(){
-  const name = localStorage.getItem("badmintonName");
-  if(name) document.getElementById("username").value = name;
-  loadData();
+    const name = localStorage.getItem("badmintonName");
+    if(name) document.getElementById("username").value = name;
+    loadData();
 }
 
+function showLoading(show) {
+    document.getElementById("loading").style.display = show ? "flex" : "none";
+}
+
+// 讀取資料
 function loadData(){
-  fetch(GAS_URL + "?action=get")
-  .then(r=>r.json())
-  .then(data=>{
-    groupData = data;
-    render();
-  });
+    showLoading(true);
+    fetch(`${GAS_URL}?action=get`)
+    .then(r => r.json())
+    .then(data => {
+        groupData = data;
+        render();
+        showLoading(false);
+    }).catch(e => alert("連線錯誤：" + e));
 }
 
 function render(){
-  document.getElementById("groupInfo").innerHTML =
-    `日期：${formatDate(groupData.date)}<br>
-     費用：${groupData.fee} 元<br>
-     人數：${groupData.currentCount}/${groupData.maxPeople}`;
-  
-  renderCards(groupData.participants, "signupCards");
-  renderCards(groupData.participants, "adminCards");
+    // 更新資訊看板
+    const dateObj = new Date(groupData.date);
+    const dateStr = groupData.date ? `${dateObj.getMonth()+1}月${dateObj.getDate()}日` : "未定";
+    
+    document.getElementById("infoArea").innerHTML = `
+        <b>📅 開團日期：</b>${dateStr}<br>
+        <b>💰 報名費用：</b>${groupData.fee} 元<br>
+        <b>👥 報名人數：</b>${groupData.currentCount} / ${groupData.maxPeople}
+    `;
+
+    // 判斷是否額滿
+    const joinBtn = document.getElementById("joinBtn");
+    if(groupData.currentCount >= groupData.maxPeople) {
+        joinBtn.disabled = true;
+        joinBtn.innerText = "已額滿，停止報名";
+    } else {
+        joinBtn.disabled = false;
+        joinBtn.innerText = "確認報名送出";
+    }
+
+    renderCards(groupData.participants, "signupCards", false);
+    renderCards(groupData.participants, "adminCards", true);
 }
 
-function renderCards(data, containerId){
-  const container = document.getElementById(containerId);
-  container.innerHTML = "";
-  
-  data.forEach(row=>{
-    const card = document.createElement("div");
-    card.className = "card";
-    if(row[3]=="已繳費") card.classList.add("paid");
+function renderCards(data, containerId, isAdmin){
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
     
-    card.innerHTML = `
-      <b>${row[1]}</b><br>
-      ${formatDate(row[0])}<br>
-      ${row[2]} 元<br>
-      ${row[3]||"未繳費"}
-    `;
-    
-    card.onclick = ()=>{
-      if(containerId=="adminCards"){
-        fetch(GAS_URL + "?action=paid&name=" + row[1])
-        .then(()=>loadData());
-      }
-    };
-    
-    container.appendChild(card);
-  });
+    data.forEach(row => {
+        const isPaid = row[3] === "已繳費";
+        const card = document.createElement("div");
+        card.className = `card ${isPaid ? 'paid' : ''}`;
+        
+        const dateObj = new Date(row[0]);
+        const shortDate = `${dateObj.getMonth()+1}/${dateObj.getDate()}`;
+
+        card.innerHTML = `
+            <b>${row[1]}</b><br>
+            <small>${shortDate} | ${row[2]}元</small>
+        `;
+        
+        if(isAdmin && !isPaid){
+            card.onclick = () => {
+                if(confirm(`確認 ${row[1]} 已繳費？`)){
+                    showLoading(true);
+                    fetch(`${GAS_URL}?action=paid&name=${encodeURIComponent(row[1])}`)
+                    .then(() => loadData());
+                }
+            };
+        }
+        container.appendChild(card);
+    });
 }
 
 function join(){
-  const name = document.getElementById("username").value;
-  if(!name) return alert("請輸入姓名");
-  
-  fetch(GAS_URL + "?action=join&name=" + name)
-  .then(r=>r.json())
-  .then(res=>{
-    if(!res.success) alert(res.message);
-    loadData();
-  });
+    const name = document.getElementById("username").value.trim();
+    if(!name) return alert("請輸入姓名");
+    
+    showLoading(true);
+    fetch(`${GAS_URL}?action=join&name=${encodeURIComponent(name)}`)
+    .then(r => r.json())
+    .then(res => {
+        if(!res.success) alert(res.message);
+        loadData();
+    });
 }
 
 function login(){
-  if(document.getElementById("verifyCode").value == groupData.verifyCode){
-    document.getElementById("loginArea").style.display="none";
-    document.getElementById("adminPanel").style.display="block";
-  }else{
-    alert("驗證碼錯誤");
-  }
+    const inputCode = document.getElementById("verifyCode").value;
+    if(inputCode == groupData.verifyCode){
+        document.getElementById("loginArea").style.display="none";
+        document.getElementById("adminPanel").style.display="block";
+        // 預填目前設定
+        if(groupData.date) {
+            const d = new Date(groupData.date);
+            document.getElementById("groupDate").value = d.toISOString().split('T')[0];
+        }
+        document.getElementById("groupFee").value = groupData.fee;
+        document.getElementById("groupMax").value = groupData.maxPeople;
+    } else {
+        alert("驗證碼錯誤！請查看試算表 H2 儲存格");
+    }
 }
 
 function updateGroup(){
-  const date = document.getElementById("groupDate").value;
-  const fee = document.getElementById("groupFee").value;
-  const max = document.getElementById("groupMax").value;
-  
-  fetch(`${GAS_URL}?action=update&date=${date}&fee=${fee}&max=${max}`)
-  .then(()=>loadData());
+    const date = document.getElementById("groupDate").value;
+    const fee = document.getElementById("groupFee").value;
+    const max = document.getElementById("groupMax").value;
+    
+    showLoading(true);
+    fetch(`${GAS_URL}?action=update&date=${date}&fee=${fee}&max=${max}`)
+    .then(() => {
+        alert("設定已更新");
+        loadData();
+    });
 }
-
-function formatDate(d){
-  const date = new Date(d);
-  return (date.getMonth()+1)+"月"+date.getDate()+"日";
-}
-
 </script>
 
 </body>
