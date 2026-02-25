@@ -10,7 +10,6 @@
         .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #2c3e50; margin-bottom: 15px; }
         
-        /* 公告說明樣式：改為兩欄排列 */
         #announcement { 
             color: #0056b3; 
             font-weight: bold; 
@@ -18,15 +17,12 @@
             margin-bottom: 20px; 
             white-space: pre-wrap; 
             line-height: 1.6;
-            
-            /* 核心修改：設定兩欄與欄間距 */
             column-count: 2;
             column-gap: 40px;
-            column-rule: 1px dashed #d1e3f8; /* 增加中間分隔線(選用) */
-            text-align: left; /* 靠左排列 */
+            column-rule: 1px dashed #d1e3f8;
+            text-align: left;
         }
 
-        /* 手機版自動切換回單欄，避免太擠 */
         @media (max-width: 600px) {
             #announcement { column-count: 1; }
         }
@@ -35,7 +31,7 @@
         label { display: block; margin-bottom: 8px; font-weight: bold; }
         select { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #ced4da; }
         .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 700px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 600px; }
         th, td { border: 1px solid #dee2e6; padding: 12px 8px; text-align: center; }
         th { background: #2c3e50; color: white; white-space: nowrap; }
         tr:nth-child(even) { background: #f8f9fa; }
@@ -68,7 +64,6 @@
     </div>
 
     <div id="timeMessage" style="display:none;"></div>
-    
     <div class="timer-info" id="timerInfo"></div>
 </div>
 
@@ -119,6 +114,7 @@
     }
 
     let allData = [];
+    let validHeaders = []; // 用來存儲有標題名稱的欄位
 
     function loadData() {
         Papa.parse(config.csvURL, {
@@ -129,8 +125,17 @@
                 allData = results.data;
                 
                 if (allData.length > 0) {
+                    // 1. 處理公告內容
                     const info = allData[0]["公告說明"] || "歡迎查詢社團報名結果";
                     document.getElementById("announcement").textContent = info;
+
+                    // 2. 動態偵測有效欄位 (排除空白標題與公告說明)
+                    // 取得第一行所有的 key (標題)
+                    const rawHeaders = Object.keys(allData[0]);
+                    validHeaders = rawHeaders.filter(h => {
+                        // 排除自動生成的 "_數字"、空白標題、以及功能性的 "公告說明"
+                        return h.trim() !== "" && !h.startsWith("__parsed_extra") && !h.startsWith("_") && h !== "公告說明";
+                    });
                 }
                 renderClubOptions();
             },
@@ -170,32 +175,37 @@
         }
 
         const filtered = allData.filter(row => row["社團名稱"] === selectedClub);
-        let tableHtml = `
-            <table>
-                <thead>
-                    <tr>
-                        <th>年級</th><th>班級</th><th>座號</th><th>姓名</th><th>報名結果</th><th>開課日期</th><th>上課地點</th>
-                    </tr>
-                </thead>
-                <tbody>`;
         
-        filtered.forEach(row => {
-            const rawName = row["姓名(姓名中間字需顯示\"○\")"] || row["姓名"] || "";
-            const status = row["報名結果"] || "";
-            const startDate = row["開課日期"] || "";
-            const location = row["上課地點"] || "";
-            
-            tableHtml += `
-                <tr>
-                    <td>${row["年級"] || ""}</td>
-                    <td>${row["班級"] || ""}</td>
-                    <td>${row["座號"] || ""}</td>
-                    <td>${maskName(rawName)}</td>
-                    <td class="${status.includes('錄取') ? 'status-pass' : ''}">${status}</td>
-                    <td>${startDate}</td>
-                    <td>${location}</td>
-                </tr>`;
+        // --- 動態生成表格 ---
+        let tableHtml = `<table><thead><tr>`;
+        
+        // 生成有資料的標題列
+        validHeaders.forEach(header => {
+            // 修正顯示名稱：將長標題簡化顯示或保持原樣
+            let displayHeader = header.includes("姓名") ? "姓名" : header;
+            tableHtml += `<th>${displayHeader}</th>`;
         });
+        tableHtml += `</tr></thead><tbody>`;
+        
+        // 生成內容列
+        filtered.forEach(row => {
+            tableHtml += `<tr>`;
+            validHeaders.forEach(header => {
+                let cellData = row[header] || "";
+                
+                // 特殊處理：姓名遮罩
+                if (header.includes("姓名")) {
+                    cellData = maskName(cellData);
+                }
+                
+                // 特殊處理：錄取狀態顏色
+                let tdClass = (header === "報名結果" && cellData.includes('錄取')) ? 'class="status-pass"' : '';
+                
+                tableHtml += `<td ${tdClass}>${cellData}</td>`;
+            });
+            tableHtml += `</tr>`;
+        });
+        
         tableHtml += '</tbody></table>';
         resultArea.innerHTML = tableHtml;
     });
