@@ -16,6 +16,7 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
+            overflow: hidden; /* 防止主視窗捲動，讓 iframe 自行捲動 */
         }
         
         /* 分頁按鈕樣式 */
@@ -23,7 +24,7 @@
             display: flex;
             background: #fff;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            z-index: 10;
+            z-index: 100;
         }
         .tab-btn {
             flex: 1;
@@ -45,25 +46,28 @@
         /* 內容區塊 */
         .content-container {
             flex: 1;
-            overflow-y: auto;
             position: relative;
+            overflow: hidden;
         }
         .page {
             display: none;
-            padding: 15px;
-            box-sizing: border-box;
             width: 100%;
             height: 100%;
+            box-sizing: border-box;
         }
         .page.active {
             display: block;
         }
 
-        /* 表單頁面專用：讓 iframe 填滿且自適應 */
+        /* 表單頁面專用 */
+        #formPage {
+            padding: 0;
+        }
         .iframe-wrapper {
             width: 100%;
             height: 100%;
-            -webkit-overflow-scrolling: touch; /* 優化手機滑動 */
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
         }
         iframe {
             width: 100%;
@@ -72,6 +76,10 @@
         }
 
         /* 查詢頁面樣式 */
+        #queryPage {
+            padding: 15px;
+            overflow-y: auto;
+        }
         .query-card {
             background: white;
             padding: 20px;
@@ -91,21 +99,23 @@
         }
         select {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             font-size: 16px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 6px;
             background-color: #fff;
+            appearance: none; /* 手機端統一樣式 */
         }
         #countInfo {
-            margin-top: 10px;
+            margin: 15px 0;
             color: var(--primary-color);
             font-weight: bold;
+            text-align: center;
         }
 
         /* 表格樣式 */
         .table-container {
-            margin-top: 20px;
+            margin-top: 10px;
             overflow-x: auto;
         }
         table {
@@ -121,11 +131,14 @@
         th {
             background-color: #f8f9fa;
             color: #333;
+            position: sticky;
+            top: 0;
         }
         tr:nth-child(even) { background-color: #fafafa; }
 
         @media (max-width: 480px) {
-            .tab-btn { font-size: 14px; padding: 12px; }
+            .tab-btn { font-size: 15px; padding: 12px; }
+            .query-card { padding: 15px; }
             th, td { font-size: 14px; }
         }
     </style>
@@ -133,30 +146,30 @@
 <body>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="showPage('formPage', this)">填寫表單</button>
-        <button class="tab-btn" onclick="showPage('queryPage', this)">資料查詢</button>
+        <button class="tab-btn active" onclick="showPage('formPage', this)">📝 填寫表單</button>
+        <button class="tab-btn" onclick="showPage('queryPage', this)">🔍 資料查詢</button>
     </div>
 
     <div class="content-container">
         <div id="formPage" class="page active">
             <div class="iframe-wrapper">
-                <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScP_p3_L-oM8T-LzVj5E7K7R5-W9Bv0Fv6P9rN4P-y9p-y9pQ/viewform?embedded=true">載入中…</iframe>
+                <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform?embedded=true">載入中…</iframe>
             </div>
         </div>
 
         <div id="queryPage" class="page">
             <div class="query-card">
                 <div class="filter-group">
-                    <label>📅 選擇日期 (依據G欄)：</label>
+                    <label>📅 選擇日期 (來源G欄)：</label>
                     <select id="dateSelect">
-                        <option value="">載入中...</option>
+                        <option value="">讀取資料中...</option>
                     </select>
                 </div>
                 
                 <div class="filter-group">
-                    <label>👤 選擇學生 (依據H欄)：</label>
+                    <label>👤 選擇學生 (來源H欄)：</label>
                     <select id="studentSelect">
-                        <option value="">--請選擇學生--</option>
+                        <option value="">--請先選擇日期--</option>
                     </select>
                 </div>
 
@@ -171,7 +184,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td colspan="2">請先選擇查詢條件</td></tr>
+                            <tr><td colspan="2">請輸入查詢條件</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -180,24 +193,20 @@
     </div>
 
 <script>
-    // 您的 CSV 網址
+    // 試算表 CSV 網址
     const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTsZpJrcNtNVi3N32mxia0RM0PhtTJU-JIvDL-LpurlDVIAISdZxonWssNqxd-qBk9VJvrdwUz9qWCv/pub?gid=1115559903&single=true&output=csv";
 
     let rows = [];
 
-    // 切換分頁功能
+    // 切換分頁
     function showPage(pageId, btn) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
         btn.classList.add('active');
-        
-        if(pageId === 'queryPage' && rows.length === 0) {
-            loadCSV();
-        }
     }
 
-    // 解析 CSV
+    // CSV 解析邏輯
     function parseCSV(text) {
         const result = [];
         let cur = [], curVal = "", inQuotes = false;
@@ -222,12 +231,12 @@
         try {
             const res = await fetch(csvUrl);
             const text = await res.text();
-            // 過濾掉空行
+            // 過濾空行
             rows = parseCSV(text).filter(r => r.length > 1 && r.some(c => c.trim() !== ""));
             buildDropdowns();
         } catch (e) {
-            console.error("CSV 載入失敗", e);
-            document.getElementById('dateSelect').innerHTML = '<option>載入失敗</option>';
+            console.error("資料載入失敗", e);
+            document.getElementById('dateSelect').innerHTML = '<option>無法載入資料</option>';
         }
     }
 
@@ -235,15 +244,15 @@
         const dateSet = new Set();
         const studentSet = new Set();
 
-        // 根據需求：
-        // 下拉選單資料來源：日期為 G 欄 (index 6)，學生為 H 欄 (index 7)
+        // 邏輯：選單來源 G欄(index 6) / H欄(index 7)
         rows.forEach((r, i) => {
-            if (i > 0) { // 跳過標題列
+            if (i > 0) { 
                 if (r[6]) dateSet.add(r[6].trim());
                 if (r[7]) studentSet.add(r[7].trim());
             }
         });
 
+        // 日期由新到舊排序
         const dates = Array.from(dateSet).sort((a, b) => new Date(b) - new Date(a));
         const students = Array.from(studentSet).sort();
 
@@ -251,7 +260,7 @@
         const studentSel = document.getElementById('studentSelect');
 
         dateSel.innerHTML = '<option value="">--請選擇日期--</option>';
-        studentSel.innerHTML = '<option value="">--請選擇學生--</option>';
+        studentSel.innerHTML = '<option value="">--全部學生--</option>';
 
         dates.forEach(d => dateSel.add(new Option(d, d)));
         students.forEach(s => studentSel.add(new Option(s, s)));
@@ -263,7 +272,7 @@
         const tbody = document.querySelector("#resultTable tbody");
         const countInfo = document.getElementById("countInfo");
 
-        // 根據需求比對顯示資料：日期 C 欄 (index 2)，學生 D 欄 (index 3)
+        // 邏輯：比對顯示 C欄(index 2) / D欄(index 3)
         const matches = rows.filter((r, i) => {
             if (i === 0) return false;
             const dateMatch = !dateValue || (r[2] && r[2].trim() === dateValue);
@@ -271,14 +280,13 @@
             return dateMatch && studentMatch;
         });
 
-        // 更新統計人數 (以符合條件的唯一學生姓名計算)
+        // 統計該日不重複學生人數
         const uniqueStudents = new Set(matches.map(r => r[3]?.trim()).filter(v => v));
-        countInfo.textContent = dateValue ? `📌 該日訂餐人數：${uniqueStudents.size} 人` : "";
+        countInfo.textContent = dateValue ? `📌 篩選結果：共 ${uniqueStudents.size} 位學生` : "";
 
-        // 渲染表格
         tbody.innerHTML = "";
         if (matches.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='2'>無符合資料</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='2'>查無訂餐紀錄</td></tr>";
             return;
         }
 
@@ -292,11 +300,8 @@
     document.getElementById('dateSelect').addEventListener("change", runFilter);
     document.getElementById('studentSelect').addEventListener("change", runFilter);
 
-    // 初始載入
-    window.onload = () => {
-        // 預載資料但不影響表單顯示
-        loadCSV();
-    };
+    // 啟動載入
+    window.onload = loadCSV;
 </script>
 
 </body>
