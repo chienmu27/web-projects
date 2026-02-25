@@ -6,98 +6,20 @@
     <title>東海國小114下社團報名結果公告</title>
 
     <style>
-        body {
-            font-family: "Microsoft JhengHei", Arial, sans-serif;
-            background: #f4f6f9;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: auto;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-
-        h1 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 30px;
-        }
-
-        .controls {
-            margin-bottom: 20px;
-            background: #e9ecef;
-            padding: 20px;
-            border-radius: 8px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #495057;
-        }
-
-        select {
-            width: 100%;
-            padding: 12px;
-            font-size: 16px;
-            border-radius: 5px;
-            border: 1px solid #ced4da;
-            cursor: pointer;
-        }
-
-        .table-responsive {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-
-        th, td {
-            border: 1px solid #dee2e6;
-            padding: 12px 8px;
-            text-align: center;
-        }
-
-        th {
-            background: #2c3e50;
-            color: white;
-            white-space: nowrap;
-        }
-
-        tr:nth-child(even) {
-            background: #f8f9fa;
-        }
-
-        tr:hover {
-            background: #f1f3f5;
-        }
-
-        .no-data {
-            text-align: center;
-            padding: 40px;
-            color: #6c757d;
-            font-size: 18px;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #007bff;
-            font-weight: bold;
-        }
-
-        /* 報名結果狀態顏色 */
+        body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        .controls { margin-bottom: 20px; background: #e9ecef; padding: 20px; border-radius: 8px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        select { width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #ced4da; }
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #dee2e6; padding: 12px 8px; text-align: center; }
+        th { background: #2c3e50; color: white; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        .no-data { text-align: center; padding: 40px; color: #6c757d; font-size: 18px; line-height: 1.6; }
         .status-pass { color: #28a745; font-weight: bold; }
-        .status-fail { color: #dc3545; }
+        .timer-info { text-align: center; font-size: 0.9em; color: #888; margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 10px; }
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -107,36 +29,78 @@
 
 <div class="container">
     <h1>東海國小114下社團報名結果</h1>
+    
+    <div id="mainContent">
+        <div class="controls">
+            <label for="clubSelect">請選擇社團名稱：</label>
+            <select id="clubSelect" disabled>
+                <option value="">檢查公告時間中...</option>
+            </select>
+        </div>
 
-    <div class="controls">
-        <label for="clubSelect">請選擇社團名稱：</label>
-        <select id="clubSelect" disabled>
-            <option value="">資料載入中...</option>
-        </select>
+        <div id="resultArea" class="table-responsive">
+            <div class="no-data">請先從上方選單選擇社團</div>
+        </div>
     </div>
 
-    <div id="resultArea" class="table-responsive">
-        <div class="no-data">請先從上方選單選擇社團</div>
-    </div>
+    <div id="timeMessage" style="display:none;"></div>
+    
+    <div class="timer-info" id="timerInfo"></div>
 </div>
 
 <script>
-    // 發佈的 CSV 網址
-    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSIzS-_hGz-62j8Ky4aUuJSpeaPTjSHOx85BGfjowRx4-wQQS6gk4ulyNI8GjD1SPhrQLeQpuVtOR9o/pub?gid=0&single=true&output=csv";
+    // --- 【管理員設定區：直覺輸入法】 ---
+    const config = {
+        // 直接輸入國曆月份即可 (例如: 2 代表 2月)
+        start: { y: 2026, m: 2, d: 26, hr: 17, min: 0 }, 
+        end:   { y: 2026, m: 3, d: 6, hr: 17, min: 0 },
+        
+        csvURL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSIzS-_hGz-62j8Ky4aUuJSpeaPTjSHOx85BGfjowRx4-wQQS6gk4ulyNI8GjD1SPhrQLeQpuVtOR9o/pub?gid=0&single=true&output=csv"
+    };
 
-    let allData = [];
+    // 轉換為 JS Date 物件 (在此統一處理月份減 1 的問題)
+    const startTime = new Date(config.start.y, config.start.m - 1, config.start.d, config.start.hr, config.start.min);
+    const endTime = new Date(config.end.y, config.end.m - 1, config.end.d, config.end.hr, config.end.min);
 
-    // 姓名遮罩處理函數 (若原始資料未遮罩則自動處理)
-    function maskName(name) {
-        if (!name) return "";
-        if (name.includes("○")) return name; // 如果已經有圈了就不處理
-        if (name.length <= 1) return name;
-        if (name.length === 2) return name[0] + "○";
-        return name[0] + "○" + name.substring(2);
+    function formatTimeDisplay(dateObj) {
+        // 自定義格式化，避免瀏覽器 Locale 差異導致顯示錯誤
+        const y = dateObj.getFullYear();
+        const m = dateObj.getMonth() + 1;
+        const d = dateObj.getDate();
+        const hr = String(dateObj.getHours()).padStart(2, '0');
+        const min = String(dateObj.getMinutes()).padStart(2, '0');
+        return `${y}/${m}/${d} ${hr}:${min}`;
     }
 
-    function init() {
-        Papa.parse(sheetURL, {
+    function checkTimeAndInit() {
+        const now = new Date();
+        const mainContent = document.getElementById("mainContent");
+        const timeMessage = document.getElementById("timeMessage");
+        const timerInfo = document.getElementById("timerInfo");
+
+        const displayStart = formatTimeDisplay(startTime);
+        const displayEnd = formatTimeDisplay(endTime);
+
+        timerInfo.innerHTML = `公告查詢期間：${displayStart} ~ ${displayEnd}`;
+
+        if (now < startTime) {
+            mainContent.style.display = "none";
+            timeMessage.style.display = "block";
+            timeMessage.innerHTML = `<div class="no-data">目前尚未開放查詢。<br>公告開始時間：${displayStart}</div>`;
+        } else if (now > endTime) {
+            mainContent.style.display = "none";
+            timeMessage.style.display = "block";
+            timeMessage.innerHTML = `<div class="no-data">公告查詢期限已過 (${displayEnd})。<br>如有疑問請洽本校教務處。</div>`;
+        } else {
+            loadData();
+        }
+    }
+
+    // --- 資料處理區 ---
+    let allData = [];
+
+    function loadData() {
+        Papa.parse(config.csvURL, {
             download: true,
             header: true,
             skipEmptyLines: true,
@@ -145,8 +109,7 @@
                 renderClubOptions();
             },
             error: function() {
-                document.getElementById("resultArea").innerHTML = 
-                    "<div class='no-data' style='color:red;'>無法讀取資料，請檢查網路連線或試算表發佈設定。</div>";
+                document.getElementById("resultArea").innerHTML = "<div class='no-data' style='color:red;'>資料讀取失敗，請檢查網路。</div>";
             }
         });
     }
@@ -154,7 +117,6 @@
     function renderClubOptions() {
         const clubSelect = document.getElementById("clubSelect");
         const clubs = [...new Set(allData.map(item => item["社團名稱"]))].filter(c => c).sort();
-
         clubSelect.innerHTML = '<option value="">-- 請選擇社團 --</option>';
         clubs.forEach(club => {
             const option = document.createElement("option");
@@ -165,60 +127,33 @@
         clubSelect.disabled = false;
     }
 
+    function maskName(name) {
+        if (!name || name.includes("○")) return name;
+        if (name.length <= 1) return name;
+        if (name.length === 2) return name[0] + "○";
+        return name[0] + "○" + name.substring(2);
+    }
+
     document.getElementById("clubSelect").addEventListener("change", function() {
         const selectedClub = this.value;
         const resultArea = document.getElementById("resultArea");
-
         if (!selectedClub) {
             resultArea.innerHTML = '<div class="no-data">請先從上方選單選擇社團</div>';
             return;
         }
 
         const filtered = allData.filter(row => row["社團名稱"] === selectedClub);
-
-        if (filtered.length === 0) {
-            resultArea.innerHTML = '<div class="no-data">該社團目前無報名資料</div>';
-            return;
-        }
-
-        let tableHtml = `
-            <table>
-                <thead>
-                    <tr>
-                        <th>年級</th>
-                        <th>班級</th>
-                        <th>座號</th>
-                        <th>姓名</th>
-                        <th>報名結果</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
+        let tableHtml = `<table><thead><tr><th>年級</th><th>班級</th><th>座號</th><th>姓名</th><th>報名結果</th></tr></thead><tbody>`;
         filtered.forEach(row => {
-            // 自動判斷標題名稱，處理可能存在的空白或格式差異
             const rawName = row["姓名(姓名中間字需顯示\"○\")"] || row["姓名"] || "";
-            const displayName = maskName(rawName);
             const status = row["報名結果"] || "";
-            const statusClass = status.includes("錄取") ? "status-pass" : "";
-
-            tableHtml += `
-                <tr>
-                    <td>${row["年級"] || ""}</td>
-                    <td>${row["班級"] || ""}</td>
-                    <td>${row["座號"] || ""}</td>
-                    <td>${displayName}</td>
-                    <td class="${statusClass}">${status}</td>
-                </tr>
-            `;
+            tableHtml += `<tr><td>${row["年級"] || ""}</td><td>${row["班級"] || ""}</td><td>${row["座號"] || ""}</td><td>${maskName(rawName)}</td><td class="${status.includes('錄取') ? 'status-pass' : ''}">${status}</td></tr>`;
         });
-
         tableHtml += '</tbody></table>';
         resultArea.innerHTML = tableHtml;
     });
 
-    // 啟動程式
-    init();
+    checkTimeAndInit();
 </script>
 
 </body>
