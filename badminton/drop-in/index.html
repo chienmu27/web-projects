@@ -30,10 +30,10 @@
         .btn-del { position: absolute; top: -8px; right: -8px; background: #333; color: white; border-radius: 50%; width: 22px; height: 22px; padding: 0; font-size: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 10; }
         .info-board { background: #fff3e0; padding: 12px; border-left: 5px solid #ff9800; border-radius: 4px; margin-bottom: 15px; line-height: 1.5; }
         .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; margin-top: 10px; }
-        .card { background: white; padding: 12px; border-radius: 8px; border: 1px solid #eee; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: opacity 0.3s; }
+        .card { background: white; padding: 12px; border-radius: 8px; border: 1px solid #eee; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s; }
         .card.paid { border-bottom: 4px solid var(--green); }
         .card.absent { background: #eceff1; color: #90a4ae; border-style: dashed; }
-        .card.loading { opacity: 0.5; pointer-events: none; }
+        .card.loading { opacity: 0.6; pointer-events: none; filter: grayscale(1); transform: scale(0.98); }
         .card b { font-size: 18px; display: block; margin-bottom: 5px; }
         .status-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #eee; color: #666; }
         #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; font-weight: bold; color: var(--primary); }
@@ -88,7 +88,7 @@
 
 <script>
 // ==========================================
-// ⚠️ 重要：請在此處填入您部署後的 "網頁應用程式網址"
+// ⚠️ 請在此處填入您部署後的新 GAS_URL
 // ==========================================
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyCSZR1QM7xcVQ3zjtc4xXNc8IYkrR0OO85tgRdQl-YLyhhLTnBJ_zClhtG-hnK5uwQ/exec"; 
 
@@ -104,16 +104,14 @@ function switchTab(tab){
 }
 
 window.onload = async () => {
-    // 檢查 URL 是否已設定
     if (GAS_URL.includes("您的網址")) {
         alert("請先在程式碼中設定正確的 GAS_URL");
-        document.getElementById("loading").innerText = "請設定 GAS_URL";
         return;
     }
-
     const saved = localStorage.getItem("badmintonName");
     if(saved) document.getElementById("username").value = saved;
     
+    // 初次載入
     await loadData();
     
     if (localStorage.getItem("adminLoggedIn") === "true") {
@@ -121,33 +119,30 @@ window.onload = async () => {
     }
 }
 
-// 通用請求函數 (含錯誤處理)
 async function sendRequest(params) {
     const loader = document.getElementById("loading");
     loader.style.display = "flex";
+    
     try {
         const response = await fetch(`${GAS_URL}?${params}`);
-        if (!response.ok) throw new Error("網路回應不正常");
+        if (!response.ok) throw new Error("網路錯誤");
         
         const result = await response.json();
         
         if (result.success === false) {
             alert(result.message || "發生錯誤");
-        } else if (result.participants) {
-            // 如果後端回傳了新的名單資料，更新本地變數
-            groupData = result;
-            render();
-            checkNameStatus();
-        } else if (params.includes("action=get")) {
-            // 純讀取情況
-            groupData = result;
-            render();
-            checkNameStatus();
+        } else {
+            // 後端直接回傳更新後的完整資料，直接覆蓋
+            if (result.participants) {
+                groupData = result;
+                render();
+                checkNameStatus();
+            }
         }
         return result;
     } catch (e) {
-        console.error("Error:", e);
-        alert("資料載入失敗，請確認網路連線或重新整理頁面。\n\n錯誤訊息：" + e.message);
+        console.error("Fetch Error:", e);
+        alert("連線不穩定，請重試。\n" + e.message);
     } finally {
         loader.style.display = "none";
     }
@@ -160,7 +155,6 @@ async function loadData() {
 function checkNameStatus() {
     const inputName = document.getElementById("username").value.trim();
     const joinBtn = document.getElementById("joinBtn");
-    
     const list = groupData.participants || [];
     const isAlreadyIn = list.some(p => p[1] === inputName && p[4] !== "請假");
 
@@ -176,16 +170,11 @@ function checkNameStatus() {
 }
 
 function render() {
-    // 日期已在後端轉為字串，直接顯示即可
     let dateDisplay = "未定";
     if (groupData.date) {
-        // 嘗試解析 YYYY-MM-DD
         const parts = groupData.date.split('-');
-        if (parts.length === 3) {
-            dateDisplay = `${parts[1]}/${parts[2]}`; // 顯示 MM/DD
-        } else {
-            dateDisplay = groupData.date;
-        }
+        if (parts.length === 3) dateDisplay = `${parts[1]}/${parts[2]}`;
+        else dateDisplay = groupData.date;
     }
     
     document.getElementById("infoArea").innerHTML = `
@@ -228,6 +217,7 @@ function renderCards(data, containerId, isAdmin) {
     });
 }
 
+// 統一處理動作 (Optimistic UI: 先給使用者回饋)
 async function handleAction(action, name) {
     let confirmMsg = "";
     if (action === 'absent') confirmMsg = `確定「${name}」要請假嗎？`;
@@ -235,9 +225,15 @@ async function handleAction(action, name) {
     
     if (confirmMsg && !confirm(confirmMsg)) return;
 
+    // 立即視覺回饋：讓卡片變透明，顯示處理中
     const cardId = `card-${action === 'absent' ? 'signupCards' : 'adminCards'}-${name}`;
     const card = document.getElementById(cardId);
-    if(card) card.classList.add("loading");
+    if(card) {
+        card.classList.add("loading"); // 變灰
+        // 如果是刪除或請假，也可以改變按鈕文字
+        const btn = card.querySelector(action === 'delete' ? '.btn-del' : '.btn-absent');
+        if(btn) btn.innerText = "...";
+    }
 
     await sendRequest(`action=${action}&name=${encodeURIComponent(name)}`);
 }
@@ -246,7 +242,19 @@ function join() {
     const name = document.getElementById("username").value.trim();
     if(!name) return;
     localStorage.setItem("badmintonName", name);
-    sendRequest(`action=join&name=${encodeURIComponent(name)}`);
+    
+    // 立即視覺回饋：按鈕變更
+    const btn = document.getElementById("joinBtn");
+    const originalText = btn.innerText;
+    btn.innerText = "報名處理中...";
+    btn.disabled = true;
+
+    sendRequest(`action=join&name=${encodeURIComponent(name)}`).then(res => {
+        if(!res.success) {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    });
 }
 
 function login() {
@@ -260,7 +268,6 @@ function showAdminPanel() {
     document.getElementById("loginArea").style.display="none";
     document.getElementById("adminPanel").style.display="block";
     
-    // 設定日期輸入框
     if(groupData.date) {
         document.getElementById("groupDate").value = groupData.date;
     }
