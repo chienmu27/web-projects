@@ -87,7 +87,9 @@
 </div>
 
 <script>
-// 請替換為您的 Apps Script 網頁應用程式網址
+// ==========================================
+// ⚠️ 重要：請在此處填入您部署後的 "網頁應用程式網址"
+// ==========================================
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyCSZR1QM7xcVQ3zjtc4xXNc8IYkrR0OO85tgRdQl-YLyhhLTnBJ_zClhtG-hnK5uwQ/exec"; 
 
 let groupData = { participants: [] };
@@ -96,17 +98,22 @@ function switchTab(tab){
     document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
     document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
     document.getElementById(tab).classList.add("active");
-    // 更新按鈕樣式
     const buttons = document.querySelectorAll(".tabs button");
     if(tab === 'signup') buttons[0].classList.add("active");
     else buttons[1].classList.add("active");
 }
 
 window.onload = async () => {
+    // 檢查 URL 是否已設定
+    if (GAS_URL.includes("您的網址")) {
+        alert("請先在程式碼中設定正確的 GAS_URL");
+        document.getElementById("loading").innerText = "請設定 GAS_URL";
+        return;
+    }
+
     const saved = localStorage.getItem("badmintonName");
     if(saved) document.getElementById("username").value = saved;
     
-    // 初次載入
     await loadData();
     
     if (localStorage.getItem("adminLoggedIn") === "true") {
@@ -114,33 +121,33 @@ window.onload = async () => {
     }
 }
 
-// 通用 API 請求函數 (核心優化：直接接收更新後的資料)
+// 通用請求函數 (含錯誤處理)
 async function sendRequest(params) {
     const loader = document.getElementById("loading");
     loader.style.display = "flex";
     try {
         const response = await fetch(`${GAS_URL}?${params}`);
+        if (!response.ok) throw new Error("網路回應不正常");
+        
         const result = await response.json();
         
-        if (!result.success) {
+        if (result.success === false) {
             alert(result.message || "發生錯誤");
         } else if (result.participants) {
-            // 如果後端回傳了新的名單資料，直接更新 UI，不需再次 fetch
+            // 如果後端回傳了新的名單資料，更新本地變數
             groupData = result;
             render();
             checkNameStatus();
-        } else {
-            // 如果是純讀取或沒有回傳資料，則按需重整
-            if (params.includes("action=get")) {
-                groupData = result;
-                render();
-                checkNameStatus();
-            }
+        } else if (params.includes("action=get")) {
+            // 純讀取情況
+            groupData = result;
+            render();
+            checkNameStatus();
         }
         return result;
     } catch (e) {
-        console.error(e);
-        alert("網路連線錯誤，請稍後再試");
+        console.error("Error:", e);
+        alert("資料載入失敗，請確認網路連線或重新整理頁面。\n\n錯誤訊息：" + e.message);
     } finally {
         loader.style.display = "none";
     }
@@ -154,7 +161,6 @@ function checkNameStatus() {
     const inputName = document.getElementById("username").value.trim();
     const joinBtn = document.getElementById("joinBtn");
     
-    // 安全檢查：確保 participants 存在
     const list = groupData.participants || [];
     const isAlreadyIn = list.some(p => p[1] === inputName && p[4] !== "請假");
 
@@ -170,11 +176,20 @@ function checkNameStatus() {
 }
 
 function render() {
-    const d = new Date(groupData.date);
-    const dateStr = groupData.date ? `${d.getMonth()+1}/${d.getDate()}` : "未定";
+    // 日期已在後端轉為字串，直接顯示即可
+    let dateDisplay = "未定";
+    if (groupData.date) {
+        // 嘗試解析 YYYY-MM-DD
+        const parts = groupData.date.split('-');
+        if (parts.length === 3) {
+            dateDisplay = `${parts[1]}/${parts[2]}`; // 顯示 MM/DD
+        } else {
+            dateDisplay = groupData.date;
+        }
+    }
     
     document.getElementById("infoArea").innerHTML = `
-        <b>📅 日期：</b>${dateStr} | <b>💰 費用：</b>${groupData.fee}元<br>
+        <b>📅 日期：</b>${dateDisplay} | <b>💰 費用：</b>${groupData.fee}元<br>
         <b>👥 報名：</b><span style="color:red; font-size:1.1em">${groupData.currentCount || 0}</span> / ${groupData.maxPeople} 人
     `;
     
@@ -213,7 +228,6 @@ function renderCards(data, containerId, isAdmin) {
     });
 }
 
-// 統一處理動作 (減少重複代碼)
 async function handleAction(action, name) {
     let confirmMsg = "";
     if (action === 'absent') confirmMsg = `確定「${name}」要請假嗎？`;
@@ -221,7 +235,6 @@ async function handleAction(action, name) {
     
     if (confirmMsg && !confirm(confirmMsg)) return;
 
-    // 樂觀 UI 更新 (先給使用者回饋，雖然完整資料會隨後從後端更新)
     const cardId = `card-${action === 'absent' ? 'signupCards' : 'adminCards'}-${name}`;
     const card = document.getElementById(cardId);
     if(card) card.classList.add("loading");
@@ -246,13 +259,10 @@ function login() {
 function showAdminPanel() {
     document.getElementById("loginArea").style.display="none";
     document.getElementById("adminPanel").style.display="block";
+    
+    // 設定日期輸入框
     if(groupData.date) {
-        // 處理日期格式以符合 input date
-        const d = new Date(groupData.date);
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        document.getElementById("groupDate").value = `${yyyy}-${mm}-${dd}`;
+        document.getElementById("groupDate").value = groupData.date;
     }
     document.getElementById("groupFee").value = groupData.fee;
     document.getElementById("groupMax").value = groupData.maxPeople;
