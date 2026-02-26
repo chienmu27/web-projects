@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏸 羽球報名系統</title>
+    <title>🏸 羽球報名系統 (效能加速版)</title>
     <style>
-        :root { --primary: #1976d2; --accent: #e91e63; --bg: #f5f7fa; --green: #4caf50; }
+        :root { --primary: #1976d2; --accent: #e91e63; --bg: #f5f7fa; --green: #4caf50; --gray: #757575; }
         body { font-family: 'Segoe UI', 微軟正黑體, sans-serif; margin: 0; background: var(--bg); }
         header { background: var(--primary); color: white; padding: 15px; text-align: center; }
         .tabs { display: flex; background: #ddd; position: sticky; top: 0; z-index: 100; }
@@ -23,6 +23,7 @@
         .btn-blue { background: var(--primary); width: 100%; margin-top: 10px; }
         .btn-blue:disabled { background: #9e9e9e; cursor: not-allowed; }
         .btn-update { background: var(--green); height: 42px; }
+        .btn-logout { background: var(--gray); height: 42px; }
         .btn-danger-text { background: var(--accent); font-size: 12px; }
         .btn-absent { background: #ff9800; font-size: 11px; margin-top: 5px; width: 100%; }
         .btn-paid { background: var(--green); font-size: 11px; margin-top: 5px; width: 100%; }
@@ -32,7 +33,7 @@
         .card { background: white; padding: 12px; border-radius: 8px; border: 1px solid #eee; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: opacity 0.3s; }
         .card.paid { border-bottom: 4px solid var(--green); }
         .card.absent { background: #eceff1; color: #90a4ae; border-style: dashed; }
-        .card.loading { opacity: 0.5; pointer-events: none; } /* 樂觀更新狀態 */
+        .card.loading { opacity: 0.5; pointer-events: none; }
         .card b { font-size: 18px; display: block; margin-bottom: 5px; }
         .status-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #eee; color: #666; }
         #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; font-weight: bold; color: var(--primary); }
@@ -41,7 +42,7 @@
 <body>
 
 <div id="loading">處理中...</div>
-<header>🏸 羽球報名系統</header>
+<header>🏸 羽球報名系統 (效能優化版)</header>
 
 <div class="tabs">
     <button id="t1" onclick="switchTab('signup')" class="active">臨打報名</button>
@@ -73,6 +74,7 @@
                     <div><label>費用</label><input type="number" id="groupFee"></div>
                     <div><label>人數上限</label><input type="number" id="groupMax"></div>
                     <button class="btn btn-update" onclick="updateGroup()">更新設定</button>
+                    <button class="btn btn-logout" onclick="logout()">登出</button>
                 </div>
                 <button class="btn btn-danger-text" style="margin-top:15px; width:100%" onclick="clearData()">⚠️ 清空所有資料</button>
             </div>
@@ -93,16 +95,21 @@ function switchTab(tab){
     document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
     document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
     document.getElementById(tab).classList.add("active");
-    event.target.classList.add("active");
+    const activeBtn = Array.from(document.querySelectorAll(".tabs button")).find(btn => btn.innerText === (tab === 'signup' ? '臨打報名' : '開團管理'));
+    if(activeBtn) activeBtn.classList.add("active");
 }
 
-window.onload = () => {
+window.onload = async () => {
     const saved = localStorage.getItem("badmintonName");
     if(saved) document.getElementById("username").value = saved;
-    loadData();
+    await loadData();
+    
+    // 檢查 localStorage 是否已有登入標記
+    if (localStorage.getItem("adminLoggedIn") === "true") {
+        showAdminPanel();
+    }
 }
 
-// 加速讀取：增加快取機制，避免背景切換時重複 loading
 async function loadData() {
     const loader = document.getElementById("loading");
     loader.style.display = "flex";
@@ -173,8 +180,6 @@ function renderCards(data, containerId, isAdmin) {
     });
 }
 
-// 加速動作：樂觀更新 (Optimistic UI)
-// 先改變畫面狀態，再發送 API，使用者會感覺「秒點秒動」
 async function fastAction(params, name, type) {
     const cardS = document.getElementById(`card-signupCards-${name}`);
     const cardA = document.getElementById(`card-adminCards-${name}`);
@@ -183,7 +188,7 @@ async function fastAction(params, name, type) {
 
     try {
         await fetch(`${GAS_URL}?${params}`);
-        await loadData(); // 靜默刷新背景資料
+        await loadData();
     } catch (e) {
         alert("操作失敗，請檢查網路");
         loadData();
@@ -222,12 +227,26 @@ function deleteEntry(name) {
 
 function login() {
     if(document.getElementById("verifyCode").value == groupData.verifyCode) {
-        document.getElementById("loginArea").style.display="none";
-        document.getElementById("adminPanel").style.display="block";
-        if(groupData.date) document.getElementById("groupDate").value = new Date(groupData.date).toISOString().split('T')[0];
-        document.getElementById("groupFee").value = groupData.fee;
-        document.getElementById("groupMax").value = groupData.maxPeople;
+        localStorage.setItem("adminLoggedIn", "true"); // 儲存登入狀態
+        showAdminPanel();
     } else { alert("驗證碼錯誤"); }
+}
+
+function showAdminPanel() {
+    document.getElementById("loginArea").style.display="none";
+    document.getElementById("adminPanel").style.display="block";
+    if(groupData.date) document.getElementById("groupDate").value = new Date(groupData.date).toISOString().split('T')[0];
+    document.getElementById("groupFee").value = groupData.fee;
+    document.getElementById("groupMax").value = groupData.maxPeople;
+}
+
+function logout() {
+    if(confirm("確定要登出管理模式嗎？")) {
+        localStorage.removeItem("adminLoggedIn"); // 移除登入標記
+        document.getElementById("loginArea").style.display="block";
+        document.getElementById("adminPanel").style.display="none";
+        document.getElementById("verifyCode").value = "";
+    }
 }
 
 function updateGroup() {
