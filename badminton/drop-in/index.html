@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏸 羽球報名系統 (支援代報名)</title>
+    <title>🏸 羽球臨打報名系統 (進階版)</title>
     <style>
-        :root { --primary: #1976d2; --accent: #e91e63; --bg: #f5f7fa; }
+        :root { --primary: #1976d2; --accent: #e91e63; --bg: #f5f7fa; --green: #4caf50; }
         body { font-family: 'Segoe UI', 微軟正黑體, sans-serif; margin: 0; background: var(--bg); }
-        header { background: var(--primary); color: white; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        header { background: var(--primary); color: white; padding: 15px; text-align: center; }
         
         .tabs { display: flex; background: #ddd; position: sticky; top: 0; z-index: 100; }
         .tabs button { flex: 1; padding: 12px; border: none; cursor: pointer; font-size: 15px; }
@@ -24,29 +24,31 @@
         .admin-flex-row div { flex: 1; min-width: 120px; }
         .admin-flex-row label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
 
-        .btn { padding: 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; }
+        .btn { padding: 10px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; }
         .btn-blue { background: var(--primary); width: 100%; margin-top: 10px; }
         .btn-blue:disabled { background: #9e9e9e; cursor: not-allowed; }
-        .btn-update { background: #4caf50; padding: 10px; }
-        .btn-danger { background: var(--accent); margin-top: 15px; font-size: 12px; }
-        .btn-absent { background: #f44336; padding: 4px 8px; font-size: 11px; margin-top: 5px; width: 100%; }
+        .btn-update { background: var(--green); height: 42px; }
+        .btn-danger-text { background: var(--accent); font-size: 12px; }
+        .btn-absent { background: #ff9800; font-size: 11px; margin-top: 5px; width: 100%; }
+        .btn-paid { background: var(--green); font-size: 11px; margin-top: 5px; width: 100%; }
+        .btn-del { position: absolute; top: -8px; right: -8px; background: #333; color: white; border-radius: 50%; width: 22px; height: 22px; padding: 0; font-size: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
 
-        .info-board { background: #fff3e0; padding: 12px; border-left: 5px solid #ff9800; border-radius: 4px; margin-bottom: 15px; }
+        .info-board { background: #fff3e0; padding: 12px; border-left: 5px solid #ff9800; border-radius: 4px; margin-bottom: 15px; line-height: 1.5; }
         
-        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; margin-top: 10px; }
         .card { background: white; padding: 12px; border-radius: 8px; border: 1px solid #eee; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .card.paid { border-left: 5px solid #4caf50; background: #f1f8e9; }
-        .card.absent { background: #f5f5f5; color: #aaa; border-style: dashed; }
-        .card b { font-size: 17px; display: block; }
-        .status-tag { font-size: 11px; padding: 2px 5px; border-radius: 3px; background: #eee; color: #666; display: inline-block; margin-top: 5px; }
+        .card.paid { border-bottom: 4px solid var(--green); }
+        .card.absent { background: #eceff1; color: #90a4ae; border-style: dashed; }
+        .card b { font-size: 18px; display: block; margin-bottom: 5px; }
+        .status-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #eee; color: #666; }
         
-        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; }
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; font-weight: bold; color: var(--primary); }
     </style>
 </head>
 <body>
 
-<div id="loading">讀取中...</div>
-<header>🏸 羽球報名系統</header>
+<div id="loading">連線處理中...</div>
+<header>🏸 羽球臨打系統</header>
 
 <div class="tabs">
     <button id="t1" onclick="switchTab('signup')" class="active">臨打報名</button>
@@ -56,16 +58,13 @@
 <div class="container">
     <div id="signup" class="section active">
         <div class="form-group">
-            <label style="display:block; margin-bottom:8px;">報名者姓名：</label>
-            <input type="text" id="username" placeholder="請輸入名字 (可代報他人)" oninput="checkNameStatus()">
-            <p id="nameNotice" style="font-size: 12px; color: #e91e63; margin-top: 5px; display: none;"></p>
+            <label style="display:block; margin-bottom:5px;">報名者姓名：</label>
+            <input type="text" id="username" placeholder="請輸入名字" oninput="checkNameStatus()">
         </div>
-        
         <div id="infoArea" class="info-board">載入中...</div>
-        
-        <button id="joinBtn" class="btn btn-blue" onclick="join()">確認報名送出</button>
+        <button id="joinBtn" class="btn btn-blue" onclick="join()">送出報名</button>
 
-        <h3 style="margin-top:25px; border-bottom: 2px solid var(--primary); padding-bottom: 5px;">目前名單</h3>
+        <h3 style="margin-top:25px; border-bottom: 2px solid var(--primary); padding-bottom: 5px;">目前報名名單</h3>
         <div id="signupCards" class="card-grid"></div>
     </div>
 
@@ -75,20 +74,18 @@
             <input type="password" id="verifyCode" placeholder="請輸入設定工作表 A2 驗證碼">
             <button class="btn btn-blue" onclick="login()">登入</button>
         </div>
-
         <div id="adminPanel" style="display:none;">
             <div class="form-group">
-                <h3>開團參數設定 (連動設定工作表)</h3>
                 <div class="admin-flex-row">
-                    <div><label>日期</label><input type="date" id="groupDate"></div>
+                    <div><label>開團日期</label><input type="date" id="groupDate"></div>
                     <div><label>費用</label><input type="number" id="groupFee"></div>
                     <div><label>人數上限</label><input type="number" id="groupMax"></div>
-                    <button class="btn btn-update" onclick="updateGroup()">更新</button>
+                    <button class="btn btn-update" onclick="updateGroup()">更新設定</button>
                 </div>
-                <button class="btn btn-danger" onclick="clearData()">⚠️ 清空所有報名資料</button>
+                <button class="btn btn-danger-text" style="margin-top:15px; width:100%" onclick="clearData()">⚠️ 清空所有資料</button>
             </div>
             <div class="form-group">
-                <h3>名單管理 (點擊標記繳費)</h3>
+                <h3>收費管理</h3>
                 <div id="adminCards" class="card-grid"></div>
             </div>
         </div>
@@ -96,7 +93,6 @@
 </div>
 
 <script>
-// !!! 請務必換成您自己的 GAS URL !!!
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyCSZR1QM7xcVQ3zjtc4xXNc8IYkrR0OO85tgRdQl-YLyhhLTnBJ_zClhtG-hnK5uwQ/exec"; 
 
 let groupData = { participants: [] };
@@ -107,9 +103,6 @@ function switchTab(tab){
     document.getElementById(tab).classList.add("active");
     event.target.classList.add("active");
 }
-
-// 保存最後一次輸入的姓名以便下次開啟時不用重填
-function saveNameToLocal(name){ localStorage.setItem("badmintonName", name); }
 
 window.onload = function(){
     const saved = localStorage.getItem("badmintonName");
@@ -124,40 +117,24 @@ function loadData(){
         .then(data => {
             groupData = data;
             render();
-            checkNameStatus(); // 資料載入後檢查一次按鈕
+            checkNameStatus();
             document.getElementById("loading").style.display = "none";
         });
 }
 
-// 核心邏輯：檢查目前輸入框的名字是否已報名
 function checkNameStatus() {
     const inputName = document.getElementById("username").value.trim();
     const joinBtn = document.getElementById("joinBtn");
-    const notice = document.getElementById("nameNotice");
-
-    if (!inputName) {
-        joinBtn.disabled = true;
-        joinBtn.innerText = "請輸入姓名";
-        notice.style.display = "none";
-        return;
-    }
-
-    // 檢查該名字是否已存在且未請假
     const isAlreadyIn = groupData.participants.some(p => p[1] === inputName && p[4] !== "請假");
 
-    if (isAlreadyIn) {
-        joinBtn.disabled = true;
-        joinBtn.innerText = "此人已報名";
-        notice.innerText = "⚠️ 名字「" + inputName + "」已在名單中。";
-        notice.style.display = "block";
+    if (!inputName) {
+        joinBtn.disabled = true; joinBtn.innerText = "請輸入姓名";
+    } else if (isAlreadyIn) {
+        joinBtn.disabled = true; joinBtn.innerText = "此人已報名";
     } else if (groupData.currentCount >= groupData.maxPeople) {
-        joinBtn.disabled = true;
-        joinBtn.innerText = "本團已額滿";
-        notice.style.display = "none";
+        joinBtn.disabled = true; joinBtn.innerText = "本團已額滿";
     } else {
-        joinBtn.disabled = false;
-        joinBtn.innerText = "確認報名 (" + inputName + ")";
-        notice.style.display = "none";
+        joinBtn.disabled = false; joinBtn.innerText = "確認報名 (" + inputName + ")";
     }
 }
 
@@ -166,7 +143,7 @@ function render(){
     const dateStr = groupData.date ? `${d.getMonth()+1}/${d.getDate()}` : "未定";
     document.getElementById("infoArea").innerHTML = `
         <b>📅 日期：</b>${dateStr} | <b>💰 費用：</b>${groupData.fee}元<br>
-        <b>👥 目前：</b><span style="color:red; font-size:1.1em">${groupData.currentCount}</span> / ${groupData.maxPeople} 人
+        <b>👥 報名：</b><span style="color:red; font-size:1.1em">${groupData.currentCount}</span> / ${groupData.maxPeople} 人 (請假不計入)
     `;
     renderCards(groupData.participants, "signupCards", false);
     renderCards(groupData.participants, "adminCards", true);
@@ -186,19 +163,22 @@ function renderCards(data, containerId, isAdmin){
         let html = `<b>${name}</b>`;
         html += `<span class="status-tag">${isAbsent ? '已請假' : (isPaid ? '已繳費' : '未繳費')}</span>`;
         
-        // 任何人都可以在自己的卡片（或代報者的卡片）點請假，比對名字即可
-        if(!isAdmin && !isAbsent && name === document.getElementById("username").value.trim()) {
+        // 報名分頁：每張卡片都有請假鈕 (點擊前確認)
+        if(!isAdmin && !isAbsent) {
             html += `<button class="btn btn-absent" onclick="absent('${name}')">請假</button>`;
         }
 
-        card.innerHTML = html;
-
-        if(isAdmin && !isPaid && !isAbsent){
-            card.style.cursor = "pointer";
-            card.onclick = () => {
-                if(confirm(`確認 ${name} 已繳費？`)) callAPI(`action=paid&name=${encodeURIComponent(name)}`);
-            };
+        // 管理員分頁：額外功能
+        if(isAdmin) {
+            // 刪除按鈕 (右上角 X)
+            html += `<button class="btn-del" onclick="deleteEntry('${name}')">✕</button>`;
+            // 標記已繳費按鈕
+            if(!isPaid && !isAbsent) {
+                html += `<button class="btn btn-paid" onclick="markPaid('${name}')">標記繳費</button>`;
+            }
         }
+
+        card.innerHTML = html;
         container.appendChild(card);
     });
 }
@@ -211,12 +191,20 @@ function callAPI(params) {
 function join(){
     const name = document.getElementById("username").value.trim();
     if(!name) return;
-    saveNameToLocal(name); // 報名成功時記住這個名字方便下次使用
+    localStorage.setItem("badmintonName", name);
     callAPI(`action=join&name=${encodeURIComponent(name)}`);
 }
 
 function absent(name){
-    if(confirm("確定「" + name + "」要請假嗎？")) callAPI(`action=absent&name=${encodeURIComponent(name)}`);
+    if(confirm(`確定要將「${name}」標記為請假嗎？`)) callAPI(`action=absent&name=${encodeURIComponent(name)}`);
+}
+
+function markPaid(name){
+    callAPI(`action=paid&name=${encodeURIComponent(name)}`);
+}
+
+function deleteEntry(name){
+    if(confirm(`⚠️ 警告：確定要徹底刪除「${name}」的報名資料嗎？`)) callAPI(`action=delete&name=${encodeURIComponent(name)}`);
 }
 
 function login(){
@@ -237,7 +225,7 @@ function updateGroup(){
 }
 
 function clearData(){
-    if(confirm("將清空所有報名列，確定嗎？")) callAPI(`action=clear`);
+    if(confirm("確定要清空所有報名列嗎？")) callAPI(`action=clear`);
 }
 </script>
 </body>
