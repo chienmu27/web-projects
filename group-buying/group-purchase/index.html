@@ -103,7 +103,7 @@
                             <i class="fas fa-image text-xl"></i>
                         </div>
                     </div>
-                    <!-- 加入 accept="image/png, image/jpeg" 明確限制格式 -->
+                    <!-- 加入 accept 限制格式 -->
                     <input type="file" id="menu-img-input" accept="image/png, image/jpeg, image/jpg" class="text-sm text-gray-500 file:mr-2 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100" onchange="handleFileSelect(this)">
                 </div>
                 <p class="text-xs text-gray-400 mt-1">* 系統會自動壓縮圖片以加快上傳速度</p>
@@ -199,7 +199,6 @@ function displayMenu(items) {
         const inCart = cart.find(c => c.row === i.row);
         const qty = inCart ? inCart.qty : 0;
         
-        // 圖片處理邏輯
         const imgHtml = i.image 
             ? `<img src="${i.image}" class="w-full h-40 object-cover bg-gray-200" loading="lazy">` 
             : `<div class="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-300"><i class="fas fa-image text-4xl"></i></div>`;
