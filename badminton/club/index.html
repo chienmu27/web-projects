@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏸 臨打報名 - 羽球系統</title>
+    <style>
+        :root { --primary: #1976d2; --bg: #f5f7fa; --green: #4caf50; --wait: #9c27b0; }
+        body { font-family: 'Segoe UI', 微軟正黑體, sans-serif; margin: 0; background: var(--bg); }
+        header { background: var(--primary); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { margin: 0; font-size: 1.2rem; }
+        header a { color: white; text-decoration: none; font-size: 0.9rem; border: 1px solid white; padding: 5px 10px; border-radius: 4px; }
+        .container { max-width: 800px; margin: 20px auto; padding: 0 15px; }
+        .form-group { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; width: 100%; }
+        .btn { padding: 10px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; width: 100%; transition: 0.2s; }
+        .btn-blue { background: var(--primary); margin-top: 10px; }
+        .btn-blue:disabled { background: #9e9e9e; cursor: not-allowed; }
+        .btn-absent { background: #ff9800; font-size: 11px; margin-top: 5px; }
+        .info-board { background: #fff3e0; padding: 12px; border-left: 5px solid #ff9800; border-radius: 4px; margin-bottom: 15px; line-height: 1.5; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 10px; }
+        .card { background: white; padding: 10px; border-radius: 8px; border: 1px solid #eee; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s; }
+        .card.paid { border-bottom: 4px solid var(--green); }
+        .card.absent { background: #eceff1; color: #90a4ae; border-style: dashed; }
+        .card.waitlist { border-left: 4px solid var(--wait); background: #f3e5f5; }
+        .card.loading { opacity: 0.6; filter: grayscale(1); pointer-events: none; transform: scale(0.98); }
+        .card b { font-size: 16px; display: block; margin-bottom: 5px; }
+        .status-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #eee; color: #666; }
+        .num-tag { position: absolute; top: 5px; right: 5px; background: var(--primary); color: white; font-size: 12px; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .wait-tag-label { position: absolute; top: 5px; right: 5px; background: var(--wait); color: white; font-size: 10px; padding: 2px 5px; border-radius: 4px; }
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; font-weight: bold; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+<div id="loading">處理中...</div>
+<header>
+    <h1>🏸 臨打報名</h1>
+    <a href="admin.html">管理員後台 ></a>
+</header>
+
+<div class="container">
+    <div class="form-group">
+        <label style="display:block; margin-bottom:5px;">報名者姓名：</label>
+        <input type="text" id="username" placeholder="請輸入名字" oninput="checkNameStatus()">
+        <button id="joinBtn" class="btn btn-blue" onclick="join()">送出報名</button>
+    </div>
+    
+    <div id="infoArea" class="info-board">載入中...</div>
+    
+    <h3 style="border-bottom: 2px solid var(--primary); padding-bottom: 5px; margin-top: 20px;">目前報名名單</h3>
+    <div id="signupCards" class="card-grid"></div>
+</div>
+
+<script>
+// ==========================================
+// ⚠️ 請填入您的 GAS 網址
+// ==========================================
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyqp2GouSzUy3MFbSAVKxMQEVzJds9Ooo8cxd5dZj_0K3yR4_VrGsCGOv2ftN6dWgJF/exec"; 
+
+let groupData = { participants: [] };
+
+window.onload = async () => {
+    const saved = localStorage.getItem("badmintonName");
+    if(saved) document.getElementById("username").value = saved;
+    await loadData();
+}
+
+async function sendRequest(params) {
+    const loader = document.getElementById("loading");
+    loader.style.display = "flex";
+    try {
+        const response = await fetch(`${GAS_URL}?${params}`);
+        if (!response.ok) throw new Error("網路錯誤");
+        const result = await response.json();
+        if (result.success === false) alert(result.message || "發生錯誤");
+        else if (result.participants) {
+            groupData = result;
+            render();
+            checkNameStatus();
+        }
+        return result;
+    } catch (e) {
+        alert("連線不穩定，請重試。\n" + e.message);
+    } finally {
+        loader.style.display = "none";
+    }
+}
+
+async function loadData() { await sendRequest("action=get"); }
+
+function checkNameStatus() {
+    const inputName = document.getElementById("username").value.trim();
+    const joinBtn = document.getElementById("joinBtn");
+    const list = groupData.participants || [];
+    // 檢查是否有同名且未請假 (Index 1=Name, 5=Absent)
+    const isAlreadyIn = list.some(p => p[1] === inputName && p[5] !== "請假");
+    
+    // 計算總容量 (正取 + 候補)
+    const totalCap = (groupData.maxPeople || 0) + (groupData.maxWaitlist || 0);
+    const currentTotal = (groupData.currentCount || 0) + (groupData.waitCount || 0);
+
+    if (!inputName) {
+        joinBtn.disabled = true; joinBtn.innerText = "請輸入姓名";
+    } else if (isAlreadyIn) {
+        joinBtn.disabled = true; joinBtn.innerText = "此人已報名";
+    } else if (currentTotal >= totalCap) {
+        joinBtn.disabled = true; joinBtn.innerText = "本團已額滿 (含候補)";
+    } else {
+        // 判斷是正取還是候補
+        const statusText = (groupData.currentCount >= groupData.maxPeople) ? "排入候補" : "確認報名";
+        joinBtn.disabled = false; joinBtn.innerText = `${statusText} (${inputName})`;
+    }
+}
+
+function render() {
+    let dateDisplay = "未定";
+    if (groupData.date) {
+        const parts = groupData.date.split('-');
+        if (parts.length === 3) dateDisplay = `${parts[1]}/${parts[2]}`;
+        else dateDisplay = groupData.date;
+    }
+    
+    // 顯示詳細人數資訊
+    document.getElementById("infoArea").innerHTML = `
+        <b>📅 日期：</b>${dateDisplay} | <b>💰 費用：</b>${groupData.fee}元<br>
+        <b>👥 正取：</b><span style="color:red; font-size:1.1em">${groupData.currentCount || 0}</span> / ${groupData.maxPeople} 人<br>
+        <b>⏳ 候補：</b>${groupData.waitCount || 0} / ${groupData.maxWaitlist || 0} 人
+    `;
+    renderCards(groupData.participants);
+}
+
+function renderCards(data) {
+    const container = document.getElementById("signupCards");
+    container.innerHTML = "";
+    data.forEach(row => {
+        const name = row[1];
+        const status = row[2]; // 編號或候補
+        const isPaid = row[4] === "已繳費"; // Index 4
+        const isAbsent = row[5] === "請假"; // Index 5
+        const isWait = status === "候補";
+        
+        const card = document.createElement("div");
+        card.id = `card-${name}`;
+        card.className = `card ${isPaid ? 'paid' : ''} ${isAbsent ? 'absent' : ''} ${isWait && !isAbsent ? 'waitlist' : ''}`;
+        
+        // 右上角標籤
+        let tagHtml = "";
+        if (!isAbsent) {
+            if (isWait) tagHtml = `<div class="wait-tag-label">候補</div>`;
+            else tagHtml = `<div class="num-tag">${status}</div>`;
+        }
+
+        let html = `${tagHtml}<b>${name}</b>`;
+        html += `<span class="status-tag">${isAbsent ? '已請假' : (isPaid ? '已繳費' : '未繳費')}</span>`;
+        if(!isAbsent) html += `<button class="btn btn-absent" onclick="absent('${name}')">請假</button>`;
+        
+        card.innerHTML = html;
+        container.appendChild(card);
+    });
+}
+
+async function absent(name) {
+    if(!confirm(`確定「${name}」要請假嗎？`)) return;
+    document.getElementById(`card-${name}`).classList.add("loading");
+    await sendRequest(`action=absent&name=${encodeURIComponent(name)}`);
+}
+
+function join() {
+    const name = document.getElementById("username").value.trim();
+    if(!name) return;
+    localStorage.setItem("badmintonName", name);
+    const btn = document.getElementById("joinBtn");
+    const originalText = btn.innerText;
+    btn.innerText = "處理中..."; btn.disabled = true;
+
+    sendRequest(`action=join&name=${encodeURIComponent(name)}`).then(res => {
+        if(!res.success) { btn.innerText = originalText; btn.disabled = false; }
+    });
+}
+</script>
+</body>
+</html>
