@@ -103,7 +103,7 @@
                             <i class="fas fa-image text-xl"></i>
                         </div>
                     </div>
-                    <!-- 加入 accept 限制格式 -->
+                    <!-- 加入 accept="image/png, image/jpeg" 明確限制格式 -->
                     <input type="file" id="menu-img-input" accept="image/png, image/jpeg, image/jpg" class="text-sm text-gray-500 file:mr-2 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100" onchange="handleFileSelect(this)">
                 </div>
                 <p class="text-xs text-gray-400 mt-1">* 系統會自動壓縮圖片以加快上傳速度</p>
@@ -199,6 +199,7 @@ function displayMenu(items) {
         const inCart = cart.find(c => c.row === i.row);
         const qty = inCart ? inCart.qty : 0;
         
+        // 圖片處理邏輯
         const imgHtml = i.image 
             ? `<img src="${i.image}" class="w-full h-40 object-cover bg-gray-200" loading="lazy">` 
             : `<div class="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-300"><i class="fas fa-image text-4xl"></i></div>`;
@@ -370,4 +371,164 @@ async function loadAdminMenu() {
                 <td class="px-4 py-3 text-red-600 font-bold">$${i.price}</td>
                 <td class="px-4 py-3 text-center">
                     <button onclick='openMenuModal("edit", ${JSON.stringify(i).replace(/'/g, "&apos;")})' class="text-blue-500 mr-3"><i class="fas fa-edit"></i></button>
-                    <button onclick="triggerMenuDelete(${i.row}
+                    <button onclick="triggerMenuDelete(${i.row})" class="text-red-400"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+}
+
+// === 新增：圖片選擇與壓縮邏輯 ===
+function handleFileSelect(input) {
+    const preview = document.getElementById('menu-img-preview');
+    const placeholder = document.getElementById('menu-img-placeholder');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        // 預覽
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        }
+        reader.readAsDataURL(file);
+
+        // 執行壓縮 (在背景執行，不阻塞 UI)
+        compressImage(file, 800, 0.7).then(compressedBase64 => {
+            pendingImageBase64 = compressedBase64; // 存入全域變數等待上傳
+            console.log("Image compressed. Ready to upload.");
+        }).catch(err => {
+            console.error("Compression failed", err);
+            alert("圖片處理失敗，請換一張");
+        });
+    }
+}
+
+// 圖片壓縮函式 (使用 Canvas)
+function compressImage(file, maxWidth, quality) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = event => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+                
+                // 計算等比例縮小
+                if (width > maxWidth) {
+                    height = Math.round(height * (maxWidth / width));
+                    width = maxWidth;
+                }
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // 輸出為 image/jpeg (因為 jpeg 壓縮效果最好)
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = error => reject(error);
+        };
+        reader.onerror = error => reject(error);
+    });
+}
+
+function openMenuModal(mode, data=null) {
+    document.getElementById('modal-menu-edit').classList.remove('opacity-0', 'pointer-events-none');
+    document.getElementById('menu-modal-title').innerText = mode==='add'?'新增品項':'編輯品項';
+    document.getElementById('menu-row-id').value = data ? data.row : '';
+    document.getElementById('menu-cat').value = data ? data.category : '';
+    document.getElementById('menu-name').value = data ? data.name : '';
+    document.getElementById('menu-price').value = data ? data.price : '';
+    document.getElementById('menu-desc').value = data ? data.desc : '';
+    
+    // 圖片預覽重置
+    const imgUrl = data ? data.image : '';
+    document.getElementById('menu-current-img').value = imgUrl;
+    document.getElementById('menu-img-input').value = ""; 
+    pendingImageBase64 = null; // 清空待上傳圖片
+    
+    const preview = document.getElementById('menu-img-preview');
+    const placeholder = document.getElementById('menu-img-placeholder');
+    if(imgUrl) {
+        preview.src = imgUrl;
+        preview.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+    } else {
+        preview.src = "";
+        preview.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+    }
+}
+
+function triggerMenuSave() {
+    const row = document.getElementById('menu-row-id').value;
+    const saveBtn = document.getElementById('btn-menu-save');
+    
+    // 準備 payload
+    const payload = { 
+        category: document.getElementById('menu-cat').value, 
+        name: document.getElementById('menu-name').value, 
+        price: document.getElementById('menu-price').value, 
+        desc: document.getElementById('menu-desc').value,
+        image_current: document.getElementById('menu-current-img').value
+    };
+
+    // 檢查是否有新圖片待上傳
+    if (pendingImageBase64) {
+        payload.image_data = pendingImageBase64;
+    }
+
+    const modal = document.getElementById('modal-auth');
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    
+    document.getElementById('btn-auth-confirm').onclick = async () => {
+        const pwd = document.getElementById('input-auth-pwd').value;
+        if(!pwd) return;
+        
+        saveBtn.innerText = "上傳中...";
+        saveBtn.disabled = true;
+        closeAuthModal();
+        
+        await sendMenuData(row, payload, pwd);
+    };
+}
+
+async function sendMenuData(row, payload, password) {
+    const res = await callApi({ action: "saveMenuItem", row, ...payload, password });
+    const saveBtn = document.getElementById('btn-menu-save');
+    saveBtn.innerText = "下一步";
+    saveBtn.disabled = false;
+    
+    if(res.ok) { 
+        closeMenuModal(); 
+        loadAdminMenu(); 
+        fetchMenu(); 
+        alert("儲存成功！");
+    } else {
+        alert(res.message);
+    }
+}
+
+function triggerMenuDelete(row) {
+    const modal = document.getElementById('modal-auth');
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    document.getElementById('btn-auth-confirm').onclick = async () => {
+        const res = await callApi({ action: "deleteMenuItem", row, password: document.getElementById('input-auth-pwd').value });
+        if(res.ok) { closeAuthModal(); loadAdminMenu(); fetchMenu(); } else alert(res.message);
+    };
+}
+
+function formatDateTime(isoStr) {
+    if(!isoStr) return "--/--";
+    const d = new Date(isoStr);
+    return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+</script>
+</body>
+</html>
