@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏸 開團管理 - 羽球系統</title>
+    <style>
+        :root { --primary: #1976d2; --accent: #e91e63; --bg: #f5f7fa; --green: #4caf50; --gray: #757575; }
+        body { font-family: 'Segoe UI', 微軟正黑體, sans-serif; margin: 0; background: var(--bg); }
+        header { background: #333; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { margin: 0; font-size: 1.2rem; }
+        header a { color: white; text-decoration: none; font-size: 0.9rem; border: 1px solid white; padding: 5px 10px; border-radius: 4px; }
+        .container { max-width: 800px; margin: 20px auto; padding: 0 15px; }
+        .form-group { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; width: 100%; }
+        .admin-flex-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+        .admin-flex-row div { flex: 1; min-width: 120px; }
+        .admin-flex-row label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
+        .btn { padding: 10px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; }
+        .btn-blue { background: var(--primary); width: 100%; margin-top: 10px; }
+        .btn-update { background: var(--green); height: 42px; width: 100%; }
+        .btn-logout { background: var(--gray); height: 42px; width: 100%; }
+        .btn-danger-text { background: var(--accent); font-size: 12px; width: 100%; margin-top: 15px; }
+        .btn-paid { background: var(--green); font-size: 11px; margin-top: 5px; width: 100%; }
+        .btn-del { position: absolute; top: -8px; right: -8px; background: #333; color: white; border-radius: 50%; width: 22px; height: 22px; padding: 0; font-size: 12px; display: flex; align-items: center; justify-content: center; z-index: 10; cursor: pointer; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin-top: 10px; }
+        .card { background: white; padding: 12px; border-radius: 8px; border: 1px solid #eee; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s; }
+        .card.paid { border-bottom: 4px solid var(--green); }
+        .card.absent { background: #eceff1; color: #90a4ae; border-style: dashed; }
+        .card.loading { opacity: 0.6; filter: grayscale(1); pointer-events: none; transform: scale(0.98); }
+        .card b { font-size: 16px; display: block; margin-bottom: 5px; }
+        .status-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #eee; color: #666; }
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; font-weight: bold; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+<div id="loading">處理中...</div>
+<header>
+    <h1>⚙️ 開團管理</h1>
+    <a href="index.html">回報名首頁 ></a>
+</header>
+
+<div class="container">
+    <!-- 登入區域 -->
+    <div id="loginArea" class="form-group">
+        <h3>管理員登入</h3>
+        <input type="password" id="verifyCode" placeholder="請輸入驗證碼">
+        <button class="btn btn-blue" onclick="login()">登入</button>
+    </div>
+
+    <!-- 管理面板 -->
+    <div id="adminPanel" style="display:none;">
+        <div class="form-group">
+            <div class="admin-flex-row">
+                <div><label>開團日期</label><input type="date" id="groupDate"></div>
+                <div><label>費用</label><input type="number" id="groupFee"></div>
+                <div><label>人數上限</label><input type="number" id="groupMax"></div>
+            </div>
+            <div class="admin-flex-row" style="margin-top:10px;">
+                <button class="btn btn-update" onclick="updateGroup()">更新設定</button>
+                <button class="btn btn-logout" onclick="logout()">登出</button>
+            </div>
+            <button class="btn btn-danger-text" onclick="clearData()">⚠️ 清空所有資料</button>
+        </div>
+        
+        <div class="form-group">
+            <h3>收費與名單管理</h3>
+            <div style="font-size:14px; margin-bottom:10px; color:#666;">點擊「✕」刪除，點擊「標記繳費」更新狀態。</div>
+            <div id="adminCards" class="card-grid"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// ⚠️ 請填入您的 GAS 網址
+// ==========================================
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyCSZR1QM7xcVQ3zjtc4xXNc8IYkrR0OO85tgRdQl-YLyhhLTnBJ_zClhtG-hnK5uwQ/exec"; 
+
+let groupData = { participants: [] };
+
+window.onload = async () => {
+    await loadData();
+    if (localStorage.getItem("adminLoggedIn") === "true") showAdminPanel();
+}
+
+async function sendRequest(params) {
+    const loader = document.getElementById("loading");
+    loader.style.display = "flex";
+    try {
+        const response = await fetch(`${GAS_URL}?${params}`);
+        if (!response.ok) throw new Error("網路錯誤");
+        const result = await response.json();
+        if (result.success === false) alert(result.message || "發生錯誤");
+        else if (result.participants) {
+            groupData = result;
+            if(localStorage.getItem("adminLoggedIn") === "true") renderCards(groupData.participants);
+        }
+        return result;
+    } catch (e) {
+        alert("連線不穩定，請重試。\n" + e.message);
+    } finally {
+        loader.style.display = "none";
+    }
+}
+
+async function loadData() { await sendRequest("action=get"); }
+
+function login() {
+    if(document.getElementById("verifyCode").value == groupData.verifyCode) {
+        localStorage.setItem("adminLoggedIn", "true");
+        showAdminPanel();
+    } else { alert("驗證碼錯誤"); }
+}
+
+function showAdminPanel() {
+    document.getElementById("loginArea").style.display="none";
+    document.getElementById("adminPanel").style.display="block";
+    if(groupData.date) document.getElementById("groupDate").value = groupData.date;
+    document.getElementById("groupFee").value = groupData.fee;
+    document.getElementById("groupMax").value = groupData.maxPeople;
+    renderCards(groupData.participants);
+}
+
+function logout() {
+    if(confirm("確定要登出管理模式嗎？")) {
+        localStorage.removeItem("adminLoggedIn");
+        location.reload();
+    }
+}
+
+function renderCards(data) {
+    const container = document.getElementById("adminCards");
+    container.innerHTML = "";
+    data.forEach(row => {
+        const name = row[1];
+        const isPaid = row[3] === "已繳費";
+        const isAbsent = row[4] === "請假";
+        
+        const card = document.createElement("div");
+        card.id = `card-${name}`;
+        card.className = `card ${isPaid ? 'paid' : ''} ${isAbsent ? 'absent' : ''}`;
+        
+        let html = `<b>${name}</b>`;
+        html += `<span class="status-tag">${isAbsent ? '已請假' : (isPaid ? '已繳費' : '未繳費')}</span>`;
+        html += `<div class="btn-del" onclick="handleAction('delete', '${name}')">✕</div>`;
+        if(!isPaid && !isAbsent) html += `<button class="btn btn-paid" onclick="handleAction('paid', '${name}')">標記繳費</button>`;
+        
+        card.innerHTML = html;
+        container.appendChild(card);
+    });
+}
+
+async function handleAction(action, name) {
+    if(action === 'delete' && !confirm(`確定徹底刪除「${name}」？`)) return;
+    document.getElementById(`card-${name}`).classList.add("loading");
+    await sendRequest(`action=${action}&name=${encodeURIComponent(name)}`);
+}
+
+function updateGroup() {
+    const date = document.getElementById("groupDate").value;
+    const fee = document.getElementById("groupFee").value;
+    const max = document.getElementById("groupMax").value;
+    if(!date || !fee || !max) { alert("請填寫所有欄位"); return; }
+    sendRequest(`action=update&date=${date}&fee=${fee}&max=${max}`).then(() => alert("設定已更新"));
+}
+
+function clearData() {
+    if(confirm("確定要清空所有報名列嗎？此動作無法復原！")) sendRequest(`action=clear`);
+}
+</script>
+</body>
+</html>
