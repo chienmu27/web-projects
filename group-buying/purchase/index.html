@@ -3,61 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>羽球隊團購 - 訂購商品</title>
+    <title>羽球隊團購 - 訂購系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
         body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; }
-        .desc-box { background: #fff7ed; border: 1px dashed #fdba74; padding: 4px 8px; border-radius: 6px; color: #9a3412; font-size: 0.85rem; }
+        .product-card { transition: transform 0.2s; }
+        .desc-tag { background: #fff7ed; color: #9a3412; border: 1px solid #ffedd5; }
+        .sticky-cart { backdrop-filter: blur(8px); background: rgba(255, 255, 255, 0.9); }
     </style>
 </head>
-<body class="pb-24">
-    <header class="bg-red-600 text-white p-4 sticky top-0 z-40 shadow-lg">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold"><i class="fas fa-shuttlecock"></i> 團購商城</h1>
-            <div onclick="toggleCart()" class="relative cursor-pointer bg-red-700 px-3 py-1.5 rounded-full">
-                <i class="fas fa-shopping-cart"></i>
-                <span id="cart-count" class="absolute -top-1 -right-1 bg-yellow-400 text-red-800 text-[10px] font-bold px-1.5 rounded-full">0</span>
+<body class="pb-28">
+
+    <header class="bg-red-600 text-white shadow-lg sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-black tracking-tight">阿胖團購商城</h1>
+                <p id="announcement" class="text-[10px] opacity-80 font-bold mt-0.5">載入公告中...</p>
+            </div>
+            <div onclick="toggleCart()" class="relative cursor-pointer bg-white/20 p-2.5 rounded-2xl">
+                <i class="fas fa-shopping-basket text-xl"></i>
+                <span id="cart-count" class="absolute -top-1 -right-1 bg-yellow-400 text-red-900 text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm">0</span>
             </div>
         </div>
     </header>
 
-    <div class="container mx-auto p-4">
-        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg shadow-sm">
-            <div class="flex items-center">
-                <i class="fas fa-bullhorn text-blue-500 mr-3"></i>
-                <p id="announcement" class="text-blue-800 font-medium">公告載入中...</p>
+    <main class="container mx-auto px-4 py-6">
+        <div id="loading" class="flex flex-col items-center justify-center py-20 text-slate-400">
+            <i class="fas fa-circle-notch fa-spin text-3xl mb-4 text-red-500"></i>
+            <p class="font-bold">正在搬運商品，請稍候...</p>
+        </div>
+
+        <div id="menu-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </main>
+
+    <div id="cart-bar" class="fixed bottom-0 left-0 right-0 p-4 sticky-cart border-t border-gray-100 hidden z-30">
+        <div class="container mx-auto flex justify-between items-center">
+            <div>
+                <p class="text-[10px] text-gray-400 font-bold uppercase">預計總額</p>
+                <p id="bar-total" class="text-xl font-black text-red-600">$0</p>
             </div>
+            <button onclick="toggleCart()" class="bg-red-600 text-white px-8 py-3 rounded-2xl font-black shadow-lg shadow-red-200 active:scale-95 transition">
+                查看購物車
+            </button>
         </div>
-
-        <div id="loading" class="text-center py-20 text-gray-400">
-            <i class="fas fa-spinner fa-spin text-3xl"></i><p class="mt-2">產品載入中...</p>
-        </div>
-
-        <div id="menu-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
     </div>
 
-    <div id="cart-drawer" class="fixed inset-0 bg-black/50 hidden z-50">
-        <div class="absolute bottom-0 w-full bg-white rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto">
+    <div id="cart-drawer" class="fixed inset-0 bg-black/60 z-50 hidden flex items-end">
+        <div class="bg-white w-full rounded-t-[32px] p-6 max-h-[92vh] overflow-y-auto shadow-2xl">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-black text-gray-800">確認您的訂單</h2>
-                <button onclick="toggleCart()" class="text-2xl text-gray-400">&times;</button>
-            </div>
-            
-            <div id="cart-items" class="space-y-4 mb-6"></div>
-
-            <div class="space-y-3 bg-gray-50 p-4 rounded-2xl mb-6">
-                <input id="user-name" type="text" placeholder="您的姓名 (必填)" class="w-full p-3 rounded-xl border border-gray-200">
-                <input id="user-email" type="email" placeholder="Email (可選，接收通知用)" class="w-full p-3 rounded-xl border border-gray-200">
-                <textarea id="user-note" placeholder="備註 (需求 2：寫入工作表 H 欄)" class="w-full p-3 rounded-xl border border-gray-200 h-20"></textarea>
+                <h2 class="text-2xl font-black text-gray-800">確認訂單內容</h2>
+                <button onclick="toggleCart()" class="bg-gray-100 text-gray-400 w-10 h-10 rounded-full flex items-center justify-center text-xl">&times;</button>
             </div>
 
-            <div class="flex justify-between items-center mb-6 px-2">
-                <span class="text-gray-500 font-bold">總計金額</span>
-                <span id="total-price" class="text-2xl font-black text-red-600">$0</span>
+            <div id="cart-items" class="space-y-4 mb-8"></div>
+
+            <div class="bg-gray-50 rounded-3xl p-5 space-y-4">
+                <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest"><i class="fas fa-user-edit mr-2"></i>填寫領貨人資訊</h3>
+                <div>
+                    <input id="user-name" type="text" placeholder="您的姓名 (必填)" class="w-full p-4 rounded-2xl border-2 border-transparent focus:border-red-500 focus:bg-white bg-white outline-none transition font-bold shadow-sm">
+                </div>
+                <div>
+                    <input id="user-email" type="email" placeholder="電子郵件 (選填，用於接收明細)" class="w-full p-4 rounded-2xl border-2 border-transparent focus:border-red-500 bg-white outline-none transition font-bold shadow-sm text-sm">
+                </div>
+                <div>
+                    <textarea id="user-note" placeholder="給管理員的總體備註 (選填)" class="w-full p-4 rounded-2xl border-2 border-transparent focus:border-red-500 bg-white outline-none transition font-bold shadow-sm text-sm h-24"></textarea>
+                </div>
             </div>
 
-            <button onclick="sendOrder()" id="send-btn" class="w-full bg-red-600 text-white py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition">確認送出訂單</button>
+            <div class="mt-8 flex flex-col gap-4">
+                <div class="flex justify-between items-center px-2">
+                    <span class="font-bold text-gray-500">應付總計</span>
+                    <span id="drawer-total" class="text-3xl font-black text-red-600">$0</span>
+                </div>
+                <button onclick="sendOrder()" id="send-btn" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-lg shadow-xl active:scale-95 transition">
+                    確認送出訂單
+                </button>
+            </div>
         </div>
     </div>
 
@@ -66,97 +89,200 @@
         const API_URL = "https://script.google.com/macros/s/AKfycbys9mXPh-laeLcOTSVxNsFTz1ULzvaUbxYrif0K7bC8wWlmxmLsbnS5BLdWc2FOspvzgw/exec";
         
         let menuData = [];
-        let cart = {};
+        let cart = {}; // 結構: { "產品名": { qty: 2, note: "去冰" } }
 
+        // 1. 初始化讀取
         async function fetchMenu() {
             try {
                 const response = await fetch(`${API_URL}?action=getMenu`);
                 const res = await response.json();
                 menuData = res.data;
-                document.getElementById('announcement').innerText = res.announcement;
+                document.getElementById('announcement').innerText = "📢 " + (res.announcement || "歡迎選購");
                 renderMenu();
                 document.getElementById('loading').classList.add('hidden');
             } catch (e) {
-                document.getElementById('announcement').innerText = "連線失敗，請檢查網路或網址。";
+                document.getElementById('announcement').innerText = "❌ 連線失敗，請檢查網址";
             }
         }
 
+        // 2. 渲染商品卡牌
         function renderMenu() {
             const container = document.getElementById('menu-container');
             container.innerHTML = menuData.map(item => `
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-                    <img src="${item.image || 'https://via.placeholder.com/400x300?text=No+Image'}" class="h-48 w-full object-cover">
-                    <div class="p-4 flex flex-col flex-1">
-                        <div class="flex justify-between mb-2">
-                            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-md">${item.category}</span>
-                            <span class="text-red-600 font-black">$${item.price}</span>
+                <div class="bg-white rounded-[28px] shadow-sm border border-gray-100 overflow-hidden product-card flex flex-col">
+                    <div class="relative h-48 overflow-hidden">
+                        <img src="${item.image || 'https://via.placeholder.com/400x300?text=No+Image'}" class="w-full h-full object-cover">
+                        <span class="absolute top-3 left-3 bg-white/90 px-3 py-1 rounded-full text-[10px] font-black text-slate-800">${item.category}</span>
+                    </div>
+                    <div class="p-5 flex flex-col flex-1">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-lg font-black text-gray-800 leading-tight">${item.name}</h3>
+                            <span class="text-red-600 font-black text-lg">$${item.price}</span>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-800 mb-2">${item.name}</h3>
-                        <div class="desc-box mb-4"><i class="fas fa-info-circle mr-1"></i>${item.desc || '無描述'}</div>
-                        <div class="mt-auto flex items-center justify-between bg-slate-50 p-2 rounded-xl">
-                            <button onclick="updateQty('${item.name}', -1)" class="w-10 h-10 bg-white rounded-lg shadow-sm font-bold text-red-600">-</button>
-                            <span id="qty-${item.name}" class="font-black text-lg">${cart[item.name] || 0}</span>
-                            <button onclick="updateQty('${item.name}', 1)" class="w-10 h-10 bg-red-600 rounded-lg shadow-sm font-bold text-white">+</button>
+                        
+                        <div class="desc-tag px-3 py-2 rounded-xl text-xs font-bold mb-4">
+                            <i class="fas fa-info-circle mr-1 opacity-50"></i>${item.desc || '無特別說明'}
+                        </div>
+
+                        <div class="mb-4">
+                            <input type="text" 
+                                   id="note-${item.name}" 
+                                   placeholder="此項備註 (如：顏色、口味)" 
+                                   onchange="updateProductNote('${item.name}', this.value)"
+                                   class="w-full bg-slate-50 border-none p-3 rounded-xl text-xs font-bold focus:ring-1 focus:ring-red-400 outline-none transition">
+                        </div>
+
+                        <div class="mt-auto flex items-center justify-between bg-slate-100 p-1.5 rounded-2xl">
+                            <button onclick="updateQty('${item.name}', -1)" class="w-12 h-12 bg-white rounded-xl shadow-sm font-black text-red-600 text-xl active:bg-gray-50">-</button>
+                            <span id="qty-${item.name}" class="font-black text-xl text-slate-800">${cart[item.name]?.qty || 0}</span>
+                            <button onclick="updateQty('${item.name}', 1)" class="w-12 h-12 bg-red-600 rounded-xl shadow-sm font-black text-white text-xl active:bg-red-700">+</button>
                         </div>
                     </div>
                 </div>
             `).join('');
         }
 
+        // 3. 處理數量與備註
         function updateQty(name, delta) {
-            cart[name] = (cart[name] || 0) + delta;
-            if (cart[name] <= 0) delete cart[name];
-            document.getElementById(`qty-${name}`).innerText = cart[name] || 0;
-            updateCartIcon();
+            if (!cart[name]) cart[name] = { qty: 0, note: "" };
+            cart[name].qty += delta;
+
+            // 抓取目前備註框的內容
+            const noteInput = document.getElementById(`note-${name}`);
+            if (noteInput) cart[name].note = noteInput.value;
+
+            if (cart[name].qty <= 0) {
+                delete cart[name];
+                if (noteInput) noteInput.value = "";
+            }
+
+            updateUI();
         }
 
-        function updateCartIcon() {
-            const count = Object.values(cart).reduce((a, b) => a + b, 0);
-            document.getElementById('cart-count').innerText = count;
+        function updateProductNote(name, value) {
+            if (cart[name]) {
+                cart[name].note = value;
+            } else if (value.trim() !== "") {
+                // 如果有填備註但沒按加號，預設給 1 個
+                cart[name] = { qty: 1, note: value };
+                updateUI();
+            }
         }
 
+        function updateUI() {
+            // 更新卡牌數字
+            menuData.forEach(item => {
+                const el = document.getElementById(`qty-${item.name}`);
+                if (el) el.innerText = cart[item.name]?.qty || 0;
+            });
+
+            // 更新購物車圖示數量
+            const totalCount = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
+            document.getElementById('cart-count').innerText = totalCount;
+
+            // 更新底部顯示條
+            const totalAmount = calculateTotal();
+            document.getElementById('bar-total').innerText = `$${totalAmount}`;
+            document.getElementById('cart-bar').classList.toggle('hidden', totalCount === 0);
+        }
+
+        function calculateTotal() {
+            return Object.keys(cart).reduce((sum, name) => {
+                const product = menuData.find(p => p.name === name);
+                return sum + (product.price * cart[name].qty);
+            }, 0);
+        }
+
+        // 4. 購物車抽屜
         function toggleCart() {
             const drawer = document.getElementById('cart-drawer');
             drawer.classList.toggle('hidden');
-            if (!drawer.classList.contains('hidden')) renderCart();
+            if (!drawer.classList.contains('hidden')) renderCartItems();
         }
 
-        function renderCart() {
+        function renderCartItems() {
             const container = document.getElementById('cart-items');
-            let total = 0;
-            const items = Object.keys(cart).map(name => {
-                const item = menuData.find(m => m.name === name);
-                const sub = item.price * cart[name];
-                total += sub;
-                return `<div class="flex justify-between border-b pb-2"><span>${name} x ${cart[name]}</span><span class="font-bold">$${sub}</span></div>`;
-            });
-            container.innerHTML = items.length ? items.join('') : '<p class="text-center text-gray-400">尚未選購商品</p>';
-            document.getElementById('total-price').innerText = `$${total}`;
+            const total = calculateTotal();
+            const keys = Object.keys(cart);
+
+            if (keys.length === 0) {
+                container.innerHTML = '<p class="text-center py-10 text-gray-400 font-bold">購物車內空空如也...</p>';
+            } else {
+                container.innerHTML = keys.map(name => {
+                    const product = menuData.find(p => p.name === name);
+                    return `
+                        <div class="flex flex-col border-b border-gray-50 pb-3">
+                            <div class="flex justify-between items-center font-black text-gray-800">
+                                <span>${name} <span class="text-red-600 text-sm">x ${cart[name].qty}</span></span>
+                                <span>$${product.price * cart[name].qty}</span>
+                            </div>
+                            ${cart[name].note ? `<p class="text-[11px] text-blue-500 font-bold mt-1"><i class="fas fa-tag mr-1"></i>備註：${cart[name].note}</p>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+            document.getElementById('drawer-total').innerText = `$${total}`;
         }
 
+        // 5. 送出訂單 (包含防呆檢查)
         async function sendOrder() {
             const name = document.getElementById('user-name').value.trim();
             const email = document.getElementById('user-email').value.trim();
-            const note = document.getElementById('user-note').value.trim();
-            if (!name) return alert("請填寫姓名");
-            if (!Object.keys(cart).length) return alert("購物車是空的");
+            const generalNote = document.getElementById('user-note').value.trim();
+            
+            // 防呆 1: 檢查姓名
+            if (!name) {
+                alert("請輸入您的姓名，方便團主核對領貨！");
+                document.getElementById('user-name').focus();
+                return;
+            }
 
-            const items = Object.keys(cart).map(n => ({ name: n, qty: cart[n], price: menuData.find(m => m.name === n).price }));
+            // 防呆 2: 檢查購物車有無內容
+            const cartKeys = Object.keys(cart);
+            if (cartKeys.length === 0) {
+                alert("您的購物車是空的，請先挑選商品。");
+                toggleCart();
+                return;
+            }
+
+            if (!confirm("確定要送出訂單嗎？")) return;
+
             const btn = document.getElementById('send-btn');
             btn.disabled = true;
             btn.innerText = "傳送中...";
 
+            // 整理資料：將個別備註與總備註合併寫入 H 欄
+            const items = cartKeys.map(n => {
+                const product = menuData.find(m => m.name === n);
+                // 個別項目的備註
+                const itemNote = cart[n].note ? `(${cart[n].note})` : "";
+                return {
+                    name: n,
+                    qty: cart[n].qty,
+                    price: product.price,
+                    // 此 note 將在 GAS 端寫入 H 欄
+                    note: `${itemNote} ${generalNote}`.trim()
+                };
+            });
+
             try {
                 const res = await fetch(API_URL, {
                     method: 'POST',
-                    body: JSON.stringify({ action: 'submitOrder', name, email, note, items })
+                    body: JSON.stringify({ 
+                        action: 'submitOrder', 
+                        name: name, 
+                        email: email, 
+                        note: generalNote, // 這裡是總備註
+                        items: items       // 這裡包含每個品項及其合併後的備註
+                    })
                 });
-                alert("訂單已送出，感謝訂購！");
+                
+                alert("🎉 訂單送出成功！請準時領貨。");
                 location.reload();
             } catch (e) {
-                alert("傳送失敗，請再試一次");
+                alert("連線發生錯誤，請截圖購物車並聯絡團主。");
                 btn.disabled = false;
-                btn.innerText = "確認送出訂單";
+                btn.innerText = "重新送出訂單";
             }
         }
 
