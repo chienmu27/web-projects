@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>團購系統 - 後台管理</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+  body { font-family: 'Noto Sans TC', sans-serif; background-color: #f3f4f6; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body class="text-gray-800">
+
+<!-- Login Overlay -->
+<div id="login-overlay" class="fixed inset-0 bg-gray-900 z-[100] flex flex-col items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
+        <h2 class="text-2xl font-bold mb-2">管理者登入</h2>
+        <p class="text-gray-500 mb-6">請輸入後台驗證碼</p>
+        <input type="password" id="admin-pwd-input" class="w-full text-center text-2xl tracking-widest border-2 border-gray-300 rounded-xl py-3 px-4 mb-4 focus:border-red-500 outline-none" placeholder="••••">
+        <button onclick="doLogin()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition">登入</button>
+    </div>
+</div>
+
+<!-- Admin Interface -->
+<div id="admin-app" class="hidden min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-gray-800 text-white shadow-md">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold"><i class="fas fa-user-shield"></i> 後台管理</h1>
+            <button onclick="doLogout()" class="bg-gray-700 hover:bg-gray-600 text-sm px-4 py-2 rounded-lg transition">
+                <i class="fas fa-sign-out-alt"></i> 登出
+            </button>
+        </div>
+    </header>
+
+    <!-- Tabs -->
+    <div class="bg-white border-b sticky top-0 z-20">
+        <div class="container mx-auto px-4 flex gap-6 overflow-x-auto">
+            <button onclick="switchTab('orders')" id="tab-orders" class="py-4 font-bold border-b-2 border-red-600 text-red-600 transition">訂單管理</button>
+            <button onclick="switchTab('history')" id="tab-history" class="py-4 font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition">歷史總表</button>
+            <button onclick="switchTab('menu')" id="tab-menu" class="py-4 font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition">產品編輯</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-4 flex-grow">
+        <!-- Panel: Orders -->
+        <div id="panel-orders" class="space-y-4">
+            <div class="flex justify-between items-center">
+                <span id="order-status" class="text-sm font-bold text-gray-500">載入中...</span>
+                <button onclick="loadOrders()" class="bg-white border px-3 py-1 rounded shadow-sm hover:bg-gray-50 text-sm"><i class="fas fa-sync-alt"></i> 刷新</button>
+            </div>
+            <div id="orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+
+        <!-- Panel: History -->
+        <div id="panel-history" class="hidden space-y-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border flex flex-col md:flex-row gap-3 justify-between items-center">
+                <div class="flex gap-2 w-full md:w-auto overflow-x-auto">
+                    <select id="hist-date" onchange="filterHistory()" class="border rounded px-2 py-1 bg-gray-50"><option value="all">所有日期</option></select>
+                    <select id="hist-item" onchange="filterHistory()" class="border rounded px-2 py-1 bg-gray-50"><option value="all">所有品項</option></select>
+                </div>
+                <button onclick="deleteAll()" class="text-red-600 text-sm font-bold hover:bg-red-50 px-3 py-1 rounded transition border border-red-200">
+                    <i class="fas fa-trash"></i> 清除所有訂單
+                </button>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border overflow-hidden overflow-x-auto">
+                <table class="w-full text-sm text-left whitespace-nowrap">
+                    <thead class="bg-gray-100 text-gray-600">
+                        <tr>
+                            <th class="px-4 py-2">日期</th>
+                            <th class="px-4 py-2">姓名</th>
+                            <th class="px-4 py-2">品項</th>
+                            <th class="px-4 py-2">備註</th>
+                            <th class="px-4 py-2 text-right">小計</th>
+                            <th class="px-4 py-2 text-center">狀態</th>
+                            <th class="px-4 py-2">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Panel: Menu -->
+        <div id="panel-menu" class="hidden space-y-4">
+            <div class="flex justify-end">
+                <button onclick="openMenuModal('add')" class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-red-700"><i class="fas fa-plus"></i> 新增產品</button>
+            </div>
+            <div class="bg-white rounded-xl shadow border overflow-hidden overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-100"><tr><th class="px-4 py-2">圖片</th><th class="px-4 py-2">名稱</th><th class="px-4 py-2">價格</th><th class="px-4 py-2">操作</th></tr></thead>
+                    <tbody id="menu-tbody" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Menu Edit Modal -->
+<div id="modal-menu" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+    <div class="absolute inset-0 bg-black/50" onclick="closeMenuModal()"></div>
+    <div class="bg-white w-full max-w-md mx-4 rounded-xl p-6 relative z-10 max-h-[90vh] overflow-y-auto">
+        <h3 id="menu-modal-title" class="text-xl font-bold mb-4">編輯產品</h3>
+        <input type="hidden" id="menu-row">
+        <input type="hidden" id="menu-img-curr">
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs font-bold text-gray-500">圖片</label>
+                <input type="file" id="menu-file" accept="image/*" onchange="previewImage(this)" class="block w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:bg-red-50 file:text-red-700 hover:file:bg-red-100">
+                <img id="menu-preview" class="mt-2 w-32 h-32 object-cover rounded hidden bg-gray-100">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div><label class="text-xs font-bold">分類</label><input id="menu-cat" type="text" class="w-full border rounded px-2 py-2"></div>
+                <div><label class="text-xs font-bold">價格</label><input id="menu-price" type="number" class="w-full border rounded px-2 py-2"></div>
+            </div>
+            <div><label class="text-xs font-bold">名稱</label><input id="menu-name" type="text" class="w-full border rounded px-2 py-2"></div>
+            <div><label class="text-xs font-bold">描述</label><textarea id="menu-desc" rows="3" class="w-full border rounded px-2 py-2"></textarea></div>
+        </div>
+        <div class="mt-4 flex gap-2">
+            <button onclick="closeMenuModal()" class="flex-1 bg-gray-100 py-2 rounded">取消</button>
+            <button onclick="saveMenu()" id="btn-save-menu" class="flex-1 bg-blue-600 text-white py-2 rounded">儲存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzsAjzCCmaRvnWZ36JjdqwEhUtntgY-QTGizpyf5t38KWLz8GoHwW8kJHc7zuM6PJRvzA/exec";
+let sessionPwd = sessionStorage.getItem("admin_pwd");
+let pendingImg = null;
+let historyData = [];
+
+window.onload = () => {
+    if(sessionPwd) {
+        verifySession();
+    }
+};
+
+async function doLogin() {
+    const pwd = document.getElementById('admin-pwd-input').value;
+    const res = await api({ action: "verifyPassword", password: pwd });
+    if(res.ok) {
+        sessionPwd = pwd;
+        sessionStorage.setItem("admin_pwd", pwd);
+        document.getElementById('login-overlay').classList.add('hidden');
+        document.getElementById('admin-app').classList.remove('hidden');
+        loadOrders();
+    } else {
+        alert("密碼錯誤");
+    }
+}
+
+async function verifySession() {
+    const res = await api({ action: "verifyPassword", password: sessionPwd });
+    if(res.ok) {
+        document.getElementById('login-overlay').classList.add('hidden');
+        document.getElementById('admin-app').classList.remove('hidden');
+        loadOrders();
+    } else {
+        doLogout();
+    }
+}
+
+function doLogout() {
+    sessionStorage.removeItem("admin_pwd");
+    location.reload();
+}
+
+async function api(payload) {
+    try {
+        const res = await fetch(GAS_API_URL, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+        return await res.json();
+    } catch(e) { return { ok: false, message: "網路錯誤" }; }
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('[id^="panel-"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById(`panel-${tab}`).classList.remove('hidden');
+    
+    document.querySelectorAll('[id^="tab-"]').forEach(el => el.className = "py-4 font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition");
+    const activeBtn = document.getElementById(`tab-${tab}`);
+    activeBtn.className = "py-4 font-bold border-b-2 border-red-600 text-red-600 transition";
+
+    if(tab === 'orders') loadOrders();
+    if(tab === 'history') loadHistory();
+    if(tab === 'menu') loadMenu();
+}
+
+// --- Orders Logic ---
+async function loadOrders() {
+    const res = await api({ action: "getPendingOrdersMerged" });
+    if(res.ok) {
+        const list = res.data;
+        document.getElementById('order-status').innerText = `待處理訂單: ${list.length}`;
+        const html = list.map(t => {
+            const isServed = t.status === 'served';
+            const actionBtn = isServed 
+                ? `<button onclick="updateStatus('${t.name}', 'cleared')" class="w-full bg-gray-800 text-white py-2 rounded mt-3">結帳完成 (封存)</button>` 
+                : `<button onclick="updateStatus('${t.name}', 'served')" class="w-full bg-green-500 text-white py-2 rounded mt-3">通知取貨</button>`;
+            
+            return `<div class="bg-white rounded-xl p-4 shadow border ${isServed?'border-green-500 ring-1 ring-green-500':''}">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="font-bold text-lg">${t.name}</h3>
+                    <span class="text-xs bg-gray-100 px-2 py-1 rounded">${formatDate(t.time)}</span>
+                </div>
+                <div class="space-y-1 mb-3">
+                    ${t.items.map(i => `<div class="text-sm flex justify-between">
+                        <span>${i.item} <span class="text-xs text-gray-500">x${i.qty}</span> ${i.note ? `<span class="text-red-500 text-xs">(${i.note})</span>` : ''}</span>
+                        <span class="font-bold">$${i.subtotal}</span>
+                    </div>`).join('')}
+                </div>
+                <div class="border-t pt-2 flex justify-between items-center font-bold text-lg text-red-600">
+                    <span>總計</span><span>$${t.total}</span>
+                </div>
+                ${actionBtn}
+            </div>`;
+        }).join('');
+        document.getElementById('orders-container').innerHTML = html || '<p class="text-gray-400 p-4">目前無訂單</p>';
+    }
+}
+
+async function updateStatus(table, status) {
+    if(status === 'cleared' && !confirm("確定結帳並封存？")) return;
+    const res = await api({ action: "markTableStatus", table, status, password: sessionPwd });
+    if(res.ok) loadOrders(); else alert(res.message);
+}
+
+// --- History Logic ---
+async function loadHistory() {
+    const res = await api({ action: "getOrderHistory" });
+    if(res.ok) {
+        historyData = res.data;
+        // Init Filters
+        const dates = [...new Set(historyData.map(r => r.time ? r.time.split('T')[0] : ''))].filter(d=>d);
+        const items = [...new Set(historyData.map(r => r.item))];
+        document.getElementById('hist-date').innerHTML = `<option value="all">所有日期</option>` + dates.map(d=>`<option value="${d}">${d.substring(0,10)}</option>`).join('');
+        document.getElementById('hist-item').innerHTML = `<option value="all">所有品項</option>` + items.map(i=>`<option value="${i}">${i}</option>`).join('');
+        filterHistory();
+    }
+}
+
+function filterHistory() {
+    const dVal = document.getElementById('hist-date').value;
+    const iVal = document.getElementById('hist-item').value;
+    const filtered = historyData.filter(r => {
+        const rDate = r.time ? r.time.split('T')[0].substring(0,10) : '';
+        return (dVal === 'all' || rDate.includes(dVal.substring(0,10))) && (iVal === 'all' || r.item === iVal);
+    });
+    
+    document.getElementById('history-tbody').innerHTML = filtered.map(r => `
+        <tr class="hover:bg-gray-50 border-b">
+            <td class="px-4 py-2">${formatDate(r.time)}</td>
+            <td class="px-4 py-2 font-medium">${r.name}</td>
+            <td class="px-4 py-2">${r.item}</td>
+            <td class="px-4 py-2 text-xs text-gray-500 truncate max-w-[100px]">${r.note}</td>
+            <td class="px-4 py-2 text-right">$${r.subtotal}</td>
+            <td class="px-4 py-2 text-center"><span class="px-2 py-0.5 rounded text-xs ${r.status==='served'?'bg-green-100 text-green-800':'bg-gray-100'}">${r.status}</span></td>
+            <td class="px-4 py-2"><button onclick="deleteRow(${r.row})" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button></td>
+        </tr>
+    `).join('');
+}
+
+async function deleteRow(row) {
+    if(!confirm("確定刪除此紀錄？")) return;
+    const res = await api({ action: "deleteOrder", row, password: sessionPwd });
+    if(res.ok) loadHistory(); else alert("失敗");
+}
+
+async function deleteAll() {
+    if(!confirm("警告：這將刪除所有訂單紀錄，無法復原！確定嗎？")) return;
+    const res = await api({ action: "deleteAllOrders", password: sessionPwd });
+    if(res.ok) { loadHistory(); alert("已清空"); } else alert("失敗");
+}
+
+// --- Menu Logic ---
+async function loadMenu() {
+    const res = await api({ action: "getMenu" });
+    if(res.ok) {
+        document.getElementById('menu-tbody').innerHTML = res.data.map(i => `
+            <tr class="border-b">
+                <td class="px-4 py-2"><img src="${i.image||''}" class="w-10 h-10 object-cover bg-gray-100 rounded"></td>
+                <td class="px-4 py-2 font-medium">${i.name}</td>
+                <td class="px-4 py-2">$${i.price}</td>
+                <td class="px-4 py-2">
+                    <button onclick='openMenuModal("edit", ${JSON.stringify(i).replace(/'/g, "&#39;")})' class="text-blue-500 mr-2"><i class="fas fa-edit"></i></button>
+                    <button onclick="delMenu(${i.row})" class="text-red-500"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    }
+}
+
+function openMenuModal(mode, data) {
+    document.getElementById('modal-menu').classList.remove('hidden');
+    document.getElementById('menu-modal-title').innerText = mode==='add'?'新增':'編輯';
+    document.getElementById('menu-row').value = data ? data.row : "";
+    document.getElementById('menu-img-curr').value = data ? data.image : "";
+    document.getElementById('menu-cat').value = data ? data.category : "";
+    document.getElementById('menu-name').value = data ? data.name : "";
+    document.getElementById('menu-price').value = data ? data.price : "";
+    document.getElementById('menu-desc').value = data ? data.desc : "";
+    
+    document.getElementById('menu-preview').src = data ? data.image : "";
+    document.getElementById('menu-preview').classList.toggle('hidden', !data || !data.image);
+    document.getElementById('menu-file').value = "";
+    pendingImg = null;
+}
+
+function closeMenuModal() { document.getElementById('modal-menu').classList.add('hidden'); }
+
+function previewImage(input) {
+    if(input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('menu-preview').src = e.target.result;
+            document.getElementById('menu-preview').classList.remove('hidden');
+            // Compress
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const maxW = 800;
+                const scale = maxW / img.width;
+                canvas.width = maxW;
+                canvas.height = img.height * scale;
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                pendingImg = canvas.toDataURL('image/jpeg', 0.7);
+            }
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+async function saveMenu() {
+    const btn = document.getElementById('btn-save-menu');
+    btn.innerText = "上傳中..."; btn.disabled = true;
+    
+    const payload = {
+        action: "saveMenuItem",
+        password: sessionPwd,
+        row: document.getElementById('menu-row').value,
+        category: document.getElementById('menu-cat').value,
+        name: document.getElementById('menu-name').value,
+        price: document.getElementById('menu-price').value,
+        desc: document.getElementById('menu-desc').value,
+        image_current: document.getElementById('menu-img-curr').value,
+        image_data: pendingImg
+    };
+    
+    const res = await api(payload);
+    if(res.ok) { closeMenuModal(); loadMenu(); } else alert("儲存失敗: " + res.message);
+    btn.innerText = "儲存"; btn.disabled = false;
+}
+
+async function delMenu(row) {
+    if(!confirm("確定刪除？")) return;
+    const res = await api({ action: "deleteMenuItem", row, password: sessionPwd });
+    if(res.ok) loadMenu();
+}
+
+function formatDate(iso) {
+    if(!iso) return "";
+    const d = new Date(iso);
+    return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+</script>
+</body>
+</html>
