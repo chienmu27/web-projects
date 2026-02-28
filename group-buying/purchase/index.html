@@ -5,22 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>羽球隊團購</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- 載入 Font Awesome 圖示 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     body { font-family: 'Noto Sans TC', sans-serif; background: #f0f9ff; }
-    .product-img { width: 100%; height: 180px; object-fit: cover; background-color: #eee; }
+    /* 產品卡片圖片樣式：加入 cursor-pointer 提示可點擊 */
+    .product-img { width: 100%; height: 180px; object-fit: cover; background-color: #eee; cursor: pointer; transition: opacity 0.2s; }
+    .product-img:hover { opacity: 0.9; }
+    
     .cart-drawer { transition: transform 0.3s ease-in-out; }
     .cart-open { transform: translateX(0); }
     .cart-closed { transform: translateX(100%); }
     .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
+    /* 圖片浮動視窗動畫 */
+    .modal-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   </style>
 </head>
 <body class="text-gray-800">
 
   <!-- 導航列 -->
-  <nav class="bg-blue-900 text-white p-4 sticky top-0 z-40 shadow-md">
+  <nav class="bg-blue-900 text-white p-4 sticky top-0 z-30 shadow-md">
     <div class="container mx-auto flex justify-between items-center">
       <h1 class="text-xl font-bold"><i class="fas fa-feather-alt mr-2"></i>東海國小羽球隊團購</h1>
       <button onclick="toggleCart()" class="relative p-2 hover:bg-blue-800 rounded">
@@ -40,14 +46,13 @@
   </div>
 
   <!-- 購物車側邊欄 -->
-  <div id="cartSidebar" class="fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-2xl z-50 cart-drawer cart-closed flex flex-col">
+  <div id="cartSidebar" class="fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-2xl z-40 cart-drawer cart-closed flex flex-col">
     <div class="p-4 bg-blue-900 text-white flex justify-between items-center">
       <h2 class="text-lg font-bold">購物車</h2>
       <button onclick="toggleCart()" class="text-white hover:text-gray-300"><i class="fas fa-times text-xl"></i></button>
     </div>
     
     <div class="flex-1 overflow-y-auto p-4" id="cartItems">
-      <!-- 購物車項目將顯示於此 -->
       <p class="text-gray-500 text-center mt-10">購物車是空的</p>
     </div>
 
@@ -59,7 +64,7 @@
           <input type="text" id="buyerName" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="請輸入姓名">
         </div>
         <div>
-          <label class="block text-sm font-bold mb-1">電子信箱 <span class="text-red-500">*</span></label>
+          <label class="block text-sm font-bold mb-1">電子信箱 <span class="text-red-500">*</span> (將發送訂單通知)</label>
           <input type="email" id="buyerEmail" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="請輸入 Email">
         </div>
       </div>
@@ -71,17 +76,29 @@
     </div>
   </div>
 
-  <!-- 遮罩 -->
-  <div id="overlay" onclick="toggleCart()" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+  <!-- 購物車遮罩 -->
+  <div id="overlay" onclick="toggleCart()" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden"></div>
+
+  <!-- ✅ 新增：圖片放大浮動視窗 (Lightbox) -->
+  <div id="imgModal" onclick="closeLargeImg()" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex justify-center items-center modal-fadeIn">
+    <div class="relative max-w-4xl max-h-screen p-4">
+      <!-- 關閉按鈕 -->
+      <button onclick="closeLargeImg()" class="absolute -top-10 right-0 text-white text-3xl hover:text-gray-300">
+        <i class="fas fa-times"></i>
+      </button>
+      <!-- 大圖顯示 -->
+      <img id="modalImg" src="" class="max-w-full max-h-[85vh] object-contain rounded shadow-lg border-2 border-gray-700">
+      <p class="text-white text-center mt-2 text-sm text-gray-400">點擊任意處關閉</p>
+    </div>
+  </div>
 
   <script>
-    // 請填入您的 Web App URL
+    // ⚠️ 請務必更換為您的 Web App URL
     const API_URL = "https://script.google.com/macros/s/AKfycbz3h5b7xqz3TlmThbWPl1y2upIA3vr3rbcJgoi2l4IOIAqF-0ODaRo3981vwWNWpqNX4g/exec";
     
     let products = [];
     let cart = [];
 
-    // 初始化
     window.onload = loadMenu;
 
     async function loadMenu() {
@@ -96,7 +113,7 @@
         }
       } catch (e) {
         console.error(e);
-        alert("連線錯誤");
+        alert("連線錯誤，請檢查網路");
       } finally {
         document.getElementById("loading").classList.add("hidden");
       }
@@ -105,19 +122,28 @@
     function renderProducts() {
       const grid = document.getElementById("productGrid");
       grid.innerHTML = products.map(p => {
-        // 如果沒有圖片，顯示預設圖
-        const imgDisplay = p.image ? `<img src="${p.image}" class="product-img">` : `<div class="product-img flex items-center justify-center text-gray-400 bg-gray-200"><i class="fas fa-image text-3xl"></i></div>`;
+        // 判斷圖片
+        const hasImg = p.image && p.image.trim() !== "";
+        // ✅ 圖片點擊事件：如果有圖，綁定 onclick="showLargeImg(...)"
+        const imgTag = hasImg 
+          ? `<img src="${p.image}" onclick="showLargeImg('${p.image}')" class="product-img" title="點擊查看大圖">` 
+          : `<div class="product-img flex items-center justify-center text-gray-400 bg-gray-200"><i class="fas fa-image text-3xl"></i></div>`;
         
         return `
         <div class="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden flex flex-col">
-          ${imgDisplay}
-          <div class="p-4 flex-1">
-            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${p.category}</span>
-            <h3 class="font-bold text-lg mt-2">${p.name}</h3>
-            <p class="text-gray-500 text-sm mt-1 h-10 overflow-hidden">${p.desc}</p>
-            <div class="mt-4 flex justify-between items-center">
+          <div class="relative group">
+            ${imgTag}
+            ${hasImg ? '<div class="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none"><i class="fas fa-search-plus"></i> 放大</div>' : ''}
+          </div>
+          <div class="p-4 flex-1 flex flex-col">
+            <div>
+              <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${p.category}</span>
+              <h3 class="font-bold text-lg mt-2">${p.name}</h3>
+              <p class="text-gray-500 text-sm mt-1 mb-2 line-clamp-2">${p.desc}</p>
+            </div>
+            <div class="mt-auto flex justify-between items-center">
               <span class="text-xl font-bold text-red-600">$${p.price}</span>
-              <button onclick="addToCart(${p.row})" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+              <button onclick="addToCart(${p.row})" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition shadow">
                 <i class="fas fa-plus"></i> 加入
               </button>
             </div>
@@ -126,6 +152,25 @@
         `;
       }).join("");
     }
+
+    // ✅ 新增：顯示大圖
+    function showLargeImg(src) {
+      const modal = document.getElementById("imgModal");
+      const img = document.getElementById("modalImg");
+      img.src = src;
+      modal.classList.remove("hidden");
+      // 禁止背景捲動
+      document.body.style.overflow = "hidden";
+    }
+
+    // ✅ 新增：關閉大圖
+    function closeLargeImg() {
+      document.getElementById("imgModal").classList.add("hidden");
+      // 恢復背景捲動
+      document.body.style.overflow = "auto";
+    }
+
+    // --- 購物車邏輯 (與之前相同) ---
 
     function addToCart(row) {
       const item = products.find(p => p.row === row);
@@ -144,12 +189,10 @@
       const countBadge = document.getElementById("cartCount");
       const totalEl = document.getElementById("cartTotal");
 
-      // 更新數量徽章
       const totalQty = cart.reduce((acc, c) => acc + c.qty, 0);
       countBadge.innerText = totalQty;
       countBadge.classList.toggle("hidden", totalQty === 0);
 
-      // 計算總金額
       const total = cart.reduce((acc, c) => acc + (c.price * c.qty), 0);
       totalEl.innerText = "$" + total;
 
@@ -162,19 +205,18 @@
         <div class="flex flex-col border-b py-3">
           <div class="flex justify-between items-start">
             <div>
-              <div class="font-bold">${item.name}</div>
+              <div class="font-bold text-blue-900">${item.name}</div>
               <div class="text-gray-500 text-sm">$${item.price}</div>
             </div>
             <div class="flex items-center space-x-2">
-              <button onclick="changeQty(${index}, -1)" class="w-6 h-6 bg-gray-200 rounded text-center leading-6 hover:bg-gray-300">-</button>
-              <span>${item.qty}</span>
-              <button onclick="changeQty(${index}, 1)" class="w-6 h-6 bg-gray-200 rounded text-center leading-6 hover:bg-gray-300">+</button>
+              <button onclick="changeQty(${index}, -1)" class="w-6 h-6 bg-gray-200 rounded text-center leading-6 hover:bg-gray-300 text-gray-700 font-bold">-</button>
+              <span class="w-4 text-center">${item.qty}</span>
+              <button onclick="changeQty(${index}, 1)" class="w-6 h-6 bg-gray-200 rounded text-center leading-6 hover:bg-gray-300 text-gray-700 font-bold">+</button>
             </div>
           </div>
-          <!-- 備註欄位 -->
           <div class="mt-2">
             <input type="text" placeholder="備註 (例如: 尺寸、顏色)" 
-              class="w-full text-sm border bg-gray-50 rounded px-2 py-1 outline-none focus:border-blue-400"
+              class="w-full text-sm border bg-gray-50 rounded px-2 py-1 outline-none focus:border-blue-400 transition"
               value="${item.remark}" 
               oninput="updateRemark(${index}, this.value)">
           </div>
@@ -197,7 +239,6 @@
     function toggleCart(forceOpen = null) {
       const sidebar = document.getElementById("cartSidebar");
       const overlay = document.getElementById("overlay");
-      
       const isOpen = forceOpen !== null ? forceOpen : sidebar.classList.contains("cart-closed");
       
       if (isOpen) {
@@ -219,6 +260,8 @@
       
       if (!name) return alert("請填寫購買人姓名");
       if (!email) return alert("請填寫電子信箱");
+      // 簡單的 Email 格式檢查
+      if (!email.includes("@") || !email.includes(".")) return alert("Email 格式不正確");
 
       const btn = document.getElementById("btnSubmit");
       btn.disabled = true;
@@ -244,7 +287,7 @@
         const json = await res.json();
         
         if (json.ok) {
-          alert("訂單已送出！");
+          alert("✅ 訂單已送出！\n確認信已發送至您的信箱。");
           cart = [];
           updateCartUI();
           toggleCart(false);
