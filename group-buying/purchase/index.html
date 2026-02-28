@@ -90,54 +90,74 @@
 </div>
 
 <script>
-// ★★★ 修正處：移除 GAS_API_URL，改用 google.script.run ★★★
-
+// --- 變數設定 ---
 let menuData = [];
 let cart = [];
 let userName = localStorage.getItem("apan_user_name") || "";
 let userEmail = localStorage.getItem("apan_user_email") || "";
 
+// --- 初始化 ---
 window.onload = () => {
     if(userName) updateNameDisplay();
+    // 如果沒有名字，顯示設定視窗
     if(!userName) openNameModal();
+    // 開始讀取菜單
     fetchMenu();
 };
 
-// ★★★ 核心通訊函式：使用 google.script.run ★★★
+// --- 核心通訊函式 (錯誤偵測版) ---
 function callServer(payload) {
     return new Promise((resolve, reject) => {
+        // 檢查 google.script.run 是否存在 (防止在非 GAS 環境執行)
+        if (typeof google === 'undefined' || !google.script) {
+            reject("環境錯誤：無法存取 Google Script，請確認您使用的是 Web App 網址");
+            return;
+        }
+
         google.script.run
             .withSuccessHandler(response => {
                 try {
-                    resolve(JSON.parse(response)); // 解析後端回傳的 JSON 字串
+                    // 嘗試解析後端回傳的 JSON
+                    const json = JSON.parse(response);
+                    resolve(json); 
                 } catch (e) {
-                    reject("資料格式錯誤");
+                    console.error("JSON 解析失敗", response);
+                    reject("資料格式錯誤：後端回傳了無法解析的資料");
                 }
             })
             .withFailureHandler(error => {
-                reject(error);
+                console.error("GAS 呼叫失敗", error);
+                // 這裡會抓到具體的錯誤訊息 (例如：權限不足、找不到函式等)
+                reject(error.message || error);
             })
-            .processApi(payload); // 呼叫後端的 processApi
+            .processApi(payload);
     });
 }
 
+// --- 讀取菜單 ---
 async function fetchMenu() {
+    const spinner = document.getElementById('loading-spinner');
+    
     try {
         const res = await callServer({ action: "getMenu" });
+        
         if (res.ok) {
             menuData = res.data;
             if(res.marquee) document.getElementById('marquee-text').innerText = res.marquee;
             renderCategoryNav();
             displayMenu(menuData);
-            document.getElementById('loading-spinner').style.display = 'none';
+            spinner.style.display = 'none';
         } else {
-            alert("讀取失敗: " + res.message);
+            // 後端邏輯錯誤 (例如試算表讀取失敗)
+            spinner.innerHTML = `<div class="text-red-500 font-bold p-4">讀取失敗<br><span class="text-sm text-gray-600">${res.message}</span></div>`;
         }
     } catch(e) { 
-        document.getElementById('loading-spinner').innerHTML = `<p class="text-red-500">連線錯誤，請重新整理</p>`;
+        // 系統連線錯誤
+        spinner.innerHTML = `<div class="text-red-500 font-bold p-4">連線錯誤<br><span class="text-xs text-gray-500 break-all">${e}</span><br><button onclick="location.reload()" class="mt-2 bg-gray-200 px-4 py-2 rounded text-sm text-black">重新整理</button></div>`;
     }
 }
 
+// --- UI 渲染邏輯 ---
 function renderCategoryNav() {
     const cats = ['all', ...new Set(menuData.map(i => i.category))];
     document.getElementById('category-nav').innerHTML = cats.map(c => 
@@ -152,12 +172,13 @@ function filterMenu(c) {
 
 function displayMenu(items) {
     const container = document.getElementById('menu-container');
-    if(!items.length) { container.innerHTML = '<p class="col-span-full text-center py-10 text-gray-400">無產品</p>'; return; }
+    if(!items.length) { container.innerHTML = '<p class="col-span-full text-center py-10 text-gray-400">無產品資料</p>'; return; }
     
     container.innerHTML = items.map(i => {
         const inCart = cart.find(c => c.row === i.row);
         const qty = inCart ? inCart.qty : 0;
         const imgHtml = i.image ? `<img src="${i.image}" class="w-full h-48 object-cover group-hover:scale-105 transition duration-500" loading="lazy">` : `<div class="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-300"><i class="fas fa-image text-4xl"></i></div>`;
+        
         const btnHtml = qty === 0 
             ? `<button onclick="updateItemQty(${i.row}, 1)" class="bg-red-50 text-red-600 font-bold px-4 py-2.5 rounded-xl w-full transition border border-red-100">加入購物車</button>`
             : `<div class="flex items-center justify-between bg-red-600 text-white rounded-xl w-full px-1 py-1 shadow-md"><button onclick="updateItemQty(${i.row}, -1)" class="w-9 h-9 flex items-center justify-center bg-white/20 rounded-lg">&minus;</button><span class="font-bold text-lg">${qty}</span><button onclick="updateItemQty(${i.row}, 1)" class="w-9 h-9 flex items-center justify-center bg-white/20 rounded-lg">&plus;</button></div>`;
@@ -183,7 +204,7 @@ function updateItemQty(rowId, delta) {
         if(item) cart.push({...item, qty: 1, note: ""});
     }
     updateCartUI();
-    const activeCat = document.querySelector('.category-btn.active').innerText;
+    const activeCat = document.querySelector('.category-btn.active') ? document.querySelector('.category-btn.active').innerText : '全部';
     displayMenu(activeCat === '全部' ? menuData : menuData.filter(i => i.category === activeCat));
 }
 
@@ -213,7 +234,7 @@ async function submitOrder() {
     try {
         const res = await callServer({ action: "submitOrder", name: userName, email: userEmail, items: cart });
         if(res.ok) { alert("訂單已送出！"); cart = []; updateCartUI(); toggleCart(); } else alert("錯誤: " + res.message);
-    } catch(e) { alert("網路錯誤，請重試"); }
+    } catch(e) { alert("送出失敗: " + e); }
     btn.disabled = false; btn.innerText = txt;
 }
 </script>
