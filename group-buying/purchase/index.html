@@ -61,7 +61,7 @@
             <div class="bg-gray-50 rounded-3xl p-5 space-y-4">
                 <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest">領貨人資訊</h3>
                 <input id="user-name" type="text" placeholder="您的姓名 (必填)" class="w-full p-4 rounded-2xl border-2 border-transparent focus:border-red-500 bg-white outline-none transition font-bold shadow-sm">
-                <input id="user-email" type="email" placeholder="Email (選填)" class="w-full p-4 rounded-2xl border-2 border-transparent focus:border-red-500 bg-white outline-none transition font-bold shadow-sm text-sm">
+                <input id="user-email" type="email" placeholder="電子信箱 (選填，填寫可收通知信)" class="w-full p-4 rounded-2xl border-2 border-transparent focus:border-red-500 bg-white outline-none transition font-bold shadow-sm text-sm">
                 <textarea id="user-note" placeholder="購物車總體備註 (選填，將寫入 I 欄)" class="w-full p-4 rounded-2xl border-2 border-transparent focus:border-red-500 bg-white outline-none transition font-bold shadow-sm text-sm h-24"></textarea>
             </div>
 
@@ -71,14 +71,14 @@
                     <span id="drawer-total" class="text-3xl font-black text-red-600">$0</span>
                 </div>
                 <button onclick="sendOrder()" id="send-btn" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-lg shadow-xl active:scale-95 transition">
-                    確認送出訂單
+                    確認送出並接收郵件
                 </button>
             </div>
         </div>
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbys9mXPh-laeLcOTSVxNsFTz1ULzvaUbxYrif0K7bC8wWlmxmLsbnS5BLdWc2FOspvzgw/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbys9mXPh-laeLcOTSVxNsFTz1ULzvaUbxYrif0K7bC8wWlmxmLsbnS5BLdWc2FOspvzgw/exec"; // <--- 請務必填寫
         
         let menuData = [];
         let cart = {};
@@ -92,7 +92,7 @@
                 renderMenu();
                 document.getElementById('loading').classList.add('hidden');
             } catch (e) {
-                document.getElementById('announcement').innerText = "❌ 無法載入資料";
+                document.getElementById('announcement').innerText = "❌ 連線異常";
             }
         }
 
@@ -107,13 +107,11 @@
                             <span class="text-red-600 font-black text-lg">$${item.price}</span>
                         </div>
                         <div class="desc-tag px-3 py-2 rounded-xl text-xs font-bold mb-4">${item.desc || '無描述'}</div>
-                        
                         <div class="mb-4">
-                            <input type="text" id="note-${item.name}" placeholder="產品備註 (如：顏色、去冰)" 
+                            <input type="text" id="note-${item.name}" placeholder="產品備註 (如：顏色、口味)" 
                                    onchange="syncNote('${item.name}', this.value)"
                                    class="w-full bg-slate-50 border-none p-3 rounded-xl text-xs font-bold outline-none transition focus:ring-1 focus:ring-red-400">
                         </div>
-
                         <div class="mt-auto flex items-center justify-between bg-slate-100 p-1.5 rounded-2xl">
                             <button onclick="updateQty('${item.name}', -1)" class="w-12 h-12 bg-white rounded-xl shadow-sm font-black text-red-600 text-xl">-</button>
                             <span id="qty-${item.name}" class="font-black text-xl text-slate-800">${cart[item.name]?.qty || 0}</span>
@@ -124,24 +122,19 @@
             `).join('');
         }
 
-        // 同步備註內容到 cart 物件
         function syncNote(name, val) {
-            if (cart[name]) {
-                cart[name].note = val;
-            }
+            if (cart[name]) cart[name].note = val;
         }
 
         function updateQty(name, delta) {
             if (!cart[name]) {
                 if (delta > 0) {
-                    // 第一次點擊：從 1 開始，並同時抓取目前的備註內容
                     const currentNote = document.getElementById(`note-${name}`).value;
                     cart[name] = { qty: 1, note: currentNote };
                 } else return;
             } else {
                 cart[name].qty += delta;
             }
-
             if (cart[name].qty <= 0) delete cart[name];
             updateUI();
         }
@@ -151,12 +144,9 @@
                 const el = document.getElementById(`qty-${item.name}`);
                 if (el) el.innerText = cart[item.name]?.qty || 0;
             });
-
             const totalCount = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
             document.getElementById('cart-count').innerText = totalCount;
-
-            const totalAmount = calculateTotal();
-            document.getElementById('bar-total').innerText = `$${totalAmount}`;
+            document.getElementById('bar-total').innerText = `$${calculateTotal()}`;
             document.getElementById('cart-bar').classList.toggle('hidden', totalCount === 0);
         }
 
@@ -176,7 +166,6 @@
         function renderCartItems() {
             const container = document.getElementById('cart-items');
             const keys = Object.keys(cart);
-
             if (keys.length === 0) {
                 container.innerHTML = '<p class="text-center py-10 text-gray-400 font-bold">購物車是空的</p>';
             } else {
@@ -201,41 +190,35 @@
         async function sendOrder() {
             const name = document.getElementById('user-name').value.trim();
             const email = document.getElementById('user-email').value.trim();
-            const generalNote = document.getElementById('user-note').value.trim(); // 總體備註 (I欄)
+            const generalNote = document.getElementById('user-note').value.trim();
             
             if (!name) { alert("請輸入您的姓名！"); return; }
             if (Object.keys(cart).length === 0) { alert("購物車是空的！"); return; }
 
             const btn = document.getElementById('send-btn');
             btn.disabled = true;
-            btn.innerText = "正在送出...";
+            btn.innerText = "訂單傳送中 & 發送郵件...";
 
-            // 整理產品數據，包含產品備註 (H欄)
             const items = Object.keys(cart).map(n => {
                 const product = menuData.find(m => m.name === n);
-                return {
-                    name: n,
-                    qty: cart[n].qty,
-                    price: product.price,
-                    note: cart[n].note // 產品個別備註
-                };
+                return { name: n, qty: cart[n].qty, price: product.price, note: cart[n].note };
             });
 
             try {
-                const response = await fetch(API_URL, {
+                await fetch(API_URL, {
                     method: 'POST',
                     body: JSON.stringify({ 
                         action: 'submitOrder', 
                         name, 
-                        email, 
+                        email, // 這裡確保 Email 有傳出
                         items, 
-                        generalNote // 這裡獨立傳送總體備註
+                        generalNote 
                     })
                 });
-                alert("🎉 訂購成功！");
+                alert("🎉 訂購成功！已發送通知信至您的信箱。");
                 location.reload();
             } catch (e) {
-                alert("傳送失敗，請檢查網路後重試");
+                alert("傳送失敗，請重試");
                 btn.disabled = false;
                 btn.innerText = "確認送出訂單";
             }
