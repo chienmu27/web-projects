@@ -1,145 +1,265 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>羽球隊團購 - 訂購區</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-  body { font-family: 'Noto Sans TC', sans-serif; background-color: #f9fafb; -webkit-tap-highlight-color: transparent; }
-  .category-btn.active { background-color: #ef4444; color: white; border-color: #ef4444; }
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>羽球隊團購</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 載入 Font Awesome 圖示 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body { font-family: 'Noto Sans TC', sans-serif; background: #f0f9ff; }
+    .product-img { width: 100%; height: 180px; object-fit: cover; background-color: #eee; }
+    .cart-drawer { transition: transform 0.3s ease-in-out; }
+    .cart-open { transform: translateX(0); }
+    .cart-closed { transform: translateX(100%); }
+    .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
 </head>
-<body class="pb-24 text-gray-800">
+<body class="text-gray-800">
 
-<!-- Header -->
-<header class="bg-red-600 text-white shadow-md sticky top-0 z-40">
-  <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-    <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
-      <i class="fas fa-feather-pointed"></i> 羽球隊團購
-    </h1>
-    <div onclick="toggleCart()" class="flex items-center gap-2 cursor-pointer bg-red-700 hover:bg-red-800 px-3 py-1.5 rounded-full transition shadow border border-red-500 relative">
-        <i class="fas fa-shopping-cart text-lg"></i>
-        <span class="text-sm font-bold">購物車</span>
-        <span id="header-cart-count" class="absolute -top-2 -right-2 bg-yellow-400 text-red-800 text-xs font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-red-600 hidden">0</span>
+  <!-- 導航列 -->
+  <nav class="bg-blue-900 text-white p-4 sticky top-0 z-40 shadow-md">
+    <div class="container mx-auto flex justify-between items-center">
+      <h1 class="text-xl font-bold"><i class="fas fa-feather-alt mr-2"></i>東海國小羽球隊團購</h1>
+      <button onclick="toggleCart()" class="relative p-2 hover:bg-blue-800 rounded">
+        <i class="fas fa-shopping-cart text-xl"></i>
+        <span id="cartCount" class="absolute top-0 right-0 bg-red-500 text-xs rounded-full px-1.5 hidden">0</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- 商品列表區 -->
+  <div class="container mx-auto p-4 mb-20">
+    <div id="loading" class="text-center py-10">
+      <div class="spinner mx-auto mb-2"></div>
+      <p>載入商品中...</p>
+    </div>
+    <div id="productGrid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+  </div>
+
+  <!-- 購物車側邊欄 -->
+  <div id="cartSidebar" class="fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-2xl z-50 cart-drawer cart-closed flex flex-col">
+    <div class="p-4 bg-blue-900 text-white flex justify-between items-center">
+      <h2 class="text-lg font-bold">購物車</h2>
+      <button onclick="toggleCart()" class="text-white hover:text-gray-300"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto p-4" id="cartItems">
+      <!-- 購物車項目將顯示於此 -->
+      <p class="text-gray-500 text-center mt-10">購物車是空的</p>
+    </div>
+
+    <!-- 結帳區 -->
+    <div class="p-4 bg-gray-50 border-t">
+      <div class="mb-4 space-y-3">
+        <div>
+          <label class="block text-sm font-bold mb-1">購買人姓名 <span class="text-red-500">*</span></label>
+          <input type="text" id="buyerName" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="請輸入姓名">
+        </div>
+        <div>
+          <label class="block text-sm font-bold mb-1">電子信箱 <span class="text-red-500">*</span></label>
+          <input type="email" id="buyerEmail" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="請輸入 Email">
+        </div>
+      </div>
+      <div class="flex justify-between font-bold text-xl mb-4">
+        <span>總金額:</span>
+        <span id="cartTotal">$0</span>
+      </div>
+      <button onclick="submitOrder()" id="btnSubmit" class="w-full bg-blue-600 text-white py-3 rounded font-bold hover:bg-blue-700 transition">確認送出訂單</button>
     </div>
   </div>
-</header>
 
-<div class="bg-orange-50 border-b border-orange-100 p-2 shadow-sm">
-    <div class="container mx-auto flex flex-col gap-2">
-        <div class="flex items-center bg-white/50 rounded px-2">
-            <i class="fas fa-bullhorn text-orange-500 mr-2"></i>
-            <marquee id="marquee-text" class="text-lg text-gray-700 font-bold py-1" scrollamount="6">載入中...</marquee>
-        </div>
-        <div class="flex justify-between items-center">
-            <span class="text-sm text-gray-500">訂購人：<span id="display-name" class="font-bold text-gray-800">未設定</span></span>
-            <button onclick="openNameModal()" class="text-xs bg-white border border-orange-200 text-orange-700 px-3 py-1 rounded-full shadow-sm hover:bg-orange-100 transition"><i class="fas fa-cog"></i> 設定</button>
-        </div>
-    </div>
-</div>
+  <!-- 遮罩 -->
+  <div id="overlay" onclick="toggleCart()" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
 
-<nav id="category-nav" class="sticky top-[60px] md:top-[64px] bg-white/95 backdrop-blur border-b overflow-x-auto whitespace-nowrap z-30 px-4 py-3 flex gap-2 no-scrollbar shadow-sm"></nav>
+  <script>
+    // 請填入您的 Web App URL
+    const API_URL = "https://script.google.com/macros/s/AKfycbz3h5b7xqz3TlmThbWPl1y2upIA3vr3rbcJgoi2l4IOIAqF-0ODaRo3981vwWNWpqNX4g/exec";
+    
+    let products = [];
+    let cart = [];
 
-<main class="container mx-auto p-4 min-h-[50vh]">
-    <div id="loading-spinner" class="text-center py-20 text-gray-400"><i class="fas fa-circle-notch fa-spin text-4xl mb-3 text-red-400"></i><p>正在連線至 Google 試算表...</p></div>
-    <div id="menu-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
-</main>
+    // 初始化
+    window.onload = loadMenu;
 
-<div id="cart-sidebar" class="fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 z-[60] flex flex-col h-full">
-  <div class="p-4 border-b flex justify-between items-center bg-gray-50"><h3 class="font-bold text-lg"><i class="fas fa-shopping-bag text-red-500 mr-2"></i>購物車</h3><button onclick="toggleCart()" class="text-gray-400 text-2xl px-2">&times;</button></div>
-  <div id="cart-items" class="flex-grow overflow-y-auto p-4 space-y-4 pb-20"></div>
-  <div class="p-4 border-t bg-gray-50 absolute bottom-0 w-full"><div class="flex justify-between mb-4 items-end"><span class="text-gray-600 text-sm">總計</span><span class="text-red-600 font-black text-2xl" id="total-price">$0</span></div><button id="btn-submit" onclick="submitOrder()" class="w-full bg-red-600 hover:bg-red-700 text-white py-3.5 rounded-xl font-bold shadow-lg transition">確認送出</button></div>
-</div>
-<div id="overlay" onclick="toggleCart()" class="fixed inset-0 bg-black/40 hidden z-50"></div>
-
-<div id="modal-name" class="fixed inset-0 z-[70] flex items-center justify-center hidden">
-    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeNameModal()"></div>
-    <div class="bg-white w-11/12 md:max-w-md mx-auto rounded-2xl shadow-2xl z-50 p-6">
-        <h3 class="text-xl font-bold text-center mb-4">設定訂購人</h3>
-        <div class="space-y-4"><div><label class="block text-sm font-bold mb-1">姓名 <span class="text-red-500">*</span></label><input id="input-name" type="text" class="w-full border rounded-xl px-4 py-3 outline-none focus:border-red-500"></div><div><label class="block text-sm font-bold mb-1">Email (選填)</label><input id="input-email" type="email" class="w-full border rounded-xl px-4 py-3 outline-none focus:border-red-500"></div></div>
-        <button onclick="saveName()" class="w-full bg-red-600 text-white font-bold py-3.5 rounded-xl shadow-lg mt-6">儲存設定</button>
-    </div>
-</div>
-
-<script>
-let menuData = [], cart = [], userName = localStorage.getItem("apan_user_name") || "", userEmail = localStorage.getItem("apan_user_email") || "";
-
-window.onload = () => { if(userName) updateNameDisplay(); else openNameModal(); fetchMenu(); };
-
-function callServer(payload) {
-    return new Promise((resolve, reject) => {
-        if (typeof google === 'undefined' || !google.script) return reject("https://script.google.com/macros/s/AKfycbzsAjzCCmaRvnWZ36JjdqwEhUtntgY-QTGizpyf5t38KWLz8GoHwW8kJHc7zuM6PJRvzA/exec");
-        google.script.run
-            .withSuccessHandler(res => { try { resolve(typeof res === 'string' ? JSON.parse(res) : res); } catch(e) { reject("資料錯誤"); } })
-            .withFailureHandler(err => reject(err.message || err))
-            .processApi(payload);
-    });
-}
-
-async function fetchMenu() {
-    try {
-        const res = await callServer({ action: "getMenu" });
-        if (res.ok) {
-            menuData = res.data;
-            if(res.marquee) document.getElementById('marquee-text').innerText = res.marquee;
-            renderCategoryNav(); displayMenu(menuData);
-            document.getElementById('loading-spinner').style.display = 'none';
-        } else throw new Error(res.message);
-    } catch(e) { alert("讀取失敗: "+e); }
-}
-
-function renderCategoryNav() {
-    const cats = ['all', ...new Set(menuData.map(i => i.category))];
-    document.getElementById('category-nav').innerHTML = cats.map(c => `<button onclick="filterMenu('${c}')" class="category-btn ${c==='all'?'active':''} px-5 py-2 rounded-full border border-gray-200 bg-white text-sm font-bold transition shadow-sm whitespace-nowrap">${c==='all'?'全部':c}</button>`).join('');
-}
-function filterMenu(c) { document.querySelectorAll('.category-btn').forEach(b => b.classList.toggle('active', b.innerText === (c==='all'?'全部':c))); displayMenu(c === 'all' ? menuData : menuData.filter(i => i.category === c)); }
-function displayMenu(items) {
-    const container = document.getElementById('menu-container');
-    if(!items.length) { container.innerHTML = '<div class="col-span-full text-center py-10 text-gray-400">無產品資料</div>'; return; }
-    container.innerHTML = items.map(i => {
-        const inCart = cart.find(c => c.row === i.row), qty = inCart ? inCart.qty : 0;
-        const img = i.image ? `<img src="${i.image}" class="w-full h-48 object-cover" onerror="this.src='https://placehold.co/400x300?text=No+Image'">` : `<div class="w-full h-48 bg-gray-100 flex items-center justify-center"><i class="fas fa-image text-4xl text-gray-300"></i></div>`;
-        const btn = qty === 0 ? `<button onclick="updateItemQty(${i.row}, 1)" class="bg-red-50 text-red-600 font-bold px-4 py-2 rounded-xl w-full border border-red-100">加入購物車</button>` : `<div class="flex items-center justify-between bg-red-600 text-white rounded-xl w-full px-1 py-1"><button onclick="updateItemQty(${i.row},-1)" class="w-10 h-10 flex items-center justify-center text-lg">&minus;</button><span class="font-bold text-lg">${qty}</span><button onclick="updateItemQty(${i.row},1)" class="w-10 h-10 flex items-center justify-center text-lg">&plus;</button></div>`;
-        return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-xl transition"><div class="relative">${img}<span class="absolute top-2 left-2 bg-white/90 px-2 py-1 rounded text-xs font-bold shadow">${i.category}</span></div><div class="p-4 flex-1 flex flex-col"><h3 class="font-bold text-xl mb-1 truncate">${i.name}</h3><div class="bg-yellow-50 text-yellow-800 text-sm p-2 rounded mb-3 line-clamp-2 min-h-[3rem]">${i.desc}</div><div class="mt-auto pt-3 border-t flex justify-between items-center"><div class="flex flex-col"><span class="text-xs text-gray-400">單價</span><span class="text-red-600 font-black text-2xl">$${i.price}</span></div><div class="w-36">${btn}</div></div></div></div>`;
-    }).join('');
-}
-
-function updateItemQty(rowId, delta) {
-    const idx = cart.findIndex(c => c.row === rowId);
-    if (idx !== -1) { cart[idx].qty += delta; if (cart[idx].qty <= 0) cart.splice(idx, 1); }
-    else if (delta > 0) { const item = menuData.find(m => m.row === rowId); if(item) cart.push({...item, qty: 1, note: ""}); }
-    updateCartUI();
-    const activeCat = document.querySelector('.category-btn.active') ? document.querySelector('.category-btn.active').innerText : '全部';
-    displayMenu(activeCat === '全部' ? menuData : menuData.filter(i => i.category === activeCat));
-}
-
-function updateCartUI() {
-    let total = 0, count = 0, html = "";
-    if (cart.length === 0) { html = `<div class="text-center text-gray-400 py-10">購物車是空的</div>`; document.getElementById('header-cart-count').classList.add('hidden'); }
-    else {
-        html = cart.map((c, i) => { total += c.price * c.qty; count += c.qty; return `<div class="bg-white p-3 rounded-xl border mb-3"><div class="flex justify-between mb-2"><div><div class="font-bold text-lg truncate">${c.name}</div><div class="text-sm text-gray-500">$${c.price}</div></div><div class="text-right font-bold text-red-600">$${c.price*c.qty}</div></div><div class="flex gap-3 items-center"><div class="flex bg-gray-100 rounded-lg h-9 border"><button onclick="updateItemQty(${c.row},-1)" class="w-8 h-full">&minus;</button><span class="font-bold w-8 text-center pt-1.5 text-sm">${c.qty}</span><button onclick="updateItemQty(${c.row},1)" class="w-8 h-full">&plus;</button></div><input type="text" value="${c.note||''}" onchange="cart[${i}].note=this.value" placeholder="備註" class="w-full bg-gray-50 border rounded-lg px-2 py-1.5 text-sm"></div></div>`; }).join('');
-        const badge = document.getElementById('header-cart-count'); badge.innerText = count; badge.classList.remove('hidden');
+    async function loadMenu() {
+      try {
+        const res = await fetch(API_URL + "?action=getMenu");
+        const json = await res.json();
+        if (json.ok) {
+          products = json.data;
+          renderProducts();
+        } else {
+          alert("讀取失敗: " + json.message);
+        }
+      } catch (e) {
+        console.error(e);
+        alert("連線錯誤");
+      } finally {
+        document.getElementById("loading").classList.add("hidden");
+      }
     }
-    document.getElementById('cart-items').innerHTML = html;
-    document.getElementById('total-price').innerText = `$${total}`;
-}
 
-function toggleCart() { const s=document.getElementById('cart-sidebar'), o=document.getElementById('overlay'); s.classList.toggle('translate-x-full'); o.classList.toggle('hidden'); document.body.classList.toggle('overflow-hidden'); }
-function openNameModal() { document.getElementById('modal-name').classList.remove('hidden'); document.getElementById('input-name').value = userName; document.getElementById('input-email').value = userEmail; }
-function closeNameModal() { document.getElementById('modal-name').classList.add('hidden'); }
-function saveName() { const val = document.getElementById('input-name').value.trim(); if(val) { userName=val; userEmail=document.getElementById('input-email').value.trim(); localStorage.setItem("apan_user_name",val); localStorage.setItem("apan_user_email",userEmail); updateNameDisplay(); closeNameModal(); } else alert("請輸入姓名"); }
-function updateNameDisplay() { document.getElementById('display-name').innerText = userName; }
-async function submitOrder() {
-    if(!userName) { alert("請先設定稱呼"); toggleCart(); openNameModal(); return; }
-    if(!cart.length) return alert("購物車是空的");
-    const btn = document.getElementById('btn-submit'); const txt = btn.innerText; btn.disabled = true; btn.innerText = "處理中...";
-    try { const res = await callServer({ action: "submitOrder", name: userName, email: userEmail, items: cart }); if(res.ok) { alert("訂單送出成功！"); cart=[]; updateCartUI(); toggleCart(); } else alert("錯誤: "+res.message); } catch(e) { alert("失敗: "+e); }
-    btn.disabled = false; btn.innerText = txt;
-}
-</script>
+    function renderProducts() {
+      const grid = document.getElementById("productGrid");
+      grid.innerHTML = products.map(p => {
+        // 如果沒有圖片，顯示預設圖
+        const imgDisplay = p.image ? `<img src="${p.image}" class="product-img">` : `<div class="product-img flex items-center justify-center text-gray-400 bg-gray-200"><i class="fas fa-image text-3xl"></i></div>`;
+        
+        return `
+        <div class="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden flex flex-col">
+          ${imgDisplay}
+          <div class="p-4 flex-1">
+            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${p.category}</span>
+            <h3 class="font-bold text-lg mt-2">${p.name}</h3>
+            <p class="text-gray-500 text-sm mt-1 h-10 overflow-hidden">${p.desc}</p>
+            <div class="mt-4 flex justify-between items-center">
+              <span class="text-xl font-bold text-red-600">$${p.price}</span>
+              <button onclick="addToCart(${p.row})" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                <i class="fas fa-plus"></i> 加入
+              </button>
+            </div>
+          </div>
+        </div>
+        `;
+      }).join("");
+    }
+
+    function addToCart(row) {
+      const item = products.find(p => p.row === row);
+      const existing = cart.find(c => c.row === row);
+      if (existing) {
+        existing.qty++;
+      } else {
+        cart.push({ ...item, qty: 1, remark: "" });
+      }
+      updateCartUI();
+      toggleCart(true);
+    }
+
+    function updateCartUI() {
+      const container = document.getElementById("cartItems");
+      const countBadge = document.getElementById("cartCount");
+      const totalEl = document.getElementById("cartTotal");
+
+      // 更新數量徽章
+      const totalQty = cart.reduce((acc, c) => acc + c.qty, 0);
+      countBadge.innerText = totalQty;
+      countBadge.classList.toggle("hidden", totalQty === 0);
+
+      // 計算總金額
+      const total = cart.reduce((acc, c) => acc + (c.price * c.qty), 0);
+      totalEl.innerText = "$" + total;
+
+      if (cart.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center mt-10">購物車是空的</p>';
+        return;
+      }
+
+      container.innerHTML = cart.map((item, index) => `
+        <div class="flex flex-col border-b py-3">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="font-bold">${item.name}</div>
+              <div class="text-gray-500 text-sm">$${item.price}</div>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button onclick="changeQty(${index}, -1)" class="w-6 h-6 bg-gray-200 rounded text-center leading-6 hover:bg-gray-300">-</button>
+              <span>${item.qty}</span>
+              <button onclick="changeQty(${index}, 1)" class="w-6 h-6 bg-gray-200 rounded text-center leading-6 hover:bg-gray-300">+</button>
+            </div>
+          </div>
+          <!-- 備註欄位 -->
+          <div class="mt-2">
+            <input type="text" placeholder="備註 (例如: 尺寸、顏色)" 
+              class="w-full text-sm border bg-gray-50 rounded px-2 py-1 outline-none focus:border-blue-400"
+              value="${item.remark}" 
+              oninput="updateRemark(${index}, this.value)">
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function changeQty(index, delta) {
+      cart[index].qty += delta;
+      if (cart[index].qty <= 0) {
+        cart.splice(index, 1);
+      }
+      updateCartUI();
+    }
+
+    function updateRemark(index, val) {
+      cart[index].remark = val;
+    }
+
+    function toggleCart(forceOpen = null) {
+      const sidebar = document.getElementById("cartSidebar");
+      const overlay = document.getElementById("overlay");
+      
+      const isOpen = forceOpen !== null ? forceOpen : sidebar.classList.contains("cart-closed");
+      
+      if (isOpen) {
+        sidebar.classList.remove("cart-closed");
+        sidebar.classList.add("cart-open");
+        overlay.classList.remove("hidden");
+      } else {
+        sidebar.classList.remove("cart-open");
+        sidebar.classList.add("cart-closed");
+        overlay.classList.add("hidden");
+      }
+    }
+
+    async function submitOrder() {
+      if (cart.length === 0) return alert("購物車是空的");
+      
+      const name = document.getElementById("buyerName").value.trim();
+      const email = document.getElementById("buyerEmail").value.trim();
+      
+      if (!name) return alert("請填寫購買人姓名");
+      if (!email) return alert("請填寫電子信箱");
+
+      const btn = document.getElementById("btnSubmit");
+      btn.disabled = true;
+      btn.innerText = "處理中...";
+
+      const payload = {
+        action: "submitOrder",
+        buyerName: name,
+        email: email,
+        items: cart.map(c => ({
+          name: c.name,
+          price: c.price,
+          qty: c.qty,
+          remark: c.remark
+        }))
+      };
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        
+        if (json.ok) {
+          alert("訂單已送出！");
+          cart = [];
+          updateCartUI();
+          toggleCart(false);
+          document.getElementById("buyerName").value = "";
+          document.getElementById("buyerEmail").value = "";
+        } else {
+          alert("失敗: " + json.message);
+        }
+      } catch (e) {
+        alert("傳送失敗，請檢查網路");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "確認送出訂單";
+      }
+    }
+  </script>
 </body>
 </html>
