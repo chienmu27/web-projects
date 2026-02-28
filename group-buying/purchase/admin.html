@@ -3,86 +3,388 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理後台</title>
+    <title>管理後台 - 團購系統專業版</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; }
+        .tab-active { color: #ef4444; border-bottom: 3px solid #ef4444; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .loader { border-top-color: #ef4444; animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <div id="login-screen" class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md">
-            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">管理員登入</h2>
-            <input id="admin-pwd" type="password" placeholder="輸入驗證碼" class="w-full border p-4 rounded-2xl mb-4 text-center text-2xl tracking-widest">
-            <button onclick="doLogin()" class="w-full bg-gray-800 text-white py-4 rounded-2xl font-bold">進入系統</button>
+<body class="min-h-screen pb-10">
+
+    <div id="login-view" class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-gray-100">
+            <div class="text-center mb-8">
+                <div class="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-unlock-alt text-red-500 text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-black text-gray-800">後台管理登入</h2>
+            </div>
+            <input id="admin-pwd" type="password" placeholder="請輸入驗證碼" class="w-full border-2 border-gray-100 p-4 rounded-2xl mb-6 text-center tracking-widest text-2xl focus:border-red-500 outline-none transition">
+            <button onclick="login()" class="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-2xl font-bold text-lg shadow-lg transition active:scale-95">確認進入</button>
         </div>
     </div>
 
-    <div id="admin-main" class="hidden">
-        <header class="bg-gray-800 text-white p-4 flex justify-between items-center">
-            <span class="font-bold">訂單管理系統</span>
-            <button onclick="doLogout()" class="bg-red-500 px-4 py-2 rounded-lg text-sm">登出</button>
-        </header>
-        
-        <main class="container mx-auto p-4">
-            <div id="order-list" class="space-y-4">
+    <div id="main-view" class="hidden">
+        <header class="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-md">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="bg-red-600 text-white p-1.5 rounded-lg text-xs font-black">ADMIN</span>
+                    <h1 class="font-bold tracking-tight text-lg">團購管理系統</h1>
                 </div>
+                <button onclick="logout()" class="text-gray-400 hover:text-white transition text-sm">
+                    <i class="fas fa-sign-out-alt"></i> 登出
+                </button>
+            </div>
+        </header>
+
+        <nav class="bg-white border-b sticky top-[60px] z-40">
+            <div class="container mx-auto flex overflow-x-auto no-scrollbar">
+                <button onclick="switchTab('orders')" id="tab-orders" class="flex-1 py-4 font-bold text-gray-400 whitespace-nowrap tab-active">待處理訂單</button>
+                <button onclick="switchTab('history')" id="tab-history" class="flex-1 py-4 font-bold text-gray-400 whitespace-nowrap">訂單總紀錄</button>
+                <button onclick="switchTab('menu')" id="tab-menu" class="flex-1 py-4 font-bold text-gray-400 whitespace-nowrap">產品資料庫</button>
+            </div>
+        </nav>
+
+        <main class="container mx-auto p-4 mt-4">
+            
+            <section id="panel-orders" class="space-y-4">
+                <div id="order-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </section>
+
+            <section id="panel-history" class="hidden">
+                <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                    <div class="p-4 border-b flex justify-between items-center bg-gray-50">
+                        <span class="text-sm font-bold text-gray-500">歷史明細列表</span>
+                        <button onclick="confirmDeleteAll()" class="text-red-500 text-xs font-bold border border-red-200 px-3 py-1 rounded-full hover:bg-red-50">清空所有數據</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-white border-b text-gray-400">
+                                <tr>
+                                    <th class="px-4 py-3 font-medium">客戶/時間</th>
+                                    <th class="px-4 py-3 font-medium">品項內容</th>
+                                    <th class="px-4 py-3 font-medium">總計</th>
+                                    <th class="px-4 py-3 font-medium">狀態</th>
+                                    <th class="px-4 py-3 font-medium"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-tbody" class="divide-y divide-gray-50"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="panel-menu" class="hidden">
+                <div class="flex justify-end mb-4">
+                    <button onclick="openMenuModal()" class="bg-slate-900 text-white px-5 py-2.5 rounded-2xl text-sm font-bold shadow-xl">+ 新增商品</button>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                    <table class="w-full text-sm">
+                        <tbody id="menu-tbody" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </section>
         </main>
     </div>
 
+    <div id="menu-modal" class="fixed inset-0 bg-black/70 z-[60] hidden flex items-end md:items-center justify-center">
+        <div class="bg-white w-full max-w-md rounded-t-3xl md:rounded-3xl p-6 shadow-2xl transform transition-transform">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-black text-gray-800" id="modal-title">產品設定</h3>
+                <button onclick="closeMenuModal()" class="text-gray-400 text-2xl">&times;</button>
+            </div>
+            
+            <div class="space-y-5">
+                <input type="hidden" id="edit-row">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-black text-gray-400 uppercase tracking-wider">產品名稱</label>
+                        <input id="edit-name" type="text" class="w-full border-b-2 py-2 outline-none focus:border-red-500 font-bold">
+                    </div>
+                    <div>
+                        <label class="text-xs font-black text-gray-400 uppercase tracking-wider">分類</label>
+                        <input id="edit-cat" type="text" class="w-full border-b-2 py-2 outline-none focus:border-red-500 font-bold">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-black text-gray-400 uppercase tracking-wider">單價 (TWD)</label>
+                    <input id="edit-price" type="number" class="w-full border-b-2 py-2 outline-none focus:border-red-500 font-bold text-red-600">
+                </div>
+
+                <div>
+                    <label class="text-xs font-black text-gray-400 uppercase tracking-wider">產品描述</label>
+                    <textarea id="edit-desc" placeholder="顯示在商品下方的說明..." class="w-full border rounded-xl p-3 h-20 text-sm mt-1 focus:ring-2 focus:ring-red-500 outline-none transition"></textarea>
+                </div>
+
+                <div>
+                    <label class="text-xs font-black text-gray-400 uppercase tracking-wider">產品圖片</label>
+                    <div class="flex items-center gap-3 mt-2">
+                        <div class="relative w-16 h-16 bg-gray-100 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 flex items-center justify-center">
+                            <img id="img-preview" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+                            <i id="img-icon" class="fas fa-image text-gray-300 text-xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <input id="edit-img" type="text" placeholder="圖片網址或從右側上傳" class="w-full text-[10px] border-b pb-1 outline-none text-gray-400">
+                            <div class="flex gap-2 mt-2">
+                                <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileUpload(this)">
+                                <button onclick="document.getElementById('file-input').click()" class="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold">
+                                    <i class="fas fa-camera mr-1"></i> 手機上傳照片
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="upload-status" class="text-[10px] font-bold mt-2 h-4"></p>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-8">
+                <button onclick="closeMenuModal()" class="flex-1 bg-gray-100 text-gray-500 py-4 rounded-2xl font-bold">取消</button>
+                <button id="save-btn" onclick="saveMenu()" class="flex-1 bg-red-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-red-200">儲存產品資料</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // ★★★ 請替換為您的 GAS 網址 ★★★
         const API_URL = "https://script.google.com/macros/s/AKfycbys9mXPh-laeLcOTSVxNsFTz1ULzvaUbxYrif0K7bC8wWlmxmLsbnS5BLdWc2FOspvzgw/exec";
-        let currentPwd = localStorage.getItem("admin_pwd");
+        
+        let authPwd = localStorage.getItem('admin_token');
 
-        async function doLogin() {
+        // --- 核心權限 ---
+        async function login() {
             const pwd = document.getElementById('admin-pwd').value;
-            const res = await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'verifyLogin', password: pwd })
-            }).then(r => r.json());
-
+            const res = await callApi('verifyLogin', { password: pwd });
             if (res.ok) {
-                localStorage.setItem("admin_pwd", pwd);
-                currentPwd = pwd;
+                localStorage.setItem('admin_token', pwd);
+                authPwd = pwd;
                 showMain();
             } else {
-                alert("驗證碼錯誤");
+                alert("驗證碼不正確");
             }
         }
 
-        function showMain() {
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('admin-main').classList.remove('hidden');
-            loadOrders();
-        }
-
-        function doLogout() {
-            localStorage.removeItem("admin_pwd");
+        function logout() {
+            localStorage.removeItem('admin_token');
             location.reload();
         }
 
-        async function loadOrders() {
-            const res = await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'getPendingOrdersMerged', password: currentPwd })
-            }).then(r => r.json());
-            
-            if (!res.ok) return doLogout();
+        function showMain() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('main-view').classList.remove('hidden');
+            loadOrders();
+        }
 
-            document.getElementById('order-list').innerHTML = res.data.map(order => `
-                <div class="bg-white p-6 rounded-2xl shadow-sm border">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-bold">${order.name}</h3>
-                        <span class="text-gray-500 text-sm">${new Date(order.time).toLocaleString()}</span>
+        async function callApi(action, extraData = {}) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action, password: authPwd, ...extraData })
+                });
+                return await response.json();
+            } catch (e) {
+                return { ok: false, message: "網路錯誤" };
+            }
+        }
+
+        // --- 圖片上傳邏輯 ---
+        async function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const status = document.getElementById('upload-status');
+            const saveBtn = document.getElementById('save-btn');
+            status.className = "text-[10px] font-bold mt-2 text-blue-500";
+            status.innerText = "⏳ 圖片上傳至雲端硬碟中...";
+            saveBtn.disabled = true;
+            saveBtn.classList.add('opacity-50');
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const base64String = e.target.result.split(',')[1];
+                const res = await callApi('uploadImage', {
+                    base64: base64String,
+                    mimeType: file.type
+                });
+
+                if (res.ok) {
+                    document.getElementById('edit-img').value = res.imageUrl;
+                    const preview = document.getElementById('img-preview');
+                    preview.src = res.imageUrl;
+                    preview.classList.remove('hidden');
+                    document.getElementById('img-icon').classList.add('hidden');
+                    status.className = "text-[10px] font-bold mt-2 text-green-500";
+                    status.innerText = "✅ 上傳成功！";
+                } else {
+                    status.className = "text-[10px] font-bold mt-2 text-red-500";
+                    status.innerText = "❌ 上傳失敗：" + res.message;
+                }
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('opacity-50');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // --- 頁面功能切換 ---
+        function switchTab(tab) {
+            ['orders', 'history', 'menu'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.toggle('tab-active', t === tab);
+                document.getElementById(`panel-${t}`).classList.toggle('hidden', t !== tab);
+            });
+            if (tab === 'orders') loadOrders();
+            if (tab === 'history') loadHistory();
+            if (tab === 'menu') loadAdminMenu();
+        }
+
+        // --- 1. 待處理訂單 ---
+        async function loadOrders() {
+            const container = document.getElementById('order-cards-container');
+            container.innerHTML = '<div class="col-span-full text-center py-20 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i>更新訂單中...</div>';
+            const res = await callApi('getPendingOrders');
+            if (!res.ok) return;
+
+            container.innerHTML = res.data.map(order => `
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 border-l-4 border-l-red-500">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-black text-gray-800">${order.name}</h3>
+                            <p class="text-[10px] text-gray-400 font-bold tracking-widest uppercase">${new Date(order.time).toLocaleTimeString()}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="updateStatus('${order.name}', 'served')" class="bg-green-500 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-md shadow-green-100"><i class="fas fa-check"></i></button>
+                            <button onclick="updateStatus('${order.name}', 'cleared')" class="bg-slate-800 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-md shadow-slate-200"><i class="fas fa-hand-holding-usd"></i></button>
+                        </div>
                     </div>
-                    <div class="bg-gray-50 p-4 rounded-xl mb-4">
-                        ${order.items.map(i => `<div>${i.item} x ${i.qty}</div>`).join('')}
-                        <div class="mt-2 text-blue-600 font-medium">備註：${order.note || '無'}</div>
+                    <div class="bg-gray-50 p-4 rounded-2xl mb-4 space-y-2 text-sm">
+                        ${order.items.map(i => `<div class="flex justify-between font-bold"><span>${i.name}</span><span class="text-gray-400">x${i.qty}</span></div>`).join('')}
+                        <div class="pt-2 mt-2 border-t border-gray-200 text-blue-500 text-xs font-bold">備註：${order.note || '無'}</div>
                     </div>
-                    <div class="text-right font-bold text-xl text-red-600 mb-2">總計: $${order.total}</div>
+                    <div class="flex justify-between items-end">
+                        <span class="text-xs font-bold text-gray-300">TOTAL</span>
+                        <span class="text-2xl font-black text-red-600">$${order.total}</span>
+                    </div>
                 </div>
+            `).join('') || '<p class="col-span-full text-center py-20 text-gray-400">目前沒有新訂單</p>';
+        }
+
+        async function updateStatus(name, status) {
+            if (!confirm(`確認將 ${name} 的狀態改為 ${status}？`)) return;
+            await callApi('markStatus', { name, status });
+            loadOrders();
+        }
+
+        // --- 2. 歷史總表 ---
+        async function loadHistory() {
+            const tbody = document.getElementById('history-tbody');
+            const res = await callApi('getOrderHistory');
+            tbody.innerHTML = res.data.map(r => `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-4 py-4 text-xs font-bold text-gray-800">${r.name}<br><span class="text-[9px] font-normal text-gray-400">${new Date(r.time).toLocaleDateString()}</span></td>
+                    <td class="px-4 py-4 text-xs font-bold text-gray-500">${r.item} x${r.qty}</td>
+                    <td class="px-4 py-4 font-black text-gray-800 text-xs">$${r.subtotal}</td>
+                    <td class="px-4 py-4"><span class="px-2 py-1 rounded text-[9px] font-black uppercase ${r.status==='pending'?'bg-red-50 text-red-500':'bg-gray-100 text-gray-400'}">${r.status}</span></td>
+                    <td class="px-4 py-4 text-right"><button onclick="deleteRow(${r.row})" class="text-gray-200 hover:text-red-400"><i class="fas fa-trash-alt"></i></button></td>
+                </tr>
             `).join('');
         }
 
-        // 自動檢查登入狀態
-        if (currentPwd) showMain();
+        async function deleteRow(row) {
+            if (!confirm("確定刪除此列紀錄？")) return;
+            await callApi('deleteOrder', { row });
+            loadHistory();
+        }
+
+        async function confirmDeleteAll() {
+            if (confirm("這將會清除「工作表1」中所有的歷史資料，您確定嗎？")) {
+                await callApi('deleteAllOrders');
+                loadHistory();
+            }
+        }
+
+        // --- 3. 產品管理 ---
+        async function loadAdminMenu() {
+            const tbody = document.getElementById('menu-tbody');
+            const res = await callApi('getAdminMenu');
+            tbody.innerHTML = res.data.map(item => `
+                <tr class="group">
+                    <td class="px-4 py-5 flex items-center gap-4">
+                        <img src="${item.image}" class="w-12 h-12 rounded-2xl object-cover bg-gray-100">
+                        <div>
+                            <div class="font-black text-gray-800">${item.name}</div>
+                            <div class="text-[10px] text-gray-400 font-bold">${item.category}</div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-5 font-black text-red-600">$${item.price}</td>
+                    <td class="px-4 py-5 text-right">
+                        <button onclick='openMenuModal(${JSON.stringify(item)})' class="bg-gray-50 group-hover:bg-blue-50 text-gray-300 group-hover:text-blue-500 w-9 h-9 rounded-xl transition"><i class="fas fa-pen text-xs"></i></button>
+                        <button onclick="deleteMenuItem(${item.row})" class="bg-gray-50 group-hover:bg-red-50 text-gray-300 group-hover:text-red-500 w-9 h-9 rounded-xl transition ml-1"><i class="fas fa-trash-alt text-xs"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openMenuModal(item = null) {
+            document.getElementById('menu-modal').classList.remove('hidden');
+            document.getElementById('upload-status').innerText = "";
+            const preview = document.getElementById('img-preview');
+            const icon = document.getElementById('img-icon');
+            
+            if (item) {
+                document.getElementById('modal-title').innerText = "編輯產品明細";
+                document.getElementById('edit-row').value = item.row;
+                document.getElementById('edit-name').value = item.name;
+                document.getElementById('edit-cat').value = item.category;
+                document.getElementById('edit-price').value = item.price;
+                document.getElementById('edit-desc').value = item.desc;
+                document.getElementById('edit-img').value = item.image;
+                if (item.image) {
+                    preview.src = item.image;
+                    preview.classList.remove('hidden');
+                    icon.classList.add('hidden');
+                }
+            } else {
+                document.getElementById('modal-title').innerText = "新增團購商品";
+                document.getElementById('edit-row').value = "";
+                document.getElementById('edit-name').value = "";
+                document.getElementById('edit-price').value = "";
+                document.getElementById('edit-desc').value = "";
+                document.getElementById('edit-img').value = "";
+                preview.classList.add('hidden');
+                icon.classList.remove('hidden');
+            }
+        }
+
+        function closeMenuModal() { document.getElementById('menu-modal').classList.add('hidden'); }
+
+        async function saveMenu() {
+            const data = {
+                row: document.getElementById('edit-row').value,
+                name: document.getElementById('edit-name').value,
+                category: document.getElementById('edit-cat').value,
+                price: document.getElementById('edit-price').value,
+                desc: document.getElementById('edit-desc').value,
+                image: document.getElementById('edit-img').value
+            };
+            if (!data.name || !data.price) return alert("請填寫產品名稱與價格");
+            const res = await callApi('saveMenuItem', data);
+            if (res.ok) { closeMenuModal(); loadAdminMenu(); }
+        }
+
+        async function deleteMenuItem(row) {
+            if (!confirm("確定刪除此產品？這將從菜單清單移除。")) return;
+            await callApi('deleteMenuItem', { row });
+            loadAdminMenu();
+        }
+
+        // 啟動檢查
+        if (authPwd) showMain();
     </script>
 </body>
 </html>
