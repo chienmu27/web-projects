@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理後台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="login-screen" class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">管理員登入</h2>
+            <input id="admin-pwd" type="password" placeholder="輸入驗證碼" class="w-full border p-4 rounded-2xl mb-4 text-center text-2xl tracking-widest">
+            <button onclick="doLogin()" class="w-full bg-gray-800 text-white py-4 rounded-2xl font-bold">進入系統</button>
+        </div>
+    </div>
+
+    <div id="admin-main" class="hidden">
+        <header class="bg-gray-800 text-white p-4 flex justify-between items-center">
+            <span class="font-bold">訂單管理系統</span>
+            <button onclick="doLogout()" class="bg-red-500 px-4 py-2 rounded-lg text-sm">登出</button>
+        </header>
+        
+        <main class="container mx-auto p-4">
+            <div id="order-list" class="space-y-4">
+                </div>
+        </main>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbys9mXPh-laeLcOTSVxNsFTz1ULzvaUbxYrif0K7bC8wWlmxmLsbnS5BLdWc2FOspvzgw/exec";
+        let currentPwd = localStorage.getItem("admin_pwd");
+
+        async function doLogin() {
+            const pwd = document.getElementById('admin-pwd').value;
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'verifyLogin', password: pwd })
+            }).then(r => r.json());
+
+            if (res.ok) {
+                localStorage.setItem("admin_pwd", pwd);
+                currentPwd = pwd;
+                showMain();
+            } else {
+                alert("驗證碼錯誤");
+            }
+        }
+
+        function showMain() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('admin-main').classList.remove('hidden');
+            loadOrders();
+        }
+
+        function doLogout() {
+            localStorage.removeItem("admin_pwd");
+            location.reload();
+        }
+
+        async function loadOrders() {
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'getPendingOrdersMerged', password: currentPwd })
+            }).then(r => r.json());
+            
+            if (!res.ok) return doLogout();
+
+            document.getElementById('order-list').innerHTML = res.data.map(order => `
+                <div class="bg-white p-6 rounded-2xl shadow-sm border">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold">${order.name}</h3>
+                        <span class="text-gray-500 text-sm">${new Date(order.time).toLocaleString()}</span>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-xl mb-4">
+                        ${order.items.map(i => `<div>${i.item} x ${i.qty}</div>`).join('')}
+                        <div class="mt-2 text-blue-600 font-medium">備註：${order.note || '無'}</div>
+                    </div>
+                    <div class="text-right font-bold text-xl text-red-600 mb-2">總計: $${order.total}</div>
+                </div>
+            `).join('');
+        }
+
+        // 自動檢查登入狀態
+        if (currentPwd) showMain();
+    </script>
+</body>
+</html>
