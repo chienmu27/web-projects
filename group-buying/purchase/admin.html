@@ -77,7 +77,6 @@ async function login(isAuto = false){
 
   try{
     // 發送驗證請求
-    // 注意：這裡直接發送 adminLogin 請求來驗證密碼是否正確
     const res = await fetch(GAS_API_URL, {
       method: "POST",
       body: JSON.stringify({ action: "adminLogin", password: val })
@@ -85,7 +84,7 @@ async function login(isAuto = false){
 
     if(res.ok){
       PASSWORD = val;
-      // ✅ 登入成功，儲存密碼到 localStorage
+      // 登入成功，儲存密碼到 localStorage
       localStorage.setItem("admin_pwd", PASSWORD);
 
       document.getElementById("login").classList.add("hidden");
@@ -104,7 +103,7 @@ async function login(isAuto = false){
   }
 }
 
-// ✅ 登出功能
+// 登出功能
 function logout() {
   if(!confirm("確定要登出嗎？")) return;
   localStorage.removeItem("admin_pwd"); // 清除密碼
@@ -310,7 +309,7 @@ async function deleteMenu(row){if(!confirm("確定刪除此商品?"))return; awa
         <button id="btn-menu" onclick="switchTab('menu')" class="nav-btn"><i class="fas fa-utensils mr-2"></i>商品管理</button>
       </div>
       
-      <!-- ✅ 登出按鈕 -->
+      <!-- 登出按鈕 -->
       <button onclick="logout()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-md flex items-center gap-2">
         <i class="fas fa-sign-out-alt"></i> 登出
       </button>
@@ -325,8 +324,12 @@ async function deleteMenu(row){if(!confirm("確定刪除此商品?"))return; awa
       <div class="flex justify-between items-center mb-6">
         <h2 class="font-bold text-2xl text-white border-l-4 border-blue-500 pl-3">訂單記錄</h2>
         <div class="flex gap-2">
-            <button onclick="loadOrders()" class="bg-slate-700 text-white px-4 py-2 rounded hover:bg-slate-600 transition"><i class="fas fa-sync-alt mr-1"></i> 刷新</button>
-            <button onclick="clearAllOrders()" class="bg-red-900/50 text-red-300 border border-red-800 px-4 py-2 rounded hover:bg-red-900 transition text-sm"><i class="fas fa-trash mr-1"></i> 清空所有資料</button>
+            <button onclick="loadOrders()" class="bg-slate-700 text-white px-4 py-2 rounded-lg hover:bg-slate-600 transition flex items-center gap-2">
+                <i class="fas fa-sync-alt"></i> 刷新
+            </button>
+            <button onclick="clearAllOrders()" class="bg-red-900/50 text-red-300 border border-red-800 px-4 py-2 rounded-lg hover:bg-red-900 transition flex items-center gap-2 text-sm">
+                <i class="fas fa-trash"></i> 清空所有資料
+            </button>
         </div>
       </div>
       
@@ -355,9 +358,17 @@ async function deleteMenu(row){if(!confirm("確定刪除此商品?"))return; awa
     <section id="menu" class="hidden h-full flex flex-col max-w-6xl mx-auto">
       <div class="flex justify-between items-center mb-6">
         <h2 class="font-bold text-2xl text-white border-l-4 border-green-500 pl-3">商品管理</h2>
-        <button onclick="addMenu()" class="bg-green-600 hover:bg-green-500 text-white px-5 py-2 rounded-lg shadow-lg shadow-green-600/20 transition flex items-center gap-2">
-            <i class="fas fa-plus"></i> 新增商品
-        </button>
+        
+        <!-- ✅ 新增：刷新按鈕與新增商品按鈕整合 -->
+        <div class="flex gap-2">
+            <button onclick="loadMenu()" class="bg-slate-700 text-white px-4 py-2 rounded-lg hover:bg-slate-600 transition flex items-center gap-2">
+                <i class="fas fa-sync-alt"></i> 刷新
+            </button>
+            <button onclick="addMenu()" class="bg-green-600 hover:bg-green-500 text-white px-5 py-2 rounded-lg shadow-lg shadow-green-600/20 transition flex items-center gap-2">
+                <i class="fas fa-plus"></i> 新增商品
+            </button>
+        </div>
+
       </div>
       
       <div class="bg-slate-800 rounded-xl shadow-xl overflow-hidden border border-slate-700">
