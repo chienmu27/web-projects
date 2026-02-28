@@ -24,12 +24,11 @@
     <div onclick="toggleCart()" class="flex items-center gap-2 cursor-pointer bg-red-700 hover:bg-red-800 px-3 py-1.5 rounded-full transition shadow border border-red-500 relative">
         <i class="fas fa-shopping-cart text-lg"></i>
         <span class="text-sm font-bold">購物車</span>
-        <span id="header-cart-count" class="absolute -top-2 -right-2 bg-yellow-400 text-red-800 text-xs font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-red-600">0</span>
+        <span id="header-cart-count" class="absolute -top-2 -right-2 bg-yellow-400 text-red-800 text-xs font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-red-600 hidden">0</span>
     </div>
   </div>
 </header>
 
-<!-- Marquee & User Info -->
 <div class="bg-orange-50 border-b border-orange-100 p-2 shadow-sm">
     <div class="container mx-auto flex flex-col gap-2">
         <div class="flex items-center bg-white/50 rounded px-2">
@@ -38,298 +37,108 @@
         </div>
         <div class="flex justify-between items-center">
             <span class="text-sm text-gray-500">訂購人：<span id="display-name" class="font-bold text-gray-800">未設定</span></span>
-            <button onclick="openNameModal()" class="text-xs bg-white border border-orange-200 text-orange-700 px-3 py-1 rounded-full shadow-sm hover:bg-orange-100 transition">
-                <i class="fas fa-cog"></i> 設定
-            </button>
+            <button onclick="openNameModal()" class="text-xs bg-white border border-orange-200 text-orange-700 px-3 py-1 rounded-full shadow-sm hover:bg-orange-100 transition"><i class="fas fa-cog"></i> 設定</button>
         </div>
     </div>
 </div>
 
-<!-- Category Nav -->
-<nav id="category-nav" class="sticky top-[60px] md:top-[64px] bg-white/95 backdrop-blur border-b overflow-x-auto whitespace-nowrap z-30 px-4 py-3 flex gap-2 no-scrollbar shadow-sm">
-    <!-- Categories injected here -->
-</nav>
+<nav id="category-nav" class="sticky top-[60px] md:top-[64px] bg-white/95 backdrop-blur border-b overflow-x-auto whitespace-nowrap z-30 px-4 py-3 flex gap-2 no-scrollbar shadow-sm"></nav>
 
-<!-- Main Menu -->
 <main class="container mx-auto p-4 min-h-[50vh]">
-    <div id="loading-spinner" class="text-center py-20 text-gray-400">
-        <i class="fas fa-circle-notch fa-spin text-4xl mb-3 text-red-400"></i>
-        <p>正在連線至 Google 試算表...</p>
-    </div>
+    <div id="loading-spinner" class="text-center py-20 text-gray-400"><i class="fas fa-circle-notch fa-spin text-4xl mb-3 text-red-400"></i><p>正在連線至 Google 試算表...</p></div>
     <div id="menu-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
 </main>
 
-<!-- Cart Sidebar -->
 <div id="cart-sidebar" class="fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 z-[60] flex flex-col h-full">
-  <div class="p-4 border-b flex justify-between items-center bg-gray-50">
-      <h3 class="font-bold text-lg"><i class="fas fa-shopping-bag text-red-500 mr-2"></i>購物車</h3>
-      <button onclick="toggleCart()" class="text-gray-400 text-2xl px-2">&times;</button>
-  </div>
+  <div class="p-4 border-b flex justify-between items-center bg-gray-50"><h3 class="font-bold text-lg"><i class="fas fa-shopping-bag text-red-500 mr-2"></i>購物車</h3><button onclick="toggleCart()" class="text-gray-400 text-2xl px-2">&times;</button></div>
   <div id="cart-items" class="flex-grow overflow-y-auto p-4 space-y-4 pb-20"></div>
-  <div class="p-4 border-t bg-gray-50 absolute bottom-0 w-full">
-      <div class="flex justify-between mb-4 items-end">
-          <span class="text-gray-600 text-sm">總計</span>
-          <span class="text-red-600 font-black text-2xl" id="total-price">$0</span>
-      </div>
-      <button id="btn-submit" onclick="submitOrder()" class="w-full bg-red-600 hover:bg-red-700 text-white py-3.5 rounded-xl font-bold shadow-lg transition">確認送出</button>
-  </div>
+  <div class="p-4 border-t bg-gray-50 absolute bottom-0 w-full"><div class="flex justify-between mb-4 items-end"><span class="text-gray-600 text-sm">總計</span><span class="text-red-600 font-black text-2xl" id="total-price">$0</span></div><button id="btn-submit" onclick="submitOrder()" class="w-full bg-red-600 hover:bg-red-700 text-white py-3.5 rounded-xl font-bold shadow-lg transition">確認送出</button></div>
 </div>
 <div id="overlay" onclick="toggleCart()" class="fixed inset-0 bg-black/40 hidden z-50"></div>
 
-<!-- User Settings Modal -->
 <div id="modal-name" class="fixed inset-0 z-[70] flex items-center justify-center hidden">
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeNameModal()"></div>
     <div class="bg-white w-11/12 md:max-w-md mx-auto rounded-2xl shadow-2xl z-50 p-6">
         <h3 class="text-xl font-bold text-center mb-4">設定訂購人</h3>
-        <div class="space-y-4">
-            <div><label class="block text-sm font-bold mb-1">姓名 <span class="text-red-500">*</span></label><input id="input-name" type="text" class="w-full border rounded-xl px-4 py-3 outline-none focus:border-red-500"></div>
-            <div><label class="block text-sm font-bold mb-1">Email (選填)</label><input id="input-email" type="email" class="w-full border rounded-xl px-4 py-3 outline-none focus:border-red-500"></div>
-        </div>
+        <div class="space-y-4"><div><label class="block text-sm font-bold mb-1">姓名 <span class="text-red-500">*</span></label><input id="input-name" type="text" class="w-full border rounded-xl px-4 py-3 outline-none focus:border-red-500"></div><div><label class="block text-sm font-bold mb-1">Email (選填)</label><input id="input-email" type="email" class="w-full border rounded-xl px-4 py-3 outline-none focus:border-red-500"></div></div>
         <button onclick="saveName()" class="w-full bg-red-600 text-white font-bold py-3.5 rounded-xl shadow-lg mt-6">儲存設定</button>
     </div>
 </div>
 
 <script>
-// ==========================================
-// ★★★ 設定區 (若要在電腦上測試請填寫) ★★★
-// ==========================================
-// 請將您的 "網頁應用程式網址" (以 /exec 結尾) 貼在下方引號中
-// 如果只在 GAS 上執行，這裡留空也沒關係
-const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzsAjzCCmaRvnWZ36JjdqwEhUtntgY-QTGizpyf5t38KWLz8GoHwW8kJHc7zuM6PJRvzA/exec"; 
+let menuData = [], cart = [], userName = localStorage.getItem("apan_user_name") || "", userEmail = localStorage.getItem("apan_user_email") || "";
 
-// ==============================
-//  全域變數
-// ==============================
-let menuData = [];
-let cart = [];
-let userName = localStorage.getItem("apan_user_name") || "";
-let userEmail = localStorage.getItem("apan_user_email") || "";
+window.onload = () => { if(userName) updateNameDisplay(); else openNameModal(); fetchMenu(); };
 
-// ==============================
-//  初始化
-// ==============================
-window.onload = () => {
-    if(userName) updateNameDisplay();
-    if(!userName) openNameModal();
-    fetchMenu();
-};
-
-// ==============================
-//  核心通訊函式 (混合模式：支援本機與GAS)
-// ==============================
 function callServer(payload) {
     return new Promise((resolve, reject) => {
-        
-        // 模式 A：在 Google Apps Script 環境中執行 (最快/最穩)
-        if (typeof google !== 'undefined' && google.script) {
-            google.script.run
-                .withSuccessHandler(response => {
-                    try {
-                        const result = (typeof response === 'string') ? JSON.parse(response) : response;
-                        resolve(result);
-                    } catch (e) {
-                        reject("資料格式錯誤");
-                    }
-                })
-                .withFailureHandler(error => {
-                    reject(error.message || error);
-                })
-                .processApi(payload);
-        } 
-        // 模式 B：在本機電腦執行 (需依賴 GAS_API_URL)
-        else {
-            if (!GAS_API_URL || GAS_API_URL.length < 10) {
-                reject("環境錯誤：<br>1. 請在 Google Apps Script 部署網址中執行<br>2. 或在程式碼最上方填入 GAS_API_URL 網址");
-                return;
-            }
-            
-            // 使用 fetch 發送請求 (這是給 doPost 處理的)
-            fetch(GAS_API_URL, {
-                method: "POST",
-                // 必須用 text/plain 避免 CORS 預檢請求失敗
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify(payload)
-            })
-            .then(res => res.json())
-            .then(json => {
-                resolve(json);
-            })
-            .catch(err => {
-                console.error(err);
-                reject("連線失敗，請檢查網址或網路狀態");
-            });
-        }
+        if (typeof google === 'undefined' || !google.script) return reject("https://script.google.com/macros/s/AKfycbzsAjzCCmaRvnWZ36JjdqwEhUtntgY-QTGizpyf5t38KWLz8GoHwW8kJHc7zuM6PJRvzA/exec");
+        google.script.run
+            .withSuccessHandler(res => { try { resolve(typeof res === 'string' ? JSON.parse(res) : res); } catch(e) { reject("資料錯誤"); } })
+            .withFailureHandler(err => reject(err.message || err))
+            .processApi(payload);
     });
 }
 
-// ==============================
-//  資料讀取邏輯
-// ==============================
 async function fetchMenu() {
-    const spinner = document.getElementById('loading-spinner');
-    
     try {
         const res = await callServer({ action: "getMenu" });
-        
         if (res.ok) {
             menuData = res.data;
             if(res.marquee) document.getElementById('marquee-text').innerText = res.marquee;
-            renderCategoryNav();
-            displayMenu(menuData);
-            spinner.style.display = 'none';
-        } else {
-            throw new Error(res.message || "讀取資料失敗");
-        }
-    } catch(e) { 
-        spinner.innerHTML = `
-            <div class="bg-red-50 border border-red-200 rounded-xl p-6 mx-4">
-                <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-3"></i>
-                <h3 class="text-lg font-bold text-red-700 mb-2">讀取失敗</h3>
-                <p class="text-sm text-gray-600 break-all mb-4">${e}</p>
-                <button onclick="location.reload()" class="bg-white border border-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg shadow-sm hover:bg-gray-50 transition">
-                    重新整理
-                </button>
-            </div>`;
-    }
+            renderCategoryNav(); displayMenu(menuData);
+            document.getElementById('loading-spinner').style.display = 'none';
+        } else throw new Error(res.message);
+    } catch(e) { alert("讀取失敗: "+e); }
 }
 
-// ==============================
-//  UI 渲染邏輯
-// ==============================
 function renderCategoryNav() {
     const cats = ['all', ...new Set(menuData.map(i => i.category))];
-    document.getElementById('category-nav').innerHTML = cats.map(c => 
-        `<button onclick="filterMenu('${c}')" class="category-btn ${c==='all'?'active':''} px-5 py-2 rounded-full border border-gray-200 bg-white text-sm font-bold transition shadow-sm whitespace-nowrap">${c==='all'?'全部':c}</button>`
-    ).join('');
+    document.getElementById('category-nav').innerHTML = cats.map(c => `<button onclick="filterMenu('${c}')" class="category-btn ${c==='all'?'active':''} px-5 py-2 rounded-full border border-gray-200 bg-white text-sm font-bold transition shadow-sm whitespace-nowrap">${c==='all'?'全部':c}</button>`).join('');
 }
-
-function filterMenu(c) {
-    document.querySelectorAll('.category-btn').forEach(b => b.classList.toggle('active', b.innerText === (c==='all'?'全部':c)));
-    displayMenu(c === 'all' ? menuData : menuData.filter(i => i.category === c));
-}
-
+function filterMenu(c) { document.querySelectorAll('.category-btn').forEach(b => b.classList.toggle('active', b.innerText === (c==='all'?'全部':c))); displayMenu(c === 'all' ? menuData : menuData.filter(i => i.category === c)); }
 function displayMenu(items) {
     const container = document.getElementById('menu-container');
-    if(!items || !items.length) { 
-        container.innerHTML = '<div class="col-span-full text-center py-10 text-gray-400 flex flex-col items-center"><i class="fas fa-box-open text-4xl mb-2 opacity-50"></i><p>目前沒有產品資料</p></div>'; 
-        return; 
-    }
-    
+    if(!items.length) { container.innerHTML = '<div class="col-span-full text-center py-10 text-gray-400">無產品資料</div>'; return; }
     container.innerHTML = items.map(i => {
-        const inCart = cart.find(c => c.row === i.row);
-        const qty = inCart ? inCart.qty : 0;
-        
-        const imgHtml = i.image 
-            ? `<img src="${i.image}" class="w-full h-48 object-cover group-hover:scale-105 transition duration-500" loading="lazy" onerror="this.src='https://placehold.co/400x300?text=No+Image'">` 
-            : `<div class="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-300"><i class="fas fa-image text-4xl"></i></div>`;
-        
-        const btnHtml = qty === 0 
-            ? `<button onclick="updateItemQty(${i.row}, 1)" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-4 py-2.5 rounded-xl w-full transition border border-red-100 flex items-center justify-center gap-2"><i class="fas fa-cart-plus"></i> 加入購物車</button>`
-            : `<div class="flex items-center justify-between bg-red-600 text-white rounded-xl w-full px-1 py-1 shadow-md">
-                 <button onclick="updateItemQty(${i.row}, -1)" class="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-lg transition active:scale-95 text-lg">&minus;</button>
-                 <span class="font-bold text-lg min-w-[1.5rem] text-center">${qty}</span>
-                 <button onclick="updateItemQty(${i.row}, 1)" class="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-lg transition active:scale-95 text-lg">&plus;</button>
-               </div>`;
-
-        return `
-        <div class="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col justify-between hover:shadow-xl transition duration-300 transform hover:-translate-y-1">
-            <div class="overflow-hidden relative">
-                ${imgHtml}
-                <div class="absolute top-2 left-2 bg-white/90 backdrop-blur px-3 py-1 rounded-lg text-xs font-bold text-gray-600 shadow-sm border border-gray-100">
-                    ${i.category}
-                </div>
-            </div>
-            <div class="p-4 flex-1 flex flex-col">
-                <h3 class="font-bold text-xl text-gray-800 mb-1 line-clamp-1">${i.name}</h3>
-                <div class="bg-yellow-50 text-yellow-800 text-sm p-2.5 rounded-lg mb-3 font-medium border border-yellow-100 flex items-start gap-2 min-h-[3rem]">
-                    <i class="fas fa-info-circle mt-0.5 shrink-0"></i> 
-                    <span class="line-clamp-2">${i.desc || "暫無商品描述"}</span>
-                </div>
-                <div class="mt-auto pt-3 border-t border-gray-50 flex justify-between items-center gap-2">
-                    <div class="flex flex-col"><span class="text-xs text-gray-400">單價</span><span class="text-red-600 font-black text-2xl">$${i.price}</span></div>
-                    <div class="w-36 md:w-40">${btnHtml}</div>
-                </div>
-            </div>
-        </div>`;
+        const inCart = cart.find(c => c.row === i.row), qty = inCart ? inCart.qty : 0;
+        const img = i.image ? `<img src="${i.image}" class="w-full h-48 object-cover" onerror="this.src='https://placehold.co/400x300?text=No+Image'">` : `<div class="w-full h-48 bg-gray-100 flex items-center justify-center"><i class="fas fa-image text-4xl text-gray-300"></i></div>`;
+        const btn = qty === 0 ? `<button onclick="updateItemQty(${i.row}, 1)" class="bg-red-50 text-red-600 font-bold px-4 py-2 rounded-xl w-full border border-red-100">加入購物車</button>` : `<div class="flex items-center justify-between bg-red-600 text-white rounded-xl w-full px-1 py-1"><button onclick="updateItemQty(${i.row},-1)" class="w-10 h-10 flex items-center justify-center text-lg">&minus;</button><span class="font-bold text-lg">${qty}</span><button onclick="updateItemQty(${i.row},1)" class="w-10 h-10 flex items-center justify-center text-lg">&plus;</button></div>`;
+        return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-xl transition"><div class="relative">${img}<span class="absolute top-2 left-2 bg-white/90 px-2 py-1 rounded text-xs font-bold shadow">${i.category}</span></div><div class="p-4 flex-1 flex flex-col"><h3 class="font-bold text-xl mb-1 truncate">${i.name}</h3><div class="bg-yellow-50 text-yellow-800 text-sm p-2 rounded mb-3 line-clamp-2 min-h-[3rem]">${i.desc}</div><div class="mt-auto pt-3 border-t flex justify-between items-center"><div class="flex flex-col"><span class="text-xs text-gray-400">單價</span><span class="text-red-600 font-black text-2xl">$${i.price}</span></div><div class="w-36">${btn}</div></div></div></div>`;
     }).join('');
 }
 
-// ==============================
-//  購物車邏輯
-// ==============================
 function updateItemQty(rowId, delta) {
     const idx = cart.findIndex(c => c.row === rowId);
-    if (idx !== -1) {
-        cart[idx].qty += delta;
-        if (cart[idx].qty <= 0) cart.splice(idx, 1);
-    } else if (delta > 0) {
-        const item = menuData.find(m => m.row === rowId);
-        if(item) cart.push({...item, qty: 1, note: ""});
-    }
+    if (idx !== -1) { cart[idx].qty += delta; if (cart[idx].qty <= 0) cart.splice(idx, 1); }
+    else if (delta > 0) { const item = menuData.find(m => m.row === rowId); if(item) cart.push({...item, qty: 1, note: ""}); }
     updateCartUI();
     const activeCat = document.querySelector('.category-btn.active') ? document.querySelector('.category-btn.active').innerText : '全部';
-    const currentItems = activeCat === '全部' ? menuData : menuData.filter(i => i.category === activeCat);
-    displayMenu(currentItems);
+    displayMenu(activeCat === '全部' ? menuData : menuData.filter(i => i.category === activeCat));
 }
 
 function updateCartUI() {
-    let total = 0, count = 0;
-    const container = document.getElementById('cart-items');
-    
-    if (cart.length === 0) {
-        container.innerHTML = `<div class="text-center text-gray-400 py-20 flex flex-col items-center justify-center h-full opacity-60"><i class="fas fa-shopping-basket text-6xl mb-4 text-gray-200"></i><p class="font-medium">購物車是空的</p></div>`;
-        document.getElementById('header-cart-count').classList.add('hidden');
-        document.getElementById('total-price').innerText = "$0";
-        return;
+    let total = 0, count = 0, html = "";
+    if (cart.length === 0) { html = `<div class="text-center text-gray-400 py-10">購物車是空的</div>`; document.getElementById('header-cart-count').classList.add('hidden'); }
+    else {
+        html = cart.map((c, i) => { total += c.price * c.qty; count += c.qty; return `<div class="bg-white p-3 rounded-xl border mb-3"><div class="flex justify-between mb-2"><div><div class="font-bold text-lg truncate">${c.name}</div><div class="text-sm text-gray-500">$${c.price}</div></div><div class="text-right font-bold text-red-600">$${c.price*c.qty}</div></div><div class="flex gap-3 items-center"><div class="flex bg-gray-100 rounded-lg h-9 border"><button onclick="updateItemQty(${c.row},-1)" class="w-8 h-full">&minus;</button><span class="font-bold w-8 text-center pt-1.5 text-sm">${c.qty}</span><button onclick="updateItemQty(${c.row},1)" class="w-8 h-full">&plus;</button></div><input type="text" value="${c.note||''}" onchange="cart[${i}].note=this.value" placeholder="備註" class="w-full bg-gray-50 border rounded-lg px-2 py-1.5 text-sm"></div></div>`; }).join('');
+        const badge = document.getElementById('header-cart-count'); badge.innerText = count; badge.classList.remove('hidden');
     }
-
-    const html = cart.map((c, index) => {
-        total += c.price * c.qty; count += c.qty;
-        return `
-        <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm mb-3 animate-fade-in">
-            <div class="flex justify-between items-start mb-2">
-                <div class="flex-1"><div class="font-bold text-gray-800 text-lg line-clamp-1">${c.name}</div><div class="text-sm text-gray-500">$${c.price} / 份</div></div>
-                <div class="text-right font-bold text-red-600 text-lg">$${c.price * c.qty}</div>
-            </div>
-            <div class="flex gap-3 items-center">
-                <div class="flex items-center bg-gray-100 rounded-lg h-9 border border-gray-200">
-                    <button onclick="updateItemQty(${c.row},-1)" class="w-8 h-full hover:bg-gray-200 transition rounded-l-lg">&minus;</button>
-                    <span class="font-bold w-8 text-center text-sm">${c.qty}</span>
-                    <button onclick="updateItemQty(${c.row},1)" class="w-8 h-full hover:bg-gray-200 transition rounded-r-lg">&plus;</button>
-                </div>
-                <div class="flex-1 relative">
-                    <i class="fas fa-pen absolute left-2.5 top-2.5 text-gray-400 text-xs"></i>
-                    <input type="text" value="${c.note || ''}" onchange="updateCartNote(${index}, this.value)" placeholder="備註" class="w-full bg-gray-50 border border-gray-200 rounded-lg pl-7 pr-3 py-1.5 text-sm outline-none focus:border-red-400 focus:bg-white transition">
-                </div>
-            </div>
-        </div>`;
-    }).join('');
-    
-    container.innerHTML = html;
-    const badge = document.getElementById('header-cart-count');
-    badge.innerText = count;
-    badge.classList.remove('hidden');
+    document.getElementById('cart-items').innerHTML = html;
     document.getElementById('total-price').innerText = `$${total}`;
 }
 
-function updateCartNote(idx, val) { if(cart[idx]) cart[idx].note = val; }
-function toggleCart() { const sidebar = document.getElementById('cart-sidebar'); const overlay = document.getElementById('overlay'); if (sidebar.classList.contains('translate-x-full')) { sidebar.classList.remove('translate-x-full'); overlay.classList.remove('hidden'); document.body.classList.add('overflow-hidden'); } else { sidebar.classList.add('translate-x-full'); overlay.classList.add('hidden'); document.body.classList.remove('overflow-hidden'); } }
+function toggleCart() { const s=document.getElementById('cart-sidebar'), o=document.getElementById('overlay'); s.classList.toggle('translate-x-full'); o.classList.toggle('hidden'); document.body.classList.toggle('overflow-hidden'); }
 function openNameModal() { document.getElementById('modal-name').classList.remove('hidden'); document.getElementById('input-name').value = userName; document.getElementById('input-email').value = userEmail; }
 function closeNameModal() { document.getElementById('modal-name').classList.add('hidden'); }
-function saveName() { const val = document.getElementById('input-name').value.trim(); if(val) { userName = val; userEmail = document.getElementById('input-email').value.trim(); localStorage.setItem("apan_user_name", val); localStorage.setItem("apan_user_email", userEmail); updateNameDisplay(); closeNameModal(); } else alert("請輸入姓名"); }
+function saveName() { const val = document.getElementById('input-name').value.trim(); if(val) { userName=val; userEmail=document.getElementById('input-email').value.trim(); localStorage.setItem("apan_user_name",val); localStorage.setItem("apan_user_email",userEmail); updateNameDisplay(); closeNameModal(); } else alert("請輸入姓名"); }
 function updateNameDisplay() { document.getElementById('display-name').innerText = userName; }
-
 async function submitOrder() {
-    if(!userName) { alert("請先設定您的稱呼"); toggleCart(); openNameModal(); return; }
+    if(!userName) { alert("請先設定稱呼"); toggleCart(); openNameModal(); return; }
     if(!cart.length) return alert("購物車是空的");
-    const btn = document.getElementById('btn-submit');
-    const originalText = btn.innerText;
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 訂單處理中...';
-    try {
-        const res = await callServer({ action: "submitOrder", name: userName, email: userEmail, items: cart });
-        if(res.ok) { alert("訂單已送出成功！"); cart = []; updateCartUI(); toggleCart(); } else throw new Error(res.message);
-    } catch(e) { alert("送出失敗: " + e); } 
-    finally { btn.disabled = false; btn.innerText = originalText; }
+    const btn = document.getElementById('btn-submit'); const txt = btn.innerText; btn.disabled = true; btn.innerText = "處理中...";
+    try { const res = await callServer({ action: "submitOrder", name: userName, email: userEmail, items: cart }); if(res.ok) { alert("訂單送出成功！"); cart=[]; updateCartUI(); toggleCart(); } else alert("錯誤: "+res.message); } catch(e) { alert("失敗: "+e); }
+    btn.disabled = false; btn.innerText = txt;
 }
 </script>
 </body>
