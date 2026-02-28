@@ -8,22 +8,20 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     body { font-family: 'Noto Sans TC', sans-serif; background: #f0f9ff; }
-    /* 產品卡片圖片樣式：加入 cursor-pointer 提示可點擊 */
     .product-img { width: 100%; height: 180px; object-fit: cover; background-color: #eee; cursor: pointer; transition: opacity 0.2s; }
     .product-img:hover { opacity: 0.9; }
-    
     .cart-drawer { transition: transform 0.3s ease-in-out; }
     .cart-open { transform: translateX(0); }
     .cart-closed { transform: translateX(100%); }
     .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    
-    /* 圖片浮動視窗動畫 */
+    .category-btn { white-space: nowrap; transition: all 0.2s; }
+    .category-btn.active { background-color: #2563eb; color: white; border-color: #2563eb; }
     .modal-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   </style>
 </head>
-<body class="text-gray-800">
+<body class="text-gray-800 flex flex-col min-h-screen">
 
   <!-- 導航列 -->
   <nav class="bg-blue-900 text-white p-4 sticky top-0 z-30 shadow-md">
@@ -36,12 +34,27 @@
     </div>
   </nav>
 
-  <!-- 商品列表區 -->
-  <div class="container mx-auto p-4 mb-20">
+  <!-- ✅ 公告區塊 (新增) -->
+  <div id="announcementBar" class="bg-yellow-100 text-yellow-800 p-2 text-center text-sm font-bold border-b border-yellow-200 hidden">
+    <i class="fas fa-bullhorn mr-2"></i>
+    <span id="announcementText">載入公告中...</span>
+  </div>
+
+  <!-- 主要內容區 -->
+  <div class="container mx-auto p-4 mb-20 flex-1">
+    
+    <!-- ✅ 分類按鈕區 (新增) -->
+    <div id="categoryContainer" class="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
+      <!-- 按鈕會由 JS 自動生成 -->
+    </div>
+
+    <!-- 載入動畫 -->
     <div id="loading" class="text-center py-10">
       <div class="spinner mx-auto mb-2"></div>
       <p>載入商品中...</p>
     </div>
+
+    <!-- 商品列表 -->
     <div id="productGrid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
   </div>
 
@@ -51,99 +64,143 @@
       <h2 class="text-lg font-bold">購物車</h2>
       <button onclick="toggleCart()" class="text-white hover:text-gray-300"><i class="fas fa-times text-xl"></i></button>
     </div>
-    
     <div class="flex-1 overflow-y-auto p-4" id="cartItems">
       <p class="text-gray-500 text-center mt-10">購物車是空的</p>
     </div>
-
-    <!-- 結帳區 -->
     <div class="p-4 bg-gray-50 border-t">
       <div class="mb-4 space-y-3">
-        <div>
-          <label class="block text-sm font-bold mb-1">購買人姓名 <span class="text-red-500">*</span></label>
-          <input type="text" id="buyerName" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="請輸入姓名">
-        </div>
-        <div>
-          <label class="block text-sm font-bold mb-1">電子信箱 <span class="text-red-500">*</span> (將發送訂單通知)</label>
-          <input type="email" id="buyerEmail" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="請輸入 Email">
-        </div>
+        <div><label class="block text-sm font-bold mb-1">購買人姓名 <span class="text-red-500">*</span></label><input type="text" id="buyerName" class="w-full border rounded p-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="請輸入姓名"></div>
+        <div><label class="block text-sm font-bold mb-1">電子信箱 <span class="text-red-500">*</span></label><input type="email" id="buyerEmail" class="w-full border rounded p-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="請輸入 Email"></div>
       </div>
-      <div class="flex justify-between font-bold text-xl mb-4">
-        <span>總金額:</span>
-        <span id="cartTotal">$0</span>
-      </div>
+      <div class="flex justify-between font-bold text-xl mb-4"><span>總金額:</span><span id="cartTotal">$0</span></div>
       <button onclick="submitOrder()" id="btnSubmit" class="w-full bg-blue-600 text-white py-3 rounded font-bold hover:bg-blue-700 transition">確認送出訂單</button>
     </div>
   </div>
 
-  <!-- 購物車遮罩 -->
+  <!-- 遮罩 -->
   <div id="overlay" onclick="toggleCart()" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden"></div>
 
-  <!-- ✅ 新增：圖片放大浮動視窗 (Lightbox) -->
+  <!-- 圖片放大視窗 -->
   <div id="imgModal" onclick="closeLargeImg()" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex justify-center items-center modal-fadeIn">
     <div class="relative max-w-4xl max-h-screen p-4">
-      <!-- 關閉按鈕 -->
-      <button onclick="closeLargeImg()" class="absolute -top-10 right-0 text-white text-3xl hover:text-gray-300">
-        <i class="fas fa-times"></i>
-      </button>
-      <!-- 大圖顯示 -->
+      <button onclick="closeLargeImg()" class="absolute -top-10 right-0 text-white text-3xl hover:text-gray-300"><i class="fas fa-times"></i></button>
       <img id="modalImg" src="" class="max-w-full max-h-[85vh] object-contain rounded shadow-lg border-2 border-gray-700">
-      <p class="text-white text-center mt-2 text-sm text-gray-400">點擊任意處關閉</p>
     </div>
   </div>
 
   <script>
-    // ⚠️ 請務必更換為您的 Web App URL
+    // ⚠️ 請填入您的 Web App URL
     const API_URL = "https://script.google.com/macros/s/AKfycbz3h5b7xqz3TlmThbWPl1y2upIA3vr3rbcJgoi2l4IOIAqF-0ODaRo3981vwWNWpqNX4g/exec";
     
-    let products = [];
+    let allProducts = []; // 儲存所有商品
     let cart = [];
+    let currentCategory = "全部";
 
-    window.onload = loadMenu;
+    window.onload = init;
 
+    async function init() {
+      await Promise.all([loadConfig(), loadMenu()]);
+    }
+
+    // ✅ 載入公告
+    async function loadConfig() {
+      try {
+        const res = await fetch(API_URL + "?action=getConfig");
+        const json = await res.json();
+        if (json.ok && json.notice && json.notice.trim() !== "") {
+          document.getElementById("announcementText").innerText = json.notice;
+          document.getElementById("announcementBar").classList.remove("hidden");
+        }
+      } catch (e) {
+        console.error("公告載入失敗", e);
+      }
+    }
+
+    // ✅ 載入菜單與生成分類按鈕
     async function loadMenu() {
       try {
         const res = await fetch(API_URL + "?action=getMenu");
         const json = await res.json();
         if (json.ok) {
-          products = json.data;
-          renderProducts();
+          allProducts = json.data;
+          renderCategories();
+          renderProducts(allProducts); // 預設顯示全部
         } else {
           alert("讀取失敗: " + json.message);
         }
       } catch (e) {
         console.error(e);
-        alert("連線錯誤，請檢查網路");
+        alert("連線錯誤");
       } finally {
         document.getElementById("loading").classList.add("hidden");
       }
     }
 
-    function renderProducts() {
+    // ✅ 生成分類按鈕邏輯
+    function renderCategories() {
+      const container = document.getElementById("categoryContainer");
+      
+      // 提取不重複的分類
+      const categories = ["全部", ...new Set(allProducts.map(p => p.category))];
+      
+      container.innerHTML = categories.map(cat => `
+        <button onclick="filterCategory('${cat}')" 
+          class="category-btn px-4 py-2 rounded-full border border-gray-300 bg-white hover:bg-gray-100 text-sm font-bold ${cat === '全部' ? 'active' : ''}"
+          data-cat="${cat}">
+          ${cat}
+        </button>
+      `).join("");
+    }
+
+    // ✅ 篩選邏輯
+    function filterCategory(cat) {
+      currentCategory = cat;
+      
+      // 更新按鈕樣式
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        if(btn.dataset.cat === cat) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+
+      // 篩選資料
+      if (cat === "全部") {
+        renderProducts(allProducts);
+      } else {
+        const filtered = allProducts.filter(p => p.category === cat);
+        renderProducts(filtered);
+      }
+    }
+
+    // 渲染商品卡片 (支援篩選後的陣列)
+    function renderProducts(productsToRender) {
       const grid = document.getElementById("productGrid");
-      grid.innerHTML = products.map(p => {
-        // 判斷圖片
+      
+      if (productsToRender.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center text-gray-500 py-10">此分類沒有商品</div>`;
+        return;
+      }
+
+      grid.innerHTML = productsToRender.map(p => {
         const hasImg = p.image && p.image.trim() !== "";
-        // ✅ 圖片點擊事件：如果有圖，綁定 onclick="showLargeImg(...)"
         const imgTag = hasImg 
-          ? `<img src="${p.image}" onclick="showLargeImg('${p.image}')" class="product-img" title="點擊查看大圖">` 
+          ? `<img src="${p.image}" onclick="showLargeImg('${p.image}')" class="product-img" title="點擊放大">` 
           : `<div class="product-img flex items-center justify-center text-gray-400 bg-gray-200"><i class="fas fa-image text-3xl"></i></div>`;
         
         return `
         <div class="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden flex flex-col">
           <div class="relative group">
             ${imgTag}
-            ${hasImg ? '<div class="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none"><i class="fas fa-search-plus"></i> 放大</div>' : ''}
+            ${hasImg ? '<div class="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition">放大</div>' : ''}
           </div>
           <div class="p-4 flex-1 flex flex-col">
             <div>
               <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${p.category}</span>
               <h3 class="font-bold text-lg mt-2">${p.name}</h3>
-              <p class="text-gray-500 text-sm mt-1 mb-2 line-clamp-2">${p.desc}</p>
+              <p class="text-gray-500 text-sm mt-1 h-10 overflow-hidden text-ellipsis">${p.desc}</p>
             </div>
-            <div class="mt-auto flex justify-between items-center">
+            <div class="mt-4 flex justify-between items-center">
               <span class="text-xl font-bold text-red-600">$${p.price}</span>
-              <button onclick="addToCart(${p.row})" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition shadow">
+              <button onclick="addToCart(${p.row})" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 shadow">
                 <i class="fas fa-plus"></i> 加入
               </button>
             </div>
@@ -153,33 +210,22 @@
       }).join("");
     }
 
-    // ✅ 新增：顯示大圖
     function showLargeImg(src) {
-      const modal = document.getElementById("imgModal");
-      const img = document.getElementById("modalImg");
-      img.src = src;
-      modal.classList.remove("hidden");
-      // 禁止背景捲動
+      document.getElementById("modalImg").src = src;
+      document.getElementById("imgModal").classList.remove("hidden");
       document.body.style.overflow = "hidden";
     }
-
-    // ✅ 新增：關閉大圖
     function closeLargeImg() {
       document.getElementById("imgModal").classList.add("hidden");
-      // 恢復背景捲動
       document.body.style.overflow = "auto";
     }
 
-    // --- 購物車邏輯 (與之前相同) ---
-
+    // --- 購物車功能 (保持不變) ---
     function addToCart(row) {
-      const item = products.find(p => p.row === row);
+      const item = allProducts.find(p => p.row === row);
       const existing = cart.find(c => c.row === row);
-      if (existing) {
-        existing.qty++;
-      } else {
-        cart.push({ ...item, qty: 1, remark: "" });
-      }
+      if (existing) existing.qty++;
+      else cart.push({ ...item, qty: 1, remark: "" });
       updateCartUI();
       toggleCart(true);
     }
@@ -188,13 +234,11 @@
       const container = document.getElementById("cartItems");
       const countBadge = document.getElementById("cartCount");
       const totalEl = document.getElementById("cartTotal");
-
       const totalQty = cart.reduce((acc, c) => acc + c.qty, 0);
+      
       countBadge.innerText = totalQty;
       countBadge.classList.toggle("hidden", totalQty === 0);
-
-      const total = cart.reduce((acc, c) => acc + (c.price * c.qty), 0);
-      totalEl.innerText = "$" + total;
+      totalEl.innerText = "$" + cart.reduce((acc, c) => acc + (c.price * c.qty), 0);
 
       if (cart.length === 0) {
         container.innerHTML = '<p class="text-gray-500 text-center mt-10">購物車是空的</p>';
@@ -209,16 +253,13 @@
               <div class="text-gray-500 text-sm">$${item.price}</div>
             </div>
             <div class="flex items-center space-x-2">
-              <button onclick="changeQty(${index}, -1)" class="w-6 h-6 bg-gray-200 rounded text-center leading-6 hover:bg-gray-300 text-gray-700 font-bold">-</button>
+              <button onclick="changeQty(${index}, -1)" class="w-6 h-6 bg-gray-200 rounded text-center leading-6 hover:bg-gray-300 font-bold">-</button>
               <span class="w-4 text-center">${item.qty}</span>
-              <button onclick="changeQty(${index}, 1)" class="w-6 h-6 bg-gray-200 rounded text-center leading-6 hover:bg-gray-300 text-gray-700 font-bold">+</button>
+              <button onclick="changeQty(${index}, 1)" class="w-6 h-6 bg-gray-200 rounded text-center leading-6 hover:bg-gray-300 font-bold">+</button>
             </div>
           </div>
           <div class="mt-2">
-            <input type="text" placeholder="備註 (例如: 尺寸、顏色)" 
-              class="w-full text-sm border bg-gray-50 rounded px-2 py-1 outline-none focus:border-blue-400 transition"
-              value="${item.remark}" 
-              oninput="updateRemark(${index}, this.value)">
+            <input type="text" placeholder="備註 (如尺寸)" class="w-full text-sm border bg-gray-50 rounded px-2 py-1 outline-none focus:border-blue-400" value="${item.remark}" oninput="updateRemark(${index}, this.value)">
           </div>
         </div>
       `).join("");
@@ -226,82 +267,47 @@
 
     function changeQty(index, delta) {
       cart[index].qty += delta;
-      if (cart[index].qty <= 0) {
-        cart.splice(index, 1);
-      }
+      if (cart[index].qty <= 0) cart.splice(index, 1);
       updateCartUI();
     }
-
-    function updateRemark(index, val) {
-      cart[index].remark = val;
-    }
+    function updateRemark(index, val) { cart[index].remark = val; }
 
     function toggleCart(forceOpen = null) {
       const sidebar = document.getElementById("cartSidebar");
       const overlay = document.getElementById("overlay");
       const isOpen = forceOpen !== null ? forceOpen : sidebar.classList.contains("cart-closed");
-      
       if (isOpen) {
-        sidebar.classList.remove("cart-closed");
-        sidebar.classList.add("cart-open");
-        overlay.classList.remove("hidden");
+        sidebar.classList.remove("cart-closed"); sidebar.classList.add("cart-open"); overlay.classList.remove("hidden");
       } else {
-        sidebar.classList.remove("cart-open");
-        sidebar.classList.add("cart-closed");
-        overlay.classList.add("hidden");
+        sidebar.classList.remove("cart-open"); sidebar.classList.add("cart-closed"); overlay.classList.add("hidden");
       }
     }
 
     async function submitOrder() {
       if (cart.length === 0) return alert("購物車是空的");
-      
       const name = document.getElementById("buyerName").value.trim();
       const email = document.getElementById("buyerEmail").value.trim();
-      
-      if (!name) return alert("請填寫購買人姓名");
-      if (!email) return alert("請填寫電子信箱");
-      // 簡單的 Email 格式檢查
-      if (!email.includes("@") || !email.includes(".")) return alert("Email 格式不正確");
+      if (!name || !email) return alert("請填寫姓名與 Email");
+      if (!email.includes("@")) return alert("Email 格式錯誤");
 
       const btn = document.getElementById("btnSubmit");
-      btn.disabled = true;
-      btn.innerText = "處理中...";
-
-      const payload = {
-        action: "submitOrder",
-        buyerName: name,
-        email: email,
-        items: cart.map(c => ({
-          name: c.name,
-          price: c.price,
-          qty: c.qty,
-          remark: c.remark
-        }))
-      };
+      btn.disabled = true; btn.innerText = "處理中...";
 
       try {
         const res = await fetch(API_URL, {
           method: "POST",
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ action: "submitOrder", buyerName: name, email: email, items: cart.map(c => ({ name: c.name, price: c.price, qty: c.qty, remark: c.remark })) })
         });
         const json = await res.json();
-        
         if (json.ok) {
-          alert("✅ 訂單已送出！\n確認信已發送至您的信箱。");
-          cart = [];
-          updateCartUI();
-          toggleCart(false);
-          document.getElementById("buyerName").value = "";
-          document.getElementById("buyerEmail").value = "";
+          alert("✅ 訂單已送出！\n確認信已寄至您的信箱。");
+          cart = []; updateCartUI(); toggleCart(false);
+          document.getElementById("buyerName").value = ""; document.getElementById("buyerEmail").value = "";
         } else {
           alert("失敗: " + json.message);
         }
-      } catch (e) {
-        alert("傳送失敗，請檢查網路");
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "確認送出訂單";
-      }
+      } catch (e) { alert("連線失敗"); } 
+      finally { btn.disabled = false; btn.innerText = "確認送出訂單"; }
     }
   </script>
 </body>
