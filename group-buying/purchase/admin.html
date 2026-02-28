@@ -7,7 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <style>
-/* 還原為參考版本的外觀樣式 */
+/* 原始深藍色風格 */
 body{font-family:'Noto Sans TC',sans-serif;background:#041c32;color:#e8f6ff;min-height:100vh;}
 .nav-btn{padding:6px 14px;border-radius:8px;color:#a9d6e5;transition:all .3s}
 .nav-btn.active{background:linear-gradient(135deg,#0077b6,#00b4d8);color:white;font-weight:bold}
@@ -24,14 +24,14 @@ input:focus, textarea:focus{border-color:#00b4d8;outline:none;}
 <body>
 
 <script>
-// 指定的 Web App URL
+// 請填入您的 Web App URL
 const GAS_API_URL="https://script.google.com/macros/s/AKfycbyxdgcEXrHEI9v1D-pkj0qSF_iiDQwK0hlzE9YHxZuGbYpSl8SRAubVk3u_MAZcUXRO/exec";
 
 let PASSWORD="";
 let editRow=null;
 let currentImageBase64 = ""; 
 
-// ✅ 功能 1: 網頁載入時檢查是否已登入
+// 網頁載入時檢查是否已登入
 window.onload = function() {
   const savedPwd = localStorage.getItem("admin_pwd");
   if(savedPwd) {
@@ -40,9 +40,13 @@ window.onload = function() {
   }
 };
 
-// API 呼叫
+// API 呼叫 (✅ 已修正：避免覆蓋登入時輸入的密碼)
 async function api(payload){
-  payload.password = PASSWORD;
+  // 只有當 payload 內沒有指定 password 時，才使用全域變數 PASSWORD
+  if(!payload.password) {
+    payload.password = PASSWORD;
+  }
+  
   const res = await fetch(GAS_API_URL,{
     method:"POST",
     headers:{"Content-Type":"text/plain"},
@@ -58,17 +62,16 @@ async function login(isAuto = false){
   
   if(!val){ document.getElementById("msg").innerText="請輸入密碼"; return; }
   
-  // 視覺回饋
   const btn = document.getElementById("loginBtn");
   if(btn) { btn.innerText = "驗證中..."; btn.disabled = true; }
 
   try{
-    // 發送驗證請求 (這裡用 adminLogin 動作來測試密碼)
+    // 發送驗證請求 (這裡會將 password: val 傳入 api，不會被覆蓋)
     const res = await api({action:"adminLogin", password: val});
 
     if(res.ok){
+      // 登入成功，更新全域密碼
       PASSWORD = val;
-      // ✅ 功能: 儲存密碼
       localStorage.setItem("admin_pwd", PASSWORD);
 
       document.getElementById("login").classList.add("hidden");
@@ -86,7 +89,7 @@ async function login(isAuto = false){
   }
 }
 
-// ✅ 功能 2: 登出
+// 登出
 function logout() {
   if(!confirm("確定要登出嗎？")) return;
   localStorage.removeItem("admin_pwd");
@@ -198,7 +201,7 @@ function addMenu(){showEditModal(null,"","","",0,"");}
 
 function showEditModal(row,c,n,d,p,img){
   editRow=row;
-  currentImageBase64 = ""; // 重置
+  currentImageBase64 = ""; 
   
   document.getElementById("modalTitle").innerText = row ? "編輯商品" : "新增商品";
   document.getElementById("modalCategory").value=c;
@@ -262,7 +265,7 @@ async function deleteMenu(row){if(!confirm("確定刪除?"))return; await api({a
   </div>
 </div>
 
-<!-- 管理頁 (包含新功能按鈕) -->
+<!-- 管理頁 -->
 <div id="admin" class="hidden flex flex-col h-screen">
   
   <!-- 頂部導航 -->
@@ -273,7 +276,7 @@ async function deleteMenu(row){if(!confirm("確定刪除?"))return; await api({a
         <button id="btn-history" onclick="switchTab('history')" class="nav-btn">訂單總表</button>
         <button id="btn-menu" onclick="switchTab('menu')" class="nav-btn">菜單管理</button>
       </div>
-      <!-- ✅ 新增：登出按鈕 (紅色) -->
+      <!-- 登出按鈕 -->
       <button onclick="logout()" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-sm font-bold transition flex items-center gap-1">
         <i class="fas fa-sign-out-alt"></i> 登出
       </button>
@@ -287,7 +290,7 @@ async function deleteMenu(row){if(!confirm("確定刪除?"))return; await api({a
       <div class="flex justify-between items-center mb-4">
         <h2 class="font-bold text-lg">訂單記錄</h2>
         <div class="flex gap-2">
-            <!-- ✅ 新增：刷新按鈕 -->
+            <!-- 刷新按鈕 -->
             <button onclick="loadOrders()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm transition">
                 <i class="fas fa-sync-alt mr-1"></i> 刷新
             </button>
@@ -320,7 +323,7 @@ async function deleteMenu(row){if(!confirm("確定刪除?"))return; await api({a
       <div class="flex justify-between items-center mb-4">
         <h2 class="font-bold text-lg">現有商品</h2>
         <div class="flex gap-2">
-            <!-- ✅ 新增：刷新按鈕 -->
+            <!-- 刷新按鈕 -->
             <button onclick="loadMenu()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm transition">
                 <i class="fas fa-sync-alt mr-1"></i> 刷新
             </button>
@@ -341,7 +344,7 @@ async function deleteMenu(row){if(!confirm("確定刪除?"))return; await api({a
   </div>
 </div>
 
-<!-- 編輯/新增視窗 (還原樣式) -->
+<!-- 編輯/新增視窗 -->
 <div id="editModal" class="modal-bg hidden">
   <div class="modal">
     <h3 id="modalTitle" class="text-lg font-bold mb-4 border-b border-gray-700 pb-2">編輯商品</h3>
