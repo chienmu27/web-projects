@@ -5,62 +5,113 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>羽球隊團購｜後台管理</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <style>
-body{font-family:'Noto Sans TC',sans-serif;background:#041c32;color:#e8f6ff;min-height:100vh;}
-.nav-btn{padding:6px 14px;border-radius:8px;color:#a9d6e5;transition:all .3s}
-.nav-btn.active{background:linear-gradient(135deg,#0077b6,#00b4d8);color:white;font-weight:bold}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:50}
-.modal{background:#112a46;padding:20px;border-radius:16px;min-width:350px;max-width:90%;color:#e8f6ff;border:1px solid rgba(255,255,255,0.1);}
-table th{background:rgba(0,119,182,0.3);color:#90e0ef;text-transform:uppercase;font-size:.85rem;padding:10px;}
-table td{border-bottom:1px solid rgba(255,255,255,.05);padding:10px;}
-table tr:hover{background-color:rgba(255,255,255,.05);}
-input, textarea{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.2);color:white;border-radius:8px;padding:8px;}
-input:focus, textarea:focus{border-color:#00b4d8;outline:none;}
-.thumb{width:40px;height:40px;object-fit:cover;border-radius:4px;}
+  body{font-family:'Noto Sans TC',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;}
+  
+  /* 按鈕樣式 */
+  .nav-btn{padding:8px 16px;border-radius:8px;color:#94a3b8;transition:all .3s; font-weight: 500;}
+  .nav-btn:hover{background:rgba(255,255,255,0.1);color:white;}
+  .nav-btn.active{background:#0ea5e9;color:white;box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);}
+  
+  /* 表格樣式 */
+  table th{background:#1e293b;color:#38bdf8;text-transform:uppercase;font-size:.85rem;padding:12px;text-align:left;}
+  table td{border-bottom:1px solid #334155;padding:12px;color:#cbd5e1;}
+  table tr:hover{background-color:#1e293b;}
+  
+  /* 輸入框樣式 */
+  input, textarea{background:#1e293b;border:1px solid #475569;color:white;border-radius:8px;padding:8px 12px;width:100%;transition: border .3s;}
+  input:focus, textarea:focus{border-color:#38bdf8;outline:none;ring:2px;ring-color:#38bdf8;}
+  
+  /* 彈窗 */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:50;backdrop-filter: blur(4px);}
+  .modal{background:#1e293b;padding:24px;border-radius:16px;min-width:400px;max-width:90%;border:1px solid #475569;box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);}
+  
+  .thumb{width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #475569;}
 </style>
 </head>
 <body>
 
 <script>
-// 請填入與 index.html 相同的 Web App URL
+// ⚠️ 請填入您的 Web App URL
 const GAS_API_URL="https://script.google.com/macros/s/AKfycbyxdgcEXrHEI9v1D-pkj0qSF_iiDQwK0hlzE9YHxZuGbYpSl8SRAubVk3u_MAZcUXRO/exec";
 
 let PASSWORD="";
 let editRow=null;
-let refreshTimer=null;
-let currentImageBase64 = ""; // 暫存圖片資料
+let currentImageBase64 = ""; 
+
+// 網頁載入時，檢查是否有儲存的密碼
+window.onload = function() {
+  const savedPwd = localStorage.getItem("admin_pwd");
+  if(savedPwd) {
+    document.getElementById("pwd").value = savedPwd;
+    login(true); // true 代表自動登入模式
+  }
+};
 
 // API 呼叫
 async function api(payload){
-  payload.password=PASSWORD;
-  const res=await fetch(GAS_API_URL,{
+  payload.password = PASSWORD;
+  const res = await fetch(GAS_API_URL,{
     method:"POST",
-    headers:{"Content-Type":"text/plain"},
     body:JSON.stringify(payload)
   });
   return await res.json();
 }
 
 // 登入
-async function login(){
-  PASSWORD = document.getElementById("pwd").value.trim();
-  if(!PASSWORD){document.getElementById("msg").innerText="請輸入密碼";return;}
+async function login(isAuto = false){
+  const pwdInput = document.getElementById("pwd");
+  const val = pwdInput.value.trim();
+  
+  if(!val){
+    document.getElementById("msg").innerText="請輸入密碼";
+    return;
+  }
+  
+  // 顯示載入中
+  const btn = document.getElementById("loginBtn");
+  const originalText = btn.innerText;
+  btn.innerText = "驗證中...";
+  btn.disabled = true;
+
   try{
-    const res=await api({action:"adminLogin"});
+    // 發送驗證請求
+    // 注意：這裡直接發送 adminLogin 請求來驗證密碼是否正確
+    const res = await fetch(GAS_API_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "adminLogin", password: val })
+    }).then(r => r.json());
+
     if(res.ok){
+      PASSWORD = val;
+      // ✅ 登入成功，儲存密碼到 localStorage
+      localStorage.setItem("admin_pwd", PASSWORD);
+
       document.getElementById("login").classList.add("hidden");
       document.getElementById("admin").classList.remove("hidden");
       switchTab('history');
     }else{
-      document.getElementById("msg").innerText="密碼錯誤";
+      document.getElementById("msg").innerText = "密碼錯誤";
+      if(isAuto) localStorage.removeItem("admin_pwd"); // 如果自動登入失敗，清除舊密碼
     }
   }catch(e){
-    document.getElementById("msg").innerText="連線錯誤";
+    document.getElementById("msg").innerText="連線錯誤，請檢查網路";
     console.error(e);
+  }finally{
+    btn.innerText = originalText;
+    btn.disabled = false;
   }
 }
 
-// 分頁
+// ✅ 登出功能
+function logout() {
+  if(!confirm("確定要登出嗎？")) return;
+  localStorage.removeItem("admin_pwd"); // 清除密碼
+  location.reload(); // 重新整理頁面
+}
+
+// 分頁切換
 function switchTab(tab){
   ["history","menu"].forEach(t=>{
     document.getElementById(t).classList.add("hidden");
@@ -73,24 +124,43 @@ function switchTab(tab){
   if(tab==="menu") loadMenu();
 }
 
-// 訂單總表
+// ================= 訂單管理 =================
+
 async function loadOrders(){
-  const res=await api({action:"getOrderHistory"});
-  if(!res.ok)return;
-  document.getElementById("orderBody").innerHTML=res.data.map(r=>`
-<tr>
-<td class="text-xs text-gray-400">${new Date(r.time).toLocaleString()}</td>
-<td>${r.buyer}<br><span class="text-xs text-gray-400">${r.email}</span></td>
-<td>${r.name}</td>
-<td>${r.qty}</td>
-<td>${r.remark || "-"}</td>
-<td>$${r.subtotal}</td>
-<td><span class="px-2 py-1 rounded text-xs ${r.status==='completed'?'bg-green-800 text-green-200':'bg-yellow-800 text-yellow-200'}">${r.status}</span></td>
-<td>
-  ${r.status!=='completed' ? `<button class="bg-blue-600 text-white px-2 py-1 rounded text-xs mr-1" onclick="completeOrder(${r.row})">結案</button>` : ''}
-  <button class="bg-red-500 text-white px-2 py-1 rounded text-xs" onclick="deleteOrder(${r.row})">刪除</button>
-</td>
-</tr>`).join("");
+  const tbody = document.getElementById("orderBody");
+  tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-4">載入中...</td></tr>';
+  
+  const res = await api({action:"getOrderHistory"});
+  if(!res.ok) return;
+
+  if(res.data.length === 0){
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-500 py-4">目前沒有訂單</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = res.data.map(r=>`
+    <tr class="transition duration-200">
+      <td class="text-gray-400 text-sm">${new Date(r.time).toLocaleString()}</td>
+      <td>
+        <div class="font-bold text-white">${r.buyer}</div>
+        <div class="text-xs text-gray-500">${r.email}</div>
+      </td>
+      <td class="font-medium text-blue-300">${r.name}</td>
+      <td class="text-center">${r.qty}</td>
+      <td class="text-gray-400 text-sm">${r.remark || "-"}</td>
+      <td class="font-mono text-yellow-400">$${r.subtotal}</td>
+      <td>
+        <span class="px-2 py-1 rounded text-xs font-bold ${r.status==='completed'?'bg-green-900 text-green-300 border border-green-700':'bg-yellow-900 text-yellow-300 border border-yellow-700'}">
+          ${r.status === 'completed' ? '已結案' : '處理中'}
+        </span>
+      </td>
+      <td>
+        <div class="flex gap-2">
+          ${r.status!=='completed' ? `<button class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs transition" onclick="completeOrder(${r.row})">結案</button>` : ''}
+          <button class="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-xs transition" onclick="deleteOrder(${r.row})"><i class="fas fa-trash"></i></button>
+        </div>
+      </td>
+    </tr>`).join("");
 }
 
 async function completeOrder(row){
@@ -105,35 +175,41 @@ async function deleteOrder(row){
 }
 
 async function clearAllOrders(){
-  if(!confirm("⚠️ 警告：這將刪除所有歷史訂單資料！確定嗎？")) return;
+  const pwd = prompt("⚠️ 危險操作！\n這將刪除「所有」歷史訂單資料且無法復原。\n請輸入密碼確認：");
+  if(pwd !== PASSWORD) return alert("密碼錯誤，取消操作");
+  
   await api({action:"deleteAllOrders"});
   loadOrders();
 }
 
-// 菜單管理
+// ================= 菜單管理 =================
+
 async function loadMenu(){
+  const tbody = document.getElementById("menuBody");
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400 py-4">載入中...</td></tr>';
+  
   const res=await api({action:"getMenu"});
   if(!res.ok) return;
-  document.getElementById("menuBody").innerHTML=res.data.map(m=>`
-<tr>
-<td>${m.image ? `<img src="${m.image}" class="thumb">` : '<div class="thumb bg-gray-700"></div>'}</td>
-<td>${m.category}</td>
-<td>${m.name}</td>
-<td>${m.price}</td>
-<td>
-<button onclick="showEditModal(${m.row},'${m.category}','${m.name}','${m.desc}',${m.price},'${m.image}')" class="bg-yellow-600 hover:bg-yellow-500 text-white px-2 py-1 rounded text-sm">編輯</button>
-<button onclick="deleteMenu(${m.row})" class="bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded text-sm">刪除</button>
-</td>
-</tr>`).join("");
+  
+  tbody.innerHTML=res.data.map(m=>`
+    <tr>
+      <td>${m.image ? `<img src="${m.image}" class="thumb">` : '<div class="thumb bg-gray-700 flex items-center justify-center text-gray-500"><i class="fas fa-image"></i></div>'}</td>
+      <td><span class="bg-gray-700 text-xs px-2 py-1 rounded text-gray-300">${m.category}</span></td>
+      <td class="font-bold">${m.name}</td>
+      <td class="font-mono text-yellow-400">$${m.price}</td>
+      <td>
+        <button onclick="showEditModal(${m.row},'${m.category}','${m.name}','${m.desc}',${m.price},'${m.image}')" class="text-blue-400 hover:text-blue-300 mr-3"><i class="fas fa-edit"></i> 編輯</button>
+        <button onclick="deleteMenu(${m.row})" class="text-red-400 hover:text-red-300"><i class="fas fa-trash-alt"></i> 刪除</button>
+      </td>
+    </tr>`).join("");
 }
 
-// 圖片轉 Base64
 function handleFileSelect(event) {
   const file = event.target.files[0];
   if (file) {
     const reader = new FileReader();
     reader.onload = function(e) {
-      currentImageBase64 = e.target.result.split(',')[1]; // 去除前綴
+      currentImageBase64 = e.target.result.split(',')[1];
       document.getElementById("previewImg").src = e.target.result;
       document.getElementById("previewImg").classList.remove("hidden");
     };
@@ -145,13 +221,14 @@ function addMenu(){showEditModal(null,"","","",0,"");}
 
 function showEditModal(row,c,n,d,p,img){
   editRow=row;
-  currentImageBase64 = ""; // 重置新上傳圖片
+  currentImageBase64 = "";
   
+  document.getElementById("modalTitle").innerText = row ? "編輯商品" : "新增商品";
   document.getElementById("modalCategory").value=c;
   document.getElementById("modalName").value=n;
   document.getElementById("modalDesc").value=d;
   document.getElementById("modalPrice").value=p;
-  document.getElementById("modalFile").value=""; // 清空檔案輸入
+  document.getElementById("modalFile").value="";
   
   const preview = document.getElementById("previewImg");
   if(img){
@@ -167,6 +244,7 @@ function showEditModal(row,c,n,d,p,img){
 
 async function confirmEdit(){
   const btn = document.getElementById("btnConfirm");
+  const originalText = btn.innerText;
   btn.innerText = "上傳中...";
   btn.disabled = true;
 
@@ -175,7 +253,7 @@ async function confirmEdit(){
     name: document.getElementById("modalName").value,
     desc: document.getElementById("modalDesc").value,
     price: document.getElementById("modalPrice").value,
-    imageBase64: currentImageBase64 // 傳送新圖片(若有)
+    imageBase64: currentImageBase64
   };
 
   if(editRow) {
@@ -187,75 +265,110 @@ async function confirmEdit(){
 
   await api(payload);
   
-  btn.innerText = "確認";
+  btn.innerText = originalText;
   btn.disabled = false;
   cancelEdit();
   loadMenu();
 }
 
 function cancelEdit(){document.getElementById("editModal").classList.add("hidden");}
-async function deleteMenu(row){if(!confirm("確定刪除?"))return; await api({action:"deleteMenuItem",row}); loadMenu();}
+async function deleteMenu(row){if(!confirm("確定刪除此商品?"))return; await api({action:"deleteMenuItem",row}); loadMenu();}
+
 </script>
 
 <!-- 登入畫面 -->
-<div id="login" class="fixed inset-0 flex items-center justify-center bg-blue-900 z-50">
-  <div class="bg-gray-800 p-8 rounded-2xl w-80 shadow-2xl border border-gray-700">
-    <h2 class="text-xl font-bold text-center mb-4 text-white">團購後台登入</h2>
-    <input id="pwd" type="password" class="w-full border p-2 mb-4 rounded bg-gray-900 text-white" placeholder="請輸入密碼" onkeypress="if(event.key==='Enter'){login();}">
-    <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-500 text-white p-2 rounded transition">登入</button>
-    <div id="msg" class="text-red-400 text-center mt-2 text-sm"></div>
+<div id="login" class="fixed inset-0 flex items-center justify-center bg-slate-900 z-50">
+  <div class="bg-slate-800 p-8 rounded-2xl w-96 shadow-2xl border border-slate-700">
+    <div class="text-center mb-6">
+      <i class="fas fa-user-shield text-5xl text-blue-500 mb-4"></i>
+      <h2 class="text-2xl font-bold text-white">後台管理系統</h2>
+      <p class="text-gray-400 text-sm mt-1">請輸入管理員密碼</p>
+    </div>
+    
+    <input id="pwd" type="password" class="w-full mb-4 bg-slate-900 border-slate-600 focus:border-blue-500" placeholder="密碼" onkeypress="if(event.key==='Enter'){login();}">
+    
+    <button id="loginBtn" onclick="login()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition shadow-lg shadow-blue-500/30">
+      登入系統
+    </button>
+    
+    <div id="msg" class="text-red-400 text-center mt-4 text-sm h-5"></div>
   </div>
 </div>
 
-<!-- 管理頁 -->
-<div id="admin" class="hidden">
-  <header class="bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center shadow-lg">
-    <h1 class="text-lg font-bold text-white"><i class="fas fa-tools mr-2"></i>羽球團購管理系統</h1>
-    <div class="flex gap-2">
-      <button id="btn-history" onclick="switchTab('history')" class="nav-btn">訂單總表</button>
-      <button id="btn-menu" onclick="switchTab('menu')" class="nav-btn">菜單管理</button>
+<!-- 管理頁面 -->
+<div id="admin" class="hidden flex flex-col h-screen">
+  <!-- 頂部導航 -->
+  <header class="bg-slate-800 border-b border-slate-700 p-4 shadow-lg flex justify-between items-center z-10">
+    <div class="flex items-center gap-3">
+      <div class="bg-blue-600 w-8 h-8 rounded flex items-center justify-center"><i class="fas fa-feather-alt text-white"></i></div>
+      <h1 class="text-lg font-bold text-white tracking-wide">羽球團購管理</h1>
+    </div>
+    
+    <div class="flex items-center gap-4">
+      <div class="flex bg-slate-900 rounded-lg p-1">
+        <button id="btn-history" onclick="switchTab('history')" class="nav-btn active"><i class="fas fa-list-ul mr-2"></i>訂單總表</button>
+        <button id="btn-menu" onclick="switchTab('menu')" class="nav-btn"><i class="fas fa-utensils mr-2"></i>商品管理</button>
+      </div>
+      
+      <!-- ✅ 登出按鈕 -->
+      <button onclick="logout()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-md flex items-center gap-2">
+        <i class="fas fa-sign-out-alt"></i> 登出
+      </button>
     </div>
   </header>
 
-  <div class="p-6">
+  <!-- 內容區 -->
+  <div class="flex-1 overflow-auto p-6 bg-slate-900">
+    
     <!-- 訂單區塊 -->
-    <section id="history" class="hidden">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="font-bold text-lg">訂單記錄</h2>
-        <button onclick="clearAllOrders()" class="bg-red-800 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">清空所有訂單</button>
+    <section id="history" class="hidden h-full flex flex-col max-w-6xl mx-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="font-bold text-2xl text-white border-l-4 border-blue-500 pl-3">訂單記錄</h2>
+        <div class="flex gap-2">
+            <button onclick="loadOrders()" class="bg-slate-700 text-white px-4 py-2 rounded hover:bg-slate-600 transition"><i class="fas fa-sync-alt mr-1"></i> 刷新</button>
+            <button onclick="clearAllOrders()" class="bg-red-900/50 text-red-300 border border-red-800 px-4 py-2 rounded hover:bg-red-900 transition text-sm"><i class="fas fa-trash mr-1"></i> 清空所有資料</button>
+        </div>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full bg-gray-800 rounded shadow text-left">
-          <thead>
-            <tr>
-              <th>時間</th>
-              <th>購買人/Email</th>
-              <th>品項</th>
-              <th>數量</th>
-              <th>備註</th>
-              <th>小計</th>
-              <th>狀態</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody id="orderBody"></tbody>
-        </table>
+      
+      <div class="bg-slate-800 rounded-xl shadow-xl overflow-hidden border border-slate-700 flex-1">
+        <div class="overflow-auto h-full">
+            <table class="w-full text-left border-collapse">
+              <thead class="sticky top-0 z-10 shadow-md">
+                <tr>
+                  <th>時間</th>
+                  <th>購買人資訊</th>
+                  <th>品項</th>
+                  <th class="text-center">數量</th>
+                  <th>備註</th>
+                  <th>小計</th>
+                  <th>狀態</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="orderBody" class="divide-y divide-slate-700"></tbody>
+            </table>
+        </div>
       </div>
     </section>
 
     <!-- 菜單區塊 -->
-    <section id="menu" class="hidden">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="font-bold text-lg">現有商品</h2>
-        <button onclick="addMenu()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded shadow">新增商品</button>
+    <section id="menu" class="hidden h-full flex flex-col max-w-6xl mx-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="font-bold text-2xl text-white border-l-4 border-green-500 pl-3">商品管理</h2>
+        <button onclick="addMenu()" class="bg-green-600 hover:bg-green-500 text-white px-5 py-2 rounded-lg shadow-lg shadow-green-600/20 transition flex items-center gap-2">
+            <i class="fas fa-plus"></i> 新增商品
+        </button>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full bg-gray-800 rounded shadow text-left">
-          <thead>
-            <tr><th width="60">圖片</th><th>分類</th><th>名稱</th><th>價格</th><th>操作</th></tr>
-          </thead>
-          <tbody id="menuBody"></tbody>
-        </table>
+      
+      <div class="bg-slate-800 rounded-xl shadow-xl overflow-hidden border border-slate-700">
+        <div class="overflow-auto">
+            <table class="w-full text-left">
+              <thead>
+                <tr><th width="80">圖片</th><th>分類</th><th>名稱</th><th>價格</th><th width="180">操作</th></tr>
+              </thead>
+              <tbody id="menuBody"></tbody>
+            </table>
+        </div>
       </div>
     </section>
   </div>
@@ -264,21 +377,36 @@ async function deleteMenu(row){if(!confirm("確定刪除?"))return; await api({a
 <!-- 編輯/新增視窗 -->
 <div id="editModal" class="modal-bg hidden">
   <div class="modal">
-    <h3 class="text-lg font-bold mb-4 border-b border-gray-700 pb-2">編輯商品</h3>
-    <div class="space-y-3">
-      <div>
-        <label class="block text-xs text-gray-400 mb-1">商品圖片</label>
-        <input type="file" id="modalFile" accept="image/*" onchange="handleFileSelect(event)" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
-        <img id="previewImg" src="" class="mt-2 h-32 w-full object-contain bg-gray-900 rounded hidden">
-      </div>
-      <div><label class="block text-xs text-gray-400">分類</label><input id="modalCategory" class="w-full"></div>
-      <div><label class="block text-xs text-gray-400">名稱</label><input id="modalName" class="w-full"></div>
-      <div><label class="block text-xs text-gray-400">描述</label><textarea id="modalDesc" class="w-full h-20 bg-black/30"></textarea></div>
-      <div><label class="block text-xs text-gray-400">價格</label><input id="modalPrice" type="number" class="w-full"></div>
+    <div class="flex justify-between items-center mb-6 border-b border-slate-600 pb-4">
+        <h3 id="modalTitle" class="text-xl font-bold text-white">編輯商品</h3>
+        <button onclick="cancelEdit()" class="text-gray-400 hover:text-white"><i class="fas fa-times text-lg"></i></button>
     </div>
-    <div class="flex justify-end gap-2 mt-6">
-      <button onclick="cancelEdit()" class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded">取消</button>
-      <button id="btnConfirm" onclick="confirmEdit()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded">確認</button>
+    
+    <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+      <div>
+        <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">商品圖片</label>
+        <div class="border-2 border-dashed border-slate-600 rounded-lg p-4 text-center hover:border-blue-500 transition bg-slate-900">
+            <input type="file" id="modalFile" accept="image/*" onchange="handleFileSelect(event)" class="hidden">
+            <label for="modalFile" class="cursor-pointer flex flex-col items-center justify-center gap-2">
+                <i class="fas fa-cloud-upload-alt text-3xl text-gray-500"></i>
+                <span class="text-sm text-gray-400">點擊上傳圖片</span>
+            </label>
+        </div>
+        <img id="previewImg" src="" class="mt-3 h-40 w-full object-contain bg-slate-900 rounded-lg border border-slate-700 hidden">
+      </div>
+      
+      <div class="grid grid-cols-2 gap-4">
+          <div><label class="block text-xs font-bold text-gray-400 mb-1">分類</label><input id="modalCategory" placeholder="例如: 球拍"></div>
+          <div><label class="block text-xs font-bold text-gray-400 mb-1">價格</label><input id="modalPrice" type="number" placeholder="0"></div>
+      </div>
+      
+      <div><label class="block text-xs font-bold text-gray-400 mb-1">名稱</label><input id="modalName" placeholder="商品名稱"></div>
+      <div><label class="block text-xs font-bold text-gray-400 mb-1">描述</label><textarea id="modalDesc" class="h-24 resize-none" placeholder="商品詳細介紹..."></textarea></div>
+    </div>
+    
+    <div class="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-600">
+      <button onclick="cancelEdit()" class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-lg transition">取消</button>
+      <button id="btnConfirm" onclick="confirmEdit()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg font-bold shadow-lg transition">確認儲存</button>
     </div>
   </div>
 </div>
