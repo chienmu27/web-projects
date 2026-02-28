@@ -2,164 +2,93 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>團購訂購系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>團購後台管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f3f4f6; }
-        .announcement-box { background: #fffbeb; border-left: 4px solid #f59e0b; }
-        .menu-card { transition: transform 0.2s; }
-        .menu-card:active { transform: scale(0.98); }
-        .desc-highlight { color: #1e40af; background: #eff6ff; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-    </style>
 </head>
-<body class="pb-24">
-    <header class="bg-red-600 text-white p-4 sticky top-0 z-50 shadow-md">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold"><i class="fas fa-shopping-basket mr-2"></i>球隊團購</h1>
-            <div class="relative" onclick="toggleCart()">
-                <i class="fas fa-shopping-cart text-2xl"></i>
-                <span id="cart-count" class="absolute -top-2 -right-2 bg-yellow-400 text-red-800 text-xs rounded-full px-1.5 font-bold">0</span>
-            </div>
+<body class="bg-slate-100 min-h-screen">
+    <div id="login-view" class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm">
+            <h2 class="text-2xl font-bold text-center mb-6">管理員登入</h2>
+            <input id="admin-pwd" type="password" placeholder="輸入驗證碼" class="w-full border p-4 rounded-xl mb-4 text-center tracking-widest text-xl">
+            <button onclick="login()" class="w-full bg-slate-800 text-white py-4 rounded-xl font-bold">登入</button>
         </div>
-    </header>
-
-    <div class="container mx-auto p-4">
-        <div id="announcement" class="announcement-box p-4 rounded-lg shadow-sm mb-4 text-amber-900 font-medium">
-            <i class="fas fa-bullhorn mr-2"></i> <span id="announcement-text">讀取中...</span>
-        </div>
-
-        <div id="menu-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            </div>
     </div>
 
-    <div id="cart-drawer" class="fixed inset-0 bg-black/50 hidden z-[60]">
-        <div class="absolute bottom-0 w-full bg-white rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold">確認訂單</h2>
-                <button onclick="toggleCart()" class="text-gray-400 text-2xl">&times;</button>
-            </div>
-            
-            <div id="cart-items" class="space-y-3 mb-6"></div>
-
-            <div class="space-y-3 border-t pt-4">
-                <input id="order-name" type="text" placeholder="您的姓名" class="w-full border p-3 rounded-xl">
-                <input id="order-email" type="email" placeholder="通知 E-mail (選填)" class="w-full border p-3 rounded-xl">
-                <textarea id="order-note" placeholder="備註 (例如：不要辣、姓名)" class="w-full border p-3 rounded-xl h-20"></textarea>
-            </div>
-
-            <div class="mt-6">
-                <div class="flex justify-between text-xl font-bold mb-4">
-                    <span>總金額</span>
-                    <span class="text-red-600" id="total-price">$0</span>
-                </div>
-                <button onclick="submitOrder()" id="submit-btn" class="w-full bg-red-600 text-white py-4 rounded-2xl font-bold shadow-lg">送出訂單</button>
-            </div>
-        </div>
+    <div id="main-view" class="hidden">
+        <header class="bg-slate-800 text-white p-4 flex justify-between items-center shadow-md">
+            <h1 class="font-bold">訂單管理後台</h1>
+            <button onclick="logout()" class="bg-red-500 px-4 py-2 rounded-lg text-sm font-bold">登出</button>
+        </header>
+        
+        <main class="container mx-auto p-4">
+            <div id="order-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </main>
     </div>
 
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbys9mXPh-laeLcOTSVxNsFTz1ULzvaUbxYrif0K7bC8wWlmxmLsbnS5BLdWc2FOspvzgw/exec";
-        let menuData = [];
-        let cart = {};
+        let authPwd = localStorage.getItem('admin_token');
 
-        async function init() {
-            const res = await fetch(API_URL + "?action=getMenu").then(r => r.json());
-            menuData = res.data;
-            document.getElementById('announcement-text').innerText = res.announcement;
-            renderMenu();
-        }
+        async function login() {
+            const pwd = document.getElementById('admin-pwd').value;
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'verifyLogin', password: pwd })
+            }).then(r => r.json());
 
-        function renderMenu() {
-            const container = document.getElementById('menu-list');
-            container.innerHTML = menuData.map(item => `
-                <div class="bg-white rounded-2xl shadow-sm overflow-hidden menu-card border border-gray-100">
-                    <img src="${item.image || 'https://via.placeholder.com/300x200?text=No+Image'}" class="w-full h-48 object-cover">
-                    <div class="p-4">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="text-lg font-bold text-gray-800">${item.name}</h3>
-                            <span class="text-red-600 font-bold">$${item.price}</span>
-                        </div>
-                        <div class="desc-highlight text-sm mb-4 italic">
-                            <i class="fas fa-info-circle mr-1"></i>${item.desc || '無特別說明'}
-                        </div>
-                        <div class="flex items-center justify-between bg-gray-50 rounded-xl p-2">
-                            <button onclick="changeQty('${item.name}', -1)" class="w-10 h-10 bg-white rounded-lg shadow-sm text-red-600 font-bold">-</button>
-                            <span id="qty-${item.name}" class="font-bold text-lg">${cart[item.name] || 0}</span>
-                            <button onclick="changeQty('${item.name}', 1)" class="w-10 h-10 bg-red-600 rounded-lg shadow-sm text-white font-bold">+</button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function changeQty(name, delta) {
-            cart[name] = (cart[name] || 0) + delta;
-            if (cart[name] <= 0) delete cart[name];
-            document.getElementById(`qty-${name}`).innerText = cart[name] || 0;
-            updateCartCount();
-        }
-
-        function updateCartCount() {
-            const count = Object.values(cart).reduce((a, b) => a + b, 0);
-            document.getElementById('cart-count').innerText = count;
-        }
-
-        function toggleCart() {
-            const drawer = document.getElementById('cart-drawer');
-            drawer.classList.toggle('hidden');
-            if (!drawer.classList.contains('hidden')) renderCartDetails();
-        }
-
-        function renderCartDetails() {
-            const container = document.getElementById('cart-items');
-            let total = 0;
-            const itemsHtml = Object.keys(cart).map(name => {
-                const item = menuData.find(m => m.name === name);
-                const subtotal = item.price * cart[name];
-                total += subtotal;
-                return `<div class="flex justify-between items-center">
-                    <span>${name} x ${cart[name]}</span>
-                    <span class="font-medium">$${subtotal}</span>
-                </div>`;
-            }).join('');
-            container.innerHTML = itemsHtml || '<p class="text-center text-gray-400">尚未選擇產品</p>';
-            document.getElementById('total-price').innerText = `$${total}`;
-        }
-
-        async function submitOrder() {
-            const name = document.getElementById('order-name').value.trim();
-            const email = document.getElementById('order-email').value.trim();
-            const note = document.getElementById('order-note').value.trim();
-            
-            if (!name) return alert("請輸入姓名");
-            if (Object.keys(cart).length === 0) return alert("購物車是空的");
-
-            const items = Object.keys(cart).map(name => ({
-                name,
-                qty: cart[name],
-                price: menuData.find(m => m.name === name).price
-            }));
-
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = true;
-            btn.innerText = "處理中...";
-
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'submitOrder', name, email, note, items })
-                });
-                alert("訂購成功！");
-                location.reload();
-            } catch (e) {
-                alert("系統錯誤，請再試一次");
-                btn.disabled = false;
+            if (res.ok) {
+                localStorage.setItem('admin_token', pwd);
+                authPwd = pwd;
+                showMain();
+            } else {
+                alert("驗證碼錯誤");
             }
         }
 
-        init();
+        function showMain() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('main-view').classList.remove('hidden');
+            loadOrders();
+        }
+
+        async function loadOrders() {
+            const listContainer = document.getElementById('order-list');
+            listContainer.innerHTML = '<p class="text-center py-10 col-span-full">載入訂單中...</p>';
+            
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'getPendingOrders', password: authPwd })
+                }).then(r => r.json());
+
+                if (!res.ok) { logout(); return; }
+
+                listContainer.innerHTML = res.data.map(order => `
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-xl font-black text-slate-800">${order.name}</h3>
+                                <p class="text-xs text-slate-400">${new Date(order.time).toLocaleString()}</p>
+                            </div>
+                            <span class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-xs font-bold">待處理</span>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl mb-4 space-y-1 text-sm">
+                            ${order.items.map(i => `<div>${i.name} x ${i.qty}</div>`).join('')}
+                            <div class="mt-2 pt-2 border-t text-red-600 font-bold">備註：${order.note || '無'}</div>
+                        </div>
+                        <div class="text-right text-2xl font-black text-slate-800">$${order.total}</div>
+                    </div>
+                `).join('') || '<p class="text-center py-10 col-span-full text-gray-400">目前沒有待處理訂單</p>';
+            } catch(e) { alert("讀取失敗"); }
+        }
+
+        function logout() {
+            localStorage.removeItem('admin_token');
+            location.reload();
+        }
+
+        if (authPwd) showMain();
     </script>
 </body>
 </html>
