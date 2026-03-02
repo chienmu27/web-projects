@@ -24,7 +24,7 @@ input:focus, textarea:focus{border-color:#00b4d8;outline:none;}
 <body>
 
 <script>
-// 請填入您的 Web App URL
+// 請確認您的 Web App URL 是否正確
 const GAS_API_URL="https://script.google.com/macros/s/AKfycbyxdgcEXrHEI9v1D-pkj0qSF_iiDQwK0hlzE9YHxZuGbYpSl8SRAubVk3u_MAZcUXRO/exec";
 
 let PASSWORD="";
@@ -40,7 +40,7 @@ window.onload = function() {
   }
 };
 
-// API 呼叫 (✅ 已修正：避免覆蓋登入時輸入的密碼)
+// API 呼叫
 async function api(payload){
   // 只有當 payload 內沒有指定 password 時，才使用全域變數 PASSWORD
   if(!payload.password) {
@@ -66,11 +66,9 @@ async function login(isAuto = false){
   if(btn) { btn.innerText = "驗證中..."; btn.disabled = true; }
 
   try{
-    // 發送驗證請求 (這裡會將 password: val 傳入 api，不會被覆蓋)
     const res = await api({action:"adminLogin", password: val});
 
     if(res.ok){
-      // 登入成功，更新全域密碼
       PASSWORD = val;
       localStorage.setItem("admin_pwd", PASSWORD);
 
@@ -145,21 +143,37 @@ async function loadOrders(){
     </tr>`).join("");
 }
 
+// ✅ 修改：結案後自動刷新
 async function completeOrder(row){
-  await api({action:"editOrderStatus", row:row, status:"completed"});
-  loadOrders();
+  // 顯示處理中的狀態（可選）
+  const res = await api({action:"editOrderStatus", row:row, status:"completed"});
+  if(res.ok) {
+    loadOrders(); // 成功後立即刷新列表
+  } else {
+    alert("更新失敗");
+  }
 }
 
+// ✅ 修改：刪除單筆訂單後自動刷新
 async function deleteOrder(row){
   if(!confirm("確定刪除此訂單?")) return;
-  await api({action:"deleteOrder", row});
-  loadOrders();
+  const res = await api({action:"deleteOrder", row});
+  if(res.ok) {
+    loadOrders(); // 成功後立即刷新列表
+  } else {
+    alert("刪除失敗");
+  }
 }
 
+// ✅ 修改：清空所有訂單後自動刷新
 async function clearAllOrders(){
   if(!confirm("⚠️ 警告：這將刪除「所有」歷史訂單資料且無法復原！確定嗎？")) return;
-  await api({action:"deleteAllOrders"});
-  loadOrders();
+  const res = await api({action:"deleteAllOrders"});
+  if(res.ok) {
+    loadOrders(); // 成功後立即刷新列表
+  } else {
+    alert("清空失敗");
+  }
 }
 
 // ================= 菜單管理 =================
@@ -183,7 +197,6 @@ async function loadMenu(){
     </tr>`).join("");
 }
 
-// 圖片處理
 function handleFileSelect(event) {
   const file = event.target.files[0];
   if (file) {
