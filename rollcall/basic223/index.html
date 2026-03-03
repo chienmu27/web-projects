@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>羽球基礎班點名簿</title>
+
+  <style>
+    :root{
+      /* 羽球風格色調 */
+      --court-green: #28a745;
+      --pro-blue: #1a73e8;
+      --shuttle-white: #ffffff;
+      --shuttle-yellow: #ffeb3b;
+      --shuttle-shadow: rgba(0, 123, 255, 0.15);
+      
+      --primary: var(--pro-blue);
+      --success: var(--court-green);
+      --warning: #f29900;
+      --danger: #d93025;
+      --gray: #5f6368;
+      --logout: #607d8b;
+      --card: rgba(255, 255, 255, 0.85);
+      --card2: rgba(255, 255, 255, 0.95);
+      --line: #d1e3ff;
+      --shadow: 0 14px 40px rgba(26, 115, 232, 0.15);
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family: "Microsoft JhengHei", system-ui, -apple-system, sans-serif;
+      color:#202124;
+      padding: 18px 12px;
+      min-height:100vh;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      /* 運動風格背景：深藍色與球場綠的漸層 */
+      background:
+        radial-gradient(circle at 15% 15%, rgba(26, 115, 232, 0.1) 0 20%, transparent 21%),
+        radial-gradient(circle at 85% 85%, rgba(40, 167, 69, 0.1) 0 20%, transparent 21%),
+        linear-gradient(135deg, #e3f2fd 0%, #f1f8e9 100%);
+      overflow-x:hidden;
+      position:relative;
+    }
+
+    /* 漂浮的羽球裝飾 */
+    body::before{
+      content:""; position:fixed; inset:0; pointer-events:none; opacity:.4;
+      background-image:
+        radial-gradient(circle, var(--pro-blue) 0 1px, transparent 2px),
+        radial-gradient(circle, var(--court-green) 0 1px, transparent 2px);
+      background-size: 100px 100px, 150px 150px;
+      background-position: 0 0, 50px 50px;
+    }
+
+    /* 額外動畫效果：輕微的球感漂浮 */
+    @keyframes shuttleFloat{
+      0%{ transform: translateY(0px) rotate(0deg); }
+      50%{ transform: translateY(10px) rotate(5deg); }
+      100%{ transform: translateY(0px) rotate(0deg); }
+    }
+
+    .card{
+      width:min(580px, 100%); margin: 12px auto 24px;
+      background: var(--card); backdrop-filter: blur(15px);
+      border: 2px solid var(--line);
+      padding: 25px 20px 20px; border-radius: 20px;
+      box-shadow: var(--shadow); position:relative; overflow:hidden;
+    }
+
+    /* 卡片裝飾：球場角落線條 */
+    .card::before {
+      content: ""; position: absolute; top: 0; left: 0; 
+      width: 50px; height: 50px; border-top: 4px solid var(--court-green); border-left: 4px solid var(--court-green);
+      opacity: 0.5; pointer-events: none;
+    }
+    .card::after {
+      content: ""; position: absolute; bottom: 0; right: 0; 
+      width: 50px; height: 50px; border-bottom: 4px solid var(--pro-blue); border-right: 4px solid var(--pro-blue);
+      opacity: 0.5; pointer-events: none;
+    }
+
+    h2{ text-align:center; margin: 0 0 15px 0; font-size: 28px; color: var(--pro-blue); font-weight: 900; }
+    h2::before, h2::after{ content:"🏸"; margin: 0 10px; font-size: 24px; }
+
+    .section{
+      background: var(--card2); padding: 16px; border-radius: 12px;
+      margin-bottom: 15px; border: 1px solid var(--line);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.05);
+    }
+
+    .btn-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    button{
+      padding: 14px; border: none; border-radius: 10px; cursor:pointer;
+      font-weight: 900; transition: .2s ease; font-size: 16px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    button:active{ transform: scale(0.97); }
+    button:hover{ transform: translateY(-2px); filter: brightness(1.05); }
+
+    .btn-club{ background: linear-gradient(135deg, #e3f2fd, #bbdefb); color: var(--pro-blue); border: 1px solid var(--pro-blue); width:100%; margin-bottom:10px; }
+    .btn-back{ background: #f8f9fa; color: var(--gray); border: 1px solid #ddd; width:100%; height: 48px; }
+    .btn-logout{ background: var(--logout); color: white; width:100%; height: 48px; }
+    
+    .btn-submit{ background: var(--court-green); color: white; width:100%; font-size: 18px; box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3); }
+    .btn-leave{ background: var(--warning); color: white; width:100%; font-size: 18px; box-shadow: 0 4px 10px rgba(242, 153, 0, 0.3); }
+    .btn-danger{ background: #fff5f5; color: var(--danger); width:100%; margin-top: 10px; border: 1px solid var(--danger); }
+    .btn-outline-danger{ background: white; color: var(--danger); border: 1px solid var(--danger); padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+    .btn-login{ background: var(--pro-blue); color: white; width: 100%; margin-top: 10px; font-size: 18px; }
+
+    .tabs{ display:flex; gap: 8px; margin: 10px 0 16px; padding: 5px; border-radius: 12px; background: #eaeff5; border: 1px solid #d1d9e6; }
+    .tab{ flex:1; padding: 12px; text-align:center; cursor:pointer; color: var(--gray); font-weight: bold; border-radius: 8px; transition: .3s; }
+    .tab.active{ color: var(--pro-blue); background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+    #uncheckList, #checkedList{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .student-row{ 
+      display:flex; align-items:center; justify-content:space-between; 
+      padding: 12px; border: 1px solid var(--line); background: white; 
+      border-radius: 10px; font-size: 15px; transition: 0.2s;
+    }
+    .student-row:hover { border-color: var(--pro-blue); background: #f0f7ff; }
+    .student-row span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight: 700; color:#333; }
+
+    input[type="date"], input[type="password"]{ 
+      width:100%; padding: 12px; margin-top: 8px; border: 2px solid #e0e0e0; 
+      border-radius: 10px; font-size: 16px; background: white; outline:none;
+      transition: border-color 0.3s;
+    }
+    input[type="date"]:focus, input[type="password"]:focus{ border-color: var(--pro-blue); }
+
+    .hidden{ display:none; }
+    #status{ text-align:center; margin-top: 14px; padding: 12px; border-radius: 10px; font-weight: 900; min-height: 20px; }
+    .msg-success{ background: #e8f5e9; color: var(--court-green); border: 1px solid #c8e6c9; }
+    .msg-error{ background: #ffebee; color: var(--danger); border: 1px solid #ffcdd2; }
+    .msg-loading{ background: #e3f2fd; color: var(--pro-blue); border: 1px solid #bbdefb; font-style: italic; }
+  </style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>羽球基礎班點名簿</h2>
+
+  <!-- 班級選擇區域 -->
+  <div id="clubSelection">
+    <p style="text-align:center;font-weight:900; color: var(--pro-blue);">🏆 請選擇課程時段 🏆</p>
+    <div id="clubBtns">讀取中...</div>
+  </div>
+
+  <!-- 主點名區域 -->
+  <div id="mainPage" class="hidden">
+    <div class="btn-grid" style="margin-bottom:14px;">
+      <button onclick="location.reload()" class="btn-back">🔙 更換課程</button>
+      <button id="logoutBtn" class="btn-logout hidden" onclick="logout()">🔑 登出</button>
+      <div id="logoutPlaceholder"></div>
+    </div>
+
+    <h3 id="currentClubDisp" style="text-align:center; color: var(--court-green); margin-top:0;"></h3>
+
+    <!-- 管理員驗證區域 -->
+    <div id="loginArea" class="section">
+      <label><b>🏸 教練權限驗證：</b></label>
+      <input type="password" id="adminPwd" placeholder="請輸入密碼以開啟管理功能">
+      <button class="btn-login" onclick="login()">進入教練管理模式</button>
+    </div>
+
+    <div class="tabs">
+      <div id="tab1" class="tab active" onclick="switchTab('take')">點名登記</div>
+      <div id="tab2" class="tab" onclick="switchTab('query')">已點名/請假</div>
+    </div>
+
+    <div class="section">
+      <label><b>📅 訓練日期：</b></label>
+      <input type="date" id="targetDate" onchange="refreshLists()">
+    </div>
+
+    <!-- 點名介面 -->
+    <div id="takeAttendanceArea">
+      <div class="section">
+        <label><b>✅ 待點名名單：</b></label>
+        <div id="uncheckList"></div>
+      </div>
+      <div id="actionBtns" class="btn-grid hidden">
+        <button id="btnSubmit" class="btn-submit" onclick="submitMulti('submit')">出席打卡</button>
+        <button id="btnLeave" class="btn-leave" onclick="submitMulti('leave')">事假登記</button>
+      </div>
+    </div>
+
+    <!-- 查詢介面 -->
+    <div id="queryAttendanceArea" class="hidden">
+      <div class="section">
+        <label><b>📋 已確認紀錄 (*為請假)：</b></label>
+        <div id="checkedList"></div>
+        <button id="delAllBtn" class="btn-danger hidden" onclick="confirmDeleteAll()">❌ 刪除今日整欄數據</button>
+      </div>
+    </div>
+
+    <div id="status"></div>
+  </div>
+</div>
+
+<script>
+  // ⚠️ 請修改為你的 GAS 部署網頁應用程式 URL
+  const API_URL = "https://script.google.com/macros/s/AKfycbxfOsSj52ii6SR6EIKuLJFEYXr4XArnU63bOu78DtZFLp1VZ0k_KixvUEaFa5_UpQlXEQ/exec";
+  
+  let curClub = "";
+  let curMode = "take"; 
+
+  window.onload = () => {
+    fetchClubs();
+    document.getElementById('targetDate').value = new Date().toISOString().split('T')[0];
+  };
+
+  async function fetchClubs() {
+    try {
+      const r = await fetch(`${API_URL}?action=getClubList`);
+      const list = await r.json();
+      const div = document.getElementById('clubBtns');
+      div.innerHTML = "";
+      list.forEach(c => {
+        let b = document.createElement('button'); 
+        b.className = "btn-club";
+        b.innerText = "🏸 " + c; 
+        b.onclick = () => { curClub = c; showMain(); };
+        div.appendChild(b);
+      });
+    } catch(e) { showStatus("網路連線失敗，請稍後再試", "error"); }
+  }
+
+  function showMain() {
+    document.getElementById('clubSelection').classList.add('hidden');
+    document.getElementById('mainPage').classList.remove('hidden');
+    document.getElementById('currentClubDisp').innerText = "當前時段：" + curClub;
+    
+    // 檢查 LocalStorage 是否已有登入
+    const savedPwd = localStorage.getItem("att_pwd_" + curClub);
+    updateLoginUI(savedPwd !== null);
+    refreshLists();
+  }
+
+  function updateLoginUI(isLogged) {
+    if (isLogged) {
+      document.getElementById('loginArea').classList.add('hidden');
+      document.getElementById('actionBtns').classList.remove('hidden');
+      document.getElementById('delAllBtn').classList.remove('hidden');
+      document.getElementById('logoutBtn').classList.remove('hidden');
+      document.getElementById('logoutPlaceholder').classList.add('hidden');
+    } else {
+      document.getElementById('loginArea').classList.remove('hidden');
+      document.getElementById('actionBtns').classList.add('hidden');
+      document.getElementById('delAllBtn').classList.add('hidden');
+      document.getElementById('logoutBtn').classList.add('hidden');
+      document.getElementById('logoutPlaceholder').classList.remove('hidden');
+    }
+  }
+
+  async function login() {
+    const pwd = document.getElementById('adminPwd').value;
+    if (!pwd) return showStatus("請輸入認證密碼", "error");
+    showStatus("權限驗證中...", "loading");
+    try {
+      const r = await fetch(`${API_URL}?action=verifyPassword&clubName=${encodeURIComponent(curClub)}&password=${pwd}`);
+      const res = await r.json();
+      if (res.success) {
+        localStorage.setItem("att_pwd_" + curClub, pwd);
+        updateLoginUI(true);
+        showStatus("驗證成功！教練權限已開啟", "success");
+        setTimeout(clearStatus, 1500);
+        refreshLists();
+      } else {
+        showStatus("密碼錯誤，請重新確認", "error");
+      }
+    } catch(e) { showStatus("連線伺服器失敗", "error"); }
+  }
+
+  function logout() {
+    localStorage.removeItem("att_pwd_" + curClub);
+    location.reload();
+  }
+
+  function switchTab(m) {
+    curMode = m;
+    document.getElementById('tab1').className = m === 'take' ? 'tab active' : 'tab';
+    document.getElementById('tab2').className = m === 'query' ? 'tab active' : 'tab';
+    document.getElementById('takeAttendanceArea').className = m === 'take' ? '' : 'hidden';
+    document.getElementById('queryAttendanceArea').className = m === 'query' ? '' : 'hidden';
+    clearStatus(); refreshLists();
+  }
+
+  async function refreshLists() {
+    const date = document.getElementById('targetDate').value;
+    if(!curClub || !date) return;
+    document.getElementById('uncheckList').innerHTML = "<p style='grid-column:span 2;text-align:center;'>名單讀取中...</p>";
+    document.getElementById('checkedList').innerHTML = "<p style='grid-column:span 2;text-align:center;'>紀錄讀取中...</p>";
+    
+    const isLogged = localStorage.getItem("att_pwd_" + curClub) !== null;
+
+    try {
+      const [r1, r2] = await Promise.all([
+        fetch(`${API_URL}?action=getStudents&clubName=${encodeURIComponent(curClub)}&date=${date}&mode=unchecked`),
+        fetch(`${API_URL}?action=getStudents&clubName=${encodeURIComponent(curClub)}&date=${date}&mode=checked`)
+      ]);
+      renderList('uncheckList', await r1.json(), 'checkbox', isLogged);
+      renderList('checkedList', await r2.json(), 'delete', isLogged);
+    } catch(e) { showStatus("獲取數據失敗", "error"); }
+  }
+
+  function renderList(id, data, type, isLogged) {
+    const container = document.getElementById(id);
+    if (!data.length) {
+      container.innerHTML = "<p style='grid-column:span 2;color:gray;text-align:center;font-size:14px;'>目前無紀錄</p>";
+      return;
+    }
+    container.innerHTML = "";
+    data.forEach(nameText => {
+      let d = document.createElement('div'); d.className = "student-row";
+      if(type === 'checkbox') {
+        const ctrl = isLogged ? `<input type="checkbox" name="stu" value="${nameText}" style="transform:scale(1.3); cursor: pointer;">` : `<span>(唯讀)</span>`;
+        d.innerHTML = `<span>${nameText}</span>${ctrl}`;
+      } else {
+        const cleanName = nameText.replace('*', '');
+        const ctrl = isLogged ? `<button class="btn-outline-danger" onclick="deleteSingle('${cleanName}')">撤銷</button>` : '';
+        d.innerHTML = `<span>${nameText}</span>${ctrl}`;
+      }
+      container.appendChild(d);
+    });
+  }
+
+  async function callPost(data) {
+    const pwd = localStorage.getItem("att_pwd_" + curClub);
+    if(!pwd) return showStatus("登入已失效，請重新驗證", "error");
+    
+    showStatus("同步至雲端系統...", "loading");
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({...data, clubName: curClub, password: pwd, date: document.getElementById('targetDate').value})
+      });
+      const res = await r.json();
+      if(res.status === 'success') {
+        showStatus(res.message, "success");
+        setTimeout(() => { clearStatus(); refreshLists(); }, 1000);
+      } else {
+        showStatus(res.message, "error");
+      }
+    } catch(e) { showStatus("系統連線錯誤", "error"); }
+  }
+
+  function submitMulti(act) {
+    const box = document.querySelectorAll('input[name="stu"]:checked');
+    if(!box.length) return showStatus("請先勾選學生姓名", "error");
+    const stuList = Array.from(box).map(b => b.value);
+    callPost({ action: act, students: stuList });
+  }
+
+  function deleteSingle(name) {
+    if(!confirm("確定要撤銷 " + name + " 的紀錄嗎？")) return;
+    callPost({ action: 'deleteSingle', studentName: name });
+  }
+
+  function confirmDeleteAll() {
+    if(confirm("⚠️ 警告：確定要徹底刪除此日期整欄紀錄嗎？此動作將清空該欄位。")) {
+      callPost({ action: 'deleteAll' });
+    }
+  }
+
+  function showStatus(msg, type) {
+    const s = document.getElementById('status'); s.innerText = msg; s.className = "";
+    if (type === "success") s.classList.add('msg-success');
+    else if (type === "error") s.classList.add('msg-error');
+    else s.classList.add('msg-loading');
+  }
+
+  function clearStatus() { 
+    const s = document.getElementById('status'); if(s) { s.innerText = ""; s.className = ""; }
+  }
+</script>
+
+</body>
+</html>
