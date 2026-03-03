@@ -19,7 +19,6 @@
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   .modal { transition: opacity 0.2s ease; }
   body.modal-active { overflow: hidden; }
-  /* 針對手機表格優化 */
   @media (max-width: 640px) {
     .mobile-table-card thead { display: none; }
     .mobile-table-card tr { display: block; margin-bottom: 1rem; border: 1px solid #e5e7eb; border-radius: 0.75rem; background: white; padding: 0.5rem; position: relative;}
@@ -28,6 +27,9 @@
     .mobile-table-card td.checkbox-cell { justify-content: flex-start; padding-bottom: 0.5rem; border-bottom: 1px dashed #eee; margin-bottom: 0.5rem;}
     .mobile-table-card td.checkbox-cell::before { content: "選取刪除"; margin-right: 10px;}
   }
+  /* 自定義 Checkbox 樣式 */
+  .custom-checkbox:checked + div { background-color: #fef2f2; border-color: #fca5a5; }
+  .custom-checkbox:checked + div span.item-name { color: #dc2626; text-decoration: line-through; }
 </style>
 </head>
 <body class="pb-20 text-gray-800">
@@ -222,7 +224,7 @@ let cart = [];
 let historyData = [];
 let userName = localStorage.getItem("apan_user_name") || "";
 let currentView = "client";
-let currentCategory = "all"; 
+let currentCategory = "all";
 
 window.onload = () => {
     if(userName) updateNameDisplay();
@@ -279,7 +281,7 @@ function renderCategoryNav() {
 }
 
 function filterMenu(c) {
-    currentCategory = c; 
+    currentCategory = c;
     document.querySelectorAll('.category-btn').forEach(b => b.classList.toggle('active', b.innerText === (c==='all'?'全部':c)));
     displayMenu(c === 'all' ? menuData : menuData.filter(i => i.category === c));
 }
@@ -345,7 +347,6 @@ async function submitOrder() {
     btn.disabled = false; btn.innerText = "確認送出訂單";
 }
 
-// 修改：支援勾選品項標記取貨
 async function loadAdminOrders() {
     document.getElementById('admin-status').innerText = "連線中...";
     const res = await callApi({ action: "getPendingOrdersMerged" });
@@ -353,89 +354,92 @@ async function loadAdminOrders() {
         const list = res.data;
         document.getElementById('admin-status').innerText = list.length ? `目前有 ${list.length} 位客戶待處理` : "太棒了，目前沒有待處理訂單";
         
-        document.getElementById('admin-orders-container').innerHTML = list.map((t, idx) => {
-            // 檢查是否全部品項都已取貨
-            const allServed = t.items.every(i => i.status === 'served');
-            
-            // 右上角按鈕：如果全部都Served，顯示結帳按鈕；否則顯示標記取貨
-            const mainBtn = allServed
-                ? `<button onclick="reqAuth('clearOrder', '${t.name}')" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-black transition">點擊結帳</button>`
-                : `<button onclick="triggerServeItems(${idx})" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition">標記取貨</button>`;
+        document.getElementById('admin-orders-container').innerHTML = list.map(t => {
+            const hasPending = t.hasPending;
+            // 按鈕邏輯：若有待處理品項顯示「標記取貨」，否則顯示「結帳」
+            const mainBtn = hasPending
+                ? `<button onclick="triggerMarkServed('${t.name}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition"><i class="fas fa-check mr-1"></i>標記取貨</button>`
+                : `<button onclick="reqAuth('clearOrder', '${t.name}')" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition"><i class="fas fa-cash-register mr-1"></i>結帳</button>`;
 
-            // 產生品項清單，包含 Checkbox
+            // 品項列表渲染
             const itemsHtml = t.items.map(i => {
-                const isServed = i.status === 'served';
-                // 未出餐：顯示 Checkbox (value 存 JSON string 的 rowIds)
-                // 已出餐：顯示綠色勾勾圖示
-                const checkIcon = isServed 
-                    ? `<i class="fas fa-check-circle text-green-500 text-lg mx-2"></i>`
-                    : `<input type="checkbox" value='${JSON.stringify(i.rowIds)}' class="order-check-${idx} w-5 h-5 text-green-600 rounded focus:ring-green-500 cursor-pointer mr-3">`;
-                
-                const itemClass = isServed ? "text-gray-400 line-through decoration-green-500" : "text-gray-800";
-
-                return `<div class="flex items-center justify-between text-sm py-1 border-b border-gray-100 last:border-0">
-                    <div class="flex items-center">
-                        ${checkIcon}
-                        <span class="${itemClass}">${i.item} <small class="text-gray-400">x${i.qty}</small></span>
-                    </div>
-                    <span class="font-bold ${isServed?'text-green-600':''}">${isServed?'已取': '$'+i.subtotal}</span>
-                </div>`;
+                const isPending = i.status === 'pending';
+                // 如果是 pending，顯示 Checkbox；如果是 served，顯示已完成狀態
+                if (isPending) {
+                    // 將 rowIds 存入 checkbox 的 value
+                    return `<label class="flex justify-between items-center p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" value='${JSON.stringify(i.rowIds)}' class="order-check-${t.name} w-5 h-5 text-red-600 rounded focus:ring-red-500 cursor-pointer border-gray-300">
+                            <div>
+                                <span class="font-bold text-gray-800">${i.item}</span>
+                                <span class="text-gray-500 text-xs ml-1">x${i.qty}</span>
+                            </div>
+                        </div>
+                        <span class="font-bold text-gray-800">$${i.subtotal}</span>
+                    </label>`;
+                } else {
+                    return `<div class="flex justify-between items-center p-2 rounded-lg bg-green-50 border border-green-100">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-check-circle text-green-500"></i>
+                            <div>
+                                <span class="font-bold text-green-700 line-through decoration-green-500/50">${i.item}</span>
+                                <span class="text-green-600 text-xs ml-1">x${i.qty} (已備妥)</span>
+                            </div>
+                        </div>
+                        <span class="font-bold text-green-700">$${i.subtotal}</span>
+                    </div>`;
+                }
             }).join('');
 
-            const bgClass = allServed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100';
-
-            return `<div class="border-2 rounded-2xl p-4 shadow-sm ${bgClass} animate-fade-in relative">
-                <div class="flex justify-between items-start mb-3">
+            return `<div class="border-2 rounded-2xl p-4 shadow-sm bg-white border-gray-100 animate-fade-in flex flex-col h-full">
+                <div class="flex justify-between items-start mb-3 border-b pb-2">
                     <div>
                         <h3 class="font-black text-xl text-gray-800">${t.name}</h3>
                         <span class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">${formatDateTime(t.time)}</span>
                     </div>
-                    ${mainBtn}
                 </div>
-                <div class="bg-white/60 p-3 rounded-xl mb-3 space-y-1">
+                <div class="flex-grow space-y-1 mb-4">
                     ${itemsHtml}
                 </div>
-                <div class="flex justify-end items-center border-t pt-3 font-black text-red-600 text-xl">總計 $${t.total}</div>
+                <div class="mt-auto">
+                    <div class="flex justify-between items-center border-t pt-3 mb-3 font-black text-red-600 text-xl">
+                        <span>總計</span>
+                        <span>$${t.total}</span>
+                    </div>
+                    <div class="flex justify-end">
+                        ${mainBtn}
+                    </div>
+                </div>
             </div>`;
         }).join('') || '<div class="col-span-full text-center py-20 text-gray-200"><i class="fas fa-check-circle text-6xl mb-4"></i><p>暫無訂單</p></div>';
     }
 }
 
-// 觸發批次標記取貨
-async function triggerServeItems(cardIndex) {
-    const checkboxes = document.querySelectorAll(`.order-check-${cardIndex}:checked`);
-    if(checkboxes.length === 0) return alert("請先勾選要標記取貨的品項");
+// 處理「標記取貨」按鈕點擊
+async function triggerMarkServed(userName) {
+    const checkboxes = document.querySelectorAll(`.order-check-${userName}:checked`);
+    if (checkboxes.length === 0) return alert("請勾選要標記取貨的品項");
     
-    // 收集所有勾選的 Row IDs
-    let allRows = [];
+    // 收集所有被選中的 rowIds
+    let allRowIds = [];
     checkboxes.forEach(cb => {
-        try {
-            const rows = JSON.parse(cb.value);
-            allRows = allRows.concat(rows);
-        } catch(e) {}
+        const rows = JSON.parse(cb.value);
+        allRowIds = allRowIds.concat(rows);
     });
 
-    // 呼叫 API 更新狀態
-    const btn = event.target;
+    const btn = document.activeElement;
     const originalText = btn.innerText;
-    btn.innerText = "更新中...";
+    btn.innerText = "處理中...";
     btn.disabled = true;
 
-    const res = await callApi({ action: "markItemsServed", rows: allRows });
-    if(res.ok) {
+    const res = await callApi({ action: "markItemsServed", rowIds: allRowIds });
+    if (res.ok) {
         loadAdminOrders();
     } else {
-        alert("更新失敗：" + res.message);
+        alert(res.message);
         btn.innerText = originalText;
         btn.disabled = false;
     }
-}
-
-async function markStatus(table, status, pwd="") {
-    // 舊版函數，保留相容性，目前主要由 triggerServeItems 取代 served 功能
-    // 這裡主要用於 clearOrder (結帳)
-    const res = await callApi({ action: "markTableStatus", table, status, password: pwd });
-    if(res.ok) loadAdminOrders(); else alert(res.message);
 }
 
 async function loadHistoryData() {
