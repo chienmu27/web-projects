@@ -30,6 +30,12 @@
   /* 自定義 Checkbox 樣式 */
   .custom-checkbox:checked + div { background-color: #fef2f2; border-color: #fca5a5; }
   .custom-checkbox:checked + div span.item-name { color: #dc2626; text-decoration: line-through; }
+  
+  /* 狀態標籤樣式 */
+  .status-badge { @apply px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide; }
+  .status-pending { @apply bg-yellow-100 text-yellow-700; }
+  .status-served { @apply bg-green-100 text-green-700; }
+  .status-cleared { @apply bg-gray-100 text-gray-500; }
 </style>
 </head>
 <body class="pb-20 text-gray-800">
@@ -356,20 +362,22 @@ async function loadAdminOrders() {
         
         document.getElementById('admin-orders-container').innerHTML = list.map(t => {
             const hasPending = t.hasPending;
-            // 按鈕邏輯：若有待處理品項顯示「標記取貨」，否則顯示「結帳」
-            const mainBtn = hasPending
-                ? `<button onclick="triggerMarkServed('${t.name}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition"><i class="fas fa-check mr-1"></i>標記取貨</button>`
-                : `<button onclick="reqAuth('clearOrder', '${t.name}')" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition"><i class="fas fa-cash-register mr-1"></i>結帳</button>`;
+            // 只有當還有 pending 項目時，才顯示「標記取貨」按鈕
+            const actionBtn = hasPending
+                ? `<button onclick="triggerMarkServed('${t.name}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition w-full"><i class="fas fa-check mr-1"></i>標記勾選項目取貨</button>`
+                : `<div class="text-center text-gray-400 text-sm font-bold py-2">待結帳品項</div>`;
 
             // 品項列表渲染
             const itemsHtml = t.items.map(i => {
                 const isPending = i.status === 'pending';
-                // 如果是 pending，顯示 Checkbox；如果是 served，顯示已完成狀態
+                // JSON stringify array for value
+                const rowIdsStr = JSON.stringify(i.rowIds);
+                
                 if (isPending) {
-                    // 將 rowIds 存入 checkbox 的 value
+                    // Pending: 顯示勾選框
                     return `<label class="flex justify-between items-center p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
                         <div class="flex items-center gap-2">
-                            <input type="checkbox" value='${JSON.stringify(i.rowIds)}' class="order-check-${t.name} w-5 h-5 text-red-600 rounded focus:ring-red-500 cursor-pointer border-gray-300">
+                            <input type="checkbox" value='${rowIdsStr}' class="order-check-${t.name} w-5 h-5 text-red-600 rounded focus:ring-red-500 cursor-pointer border-gray-300">
                             <div>
                                 <span class="font-bold text-gray-800">${i.item}</span>
                                 <span class="text-gray-500 text-xs ml-1">x${i.qty}</span>
@@ -378,15 +386,21 @@ async function loadAdminOrders() {
                         <span class="font-bold text-gray-800">$${i.subtotal}</span>
                     </label>`;
                 } else {
+                    // Served: 顯示結帳按鈕 (個別結帳)
+                    // escape quotes for onclick
+                    const safeRowIds = rowIdsStr.replace(/"/g, '&quot;');
                     return `<div class="flex justify-between items-center p-2 rounded-lg bg-green-50 border border-green-100">
                         <div class="flex items-center gap-2">
                             <i class="fas fa-check-circle text-green-500"></i>
                             <div>
-                                <span class="font-bold text-green-700 line-through decoration-green-500/50">${i.item}</span>
+                                <span class="font-bold text-green-700">${i.item}</span>
                                 <span class="text-green-600 text-xs ml-1">x${i.qty} (已備妥)</span>
                             </div>
                         </div>
-                        <span class="font-bold text-green-700">$${i.subtotal}</span>
+                        <div class="flex items-center gap-2">
+                             <span class="font-bold text-green-700 mr-2">$${i.subtotal}</span>
+                             <button onclick="reqAuth('batchClear', ${safeRowIds})" class="bg-gray-800 text-white text-xs px-2 py-1.5 rounded shadow hover:bg-black transition">結帳</button>
+                        </div>
                     </div>`;
                 }
             }).join('');
@@ -407,7 +421,7 @@ async function loadAdminOrders() {
                         <span>$${t.total}</span>
                     </div>
                     <div class="flex justify-end">
-                        ${mainBtn}
+                        ${actionBtn}
                     </div>
                 </div>
             </div>`;
@@ -415,12 +429,11 @@ async function loadAdminOrders() {
     }
 }
 
-// 處理「標記取貨」按鈕點擊
+// 處理「標記取貨」按鈕點擊 (狀態 pending -> served)
 async function triggerMarkServed(userName) {
     const checkboxes = document.querySelectorAll(`.order-check-${userName}:checked`);
     if (checkboxes.length === 0) return alert("請勾選要標記取貨的品項");
     
-    // 收集所有被選中的 rowIds
     let allRowIds = [];
     checkboxes.forEach(cb => {
         const rows = JSON.parse(cb.value);
@@ -432,7 +445,8 @@ async function triggerMarkServed(userName) {
     btn.innerText = "處理中...";
     btn.disabled = true;
 
-    const res = await callApi({ action: "markItemsServed", rowIds: allRowIds });
+    // 呼叫 batchUpdateStatus，目標狀態 served
+    const res = await callApi({ action: "batchUpdateStatus", rowIds: allRowIds, status: "served" });
     if (res.ok) {
         loadAdminOrders();
     } else {
@@ -475,6 +489,11 @@ function applyHistoryFilters() {
 
     document.getElementById('history-tbody').innerHTML = filtered.map(r => {
         tQty += r.qty; tAmt += r.subtotal;
+        let badgeClass = "bg-gray-100 text-gray-500";
+        if(r.status === 'pending') badgeClass = "bg-yellow-100 text-yellow-700";
+        if(r.status === 'served') badgeClass = "bg-green-100 text-green-700";
+        if(r.status === 'cleared') badgeClass = "bg-blue-50 text-blue-700";
+
         return `<tr class="hover:bg-gray-50">
             <td class="px-4 py-3 text-center checkbox-cell">
                 <input type="checkbox" value="${r.row}" class="history-checkbox w-4 h-4 text-red-600 rounded focus:ring-red-500 cursor-pointer" onclick="updateSelectAllState()">
@@ -484,7 +503,10 @@ function applyHistoryFilters() {
             <td data-label="品項" class="px-4 py-3">${r.item}</td>
             <td data-label="數量" class="px-4 py-3">${r.qty}</td>
             <td data-label="小計" class="px-4 py-3 font-black text-red-600">$${r.subtotal}</td>
-            <td data-label="操作" class="px-4 py-3 text-center"><button onclick="reqAuth('deleteRow', ${r.row})" class="bg-red-50 text-red-500 w-8 h-8 rounded-full"><i class="fas fa-trash-alt"></i></button></td>
+            <td data-label="操作" class="px-4 py-3 text-center flex items-center justify-center gap-2">
+                 <span class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded ${badgeClass}">${r.status}</span>
+                 <button onclick="reqAuth('deleteRow', ${r.row})" class="bg-red-50 text-red-500 w-8 h-8 rounded-full hover:bg-red-100 transition"><i class="fas fa-trash-alt"></i></button>
+            </td>
         </tr>`;
     }).join('');
     document.getElementById('hist-total-qty').innerText = tQty;
@@ -525,7 +547,7 @@ function reqAuth(action, target) {
     input.value = "";
     modal.classList.remove('opacity-0', 'pointer-events-none');
     
-    if (action === 'clearOrder') document.getElementById('auth-title').innerText = "結帳確認";
+    if (action === 'batchClear') document.getElementById('auth-title').innerText = "品項結帳確認";
     else if (action === 'deleteSelected') document.getElementById('auth-title').innerText = `刪除 ${target.length} 筆資料`;
     else document.getElementById('auth-title').innerText = "安全驗證";
 
@@ -534,14 +556,15 @@ function reqAuth(action, target) {
         if(!pwd) return alert("請輸入管理密碼");
         confirmBtn.disabled = true;
         let res;
-        if(action === 'clearOrder') res = await callApi({ action: "markTableStatus", table: target, status: "cleared", password: pwd });
-        else if(action === 'deleteRow') res = await callApi({ action: "deleteOrder", row: target, password: pwd });
+        
+        if(action === 'deleteRow') res = await callApi({ action: "deleteOrder", row: target, password: pwd });
         else if(action === 'deleteAll') res = await callApi({ action: "deleteAllOrders", password: pwd });
         else if(action === 'deleteSelected') res = await callApi({ action: "deleteSelectedOrders", rows: target, password: pwd });
+        else if(action === 'batchClear') res = await callApi({ action: "batchUpdateStatus", rowIds: target, status: "cleared", password: pwd });
 
         if(res && res.ok) { 
             closeAuthModal(); 
-            if(action === 'clearOrder') loadAdminOrders(); else loadHistoryData(); 
+            if(action === 'batchClear') loadAdminOrders(); else loadHistoryData(); 
         } else alert(res ? res.message : "密碼錯誤");
         confirmBtn.disabled = false;
     };
