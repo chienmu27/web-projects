@@ -3,65 +3,161 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>chienmu27 系統首頁</title>
+<title>chienmu27 系統首頁 - 管理版</title>
 
 <style>
-body{
-  font-family: Arial, Helvetica, sans-serif;
-  background:#f4f6f9;
-  margin:0;
-  padding:30px;
-}
+  body {
+    font-family: "Microsoft JhengHei", Arial, Helvetica, sans-serif;
+    background: #f4f6f9;
+    margin: 0;
+    padding: 30px;
+    color: #333;
+  }
 
-h1{
-  text-align:center;
-  margin-bottom:40px;
-}
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
 
-.container{
-  display:flex;
-  flex-wrap:wrap;
-  gap:20px;
-  justify-content:center;
-}
+  /* 表單區塊樣式 */
+  .admin-panel {
+    max-width: 800px;
+    margin: 0 auto 40px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
 
-.card{
-  background:white;
-  padding:20px;
-  border-radius:12px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.08);
-  width:300px;
-}
+  .admin-panel h3 {
+    margin-top: 0;
+    color: #007bff;
+    border-left: 5px solid #007bff;
+    padding-left: 10px;
+  }
 
-.card h2{
-  margin-top:0;
-  border-bottom:1px solid #eee;
-  padding-bottom:8px;
-}
+  .form-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-end;
+  }
 
-.section{
-  margin:10px 0;
-}
+  .input-item {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 150px;
+  }
 
-.section-title{
-  font-weight:bold;
-  margin-bottom:5px;
-}
+  .input-item label {
+    font-size: 14px;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
 
-.links a{
-  display:inline-block;
-  margin:4px 6px 4px 0;
-  padding:6px 12px;
-  background:#007bff;
-  color:white;
-  text-decoration:none;
-  border-radius:6px;
-  font-size:14px;
-}
+  .input-item input {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+  }
 
-.links a:hover{
-  background:#0056b3;
-}
+  .btn-submit {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 9px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.3s;
+  }
+
+  .btn-submit:hover {
+    background: #218838;
+  }
+
+  .btn-reset {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-top: 10px;
+  }
+
+  /* 內容區塊樣式 */
+  .container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+  }
+
+  .card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    width: 300px;
+    transition: transform 0.2s;
+  }
+
+  .card:hover {
+    transform: translateY(-5px);
+  }
+
+  .card h2 {
+    margin-top: 0;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 8px;
+    color: #333;
+    font-size: 1.2rem;
+  }
+
+  .section {
+    margin: 15px 0;
+  }
+
+  .section-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #555;
+    font-size: 0.95rem;
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .links a {
+    display: inline-block;
+    padding: 6px 12px;
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: 0.2s;
+  }
+
+  .links a:hover {
+    background: #0056b3;
+  }
+
+  /* 刪除按鈕 (選配) */
+  .delete-btn {
+    float: right;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .delete-btn:hover { color: red; }
 </style>
 </head>
 
@@ -69,158 +165,199 @@ h1{
 
 <h1>chienmu27 系統首頁</h1>
 
-<div class="container">
-
-  <!-- Breakfast -->
-  <div class="card">
-    <h2>🍳 Breakfast 系統</h2>
-
-    <div class="section">
-      <div class="section-title">breakfast260222</div>
-      <div class="links">
-        <a href="breakfast/breakfast260222/" target="_blank" rel="noopener noreferrer">
-          前台訂餐
-        </a>
-      </div>
+<!-- 新增網址表單區區 -->
+<div class="admin-panel">
+  <h3>➕ 加入新網址</h3>
+  <div class="form-group">
+    <div class="input-item">
+      <label>網頁分類</label>
+      <input type="text" id="catInput" placeholder="例如：🏫 點名系統" required>
     </div>
-
-    <div class="section">
-      <div class="section-title">breakfast0222</div>
-      <div class="links">
-        <a href="breakfast/breakfast0222/admin.html" target="_blank" rel="noopener noreferrer">
-          後台管理
-        </a>
-      </div>
+    <div class="input-item">
+      <label>網頁名稱</label>
+      <input type="text" id="nameInput" placeholder="例如：社團點名" required>
     </div>
+    <div class="input-item">
+      <label>網址 (URL)</label>
+      <input type="url" id="urlInput" placeholder="https://..." required>
+    </div>
+    <button class="btn-submit" onclick="addLink()">送出寫入</button>
   </div>
-
-  <!-- Rollcall System -->
-  <div class="card">
-    <h2>🏫 點名系統</h2>
-
-    <div class="section">
-      <div class="section-title">社團點名系統</div>
-      <div class="links">
-        <a href="clubs/rollcall/rollcall0208/" target="_blank">04設定匯入版</a>
-        <a href="clubs/rollcall/rollcall150208/" target="_blank">05刪除整欄版</a>
-        <a href="clubs/rollcall/rollcall2602/" target="_blank">春季風格版</a>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">基礎班點名簿</div>
-      <div class="links">
-        <a href="https://chienmu27.github.io/web-projects/rollcall/basic223/" target="_blank">
-          前往系統
-        </a>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">生教點名簿</div>
-      <div class="links">
-        <a href="https://chienmu27.github.io/web-projects/rollcall/life-education/" target="_blank">
-          前往系統
-        </a>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">教學點名簿</div>
-      <div class="links">
-        <a href="https://chienmu27.github.io/web-projects/rollcall/curriculum213/" target="_blank">
-          前往系統
-        </a>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">輔導點名簿</div>
-      <div class="links">
-        <a href="https://chienmu27.github.io/web-projects/rollcall/counseling267/" target="_blank">
-          前往系統
-        </a>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Announcement -->
-  <div class="card">
-    <h2>📢 公告</h2>
-
-    <div class="section">
-      <div class="section-title">社團公告系統</div>
-      <div class="links">
-        <a href="announcement/clubs/index.html" target="_blank">
-          查看公告
-        </a>
-      </div>
-    </div>
-    
-  </div>
-
-  <!-- Group Buying Management -->
-  <div class="card">
-    <h2>🛒 團購管理系統</h2>
-
-    <div class="section">
-      <div class="section-title">羽球隊團購</div>
-      <div class="links">
-        <a href="https://chienmu27.github.io/web-projects/group-buying/purchase/" target="_blank">前台</a>
-        <a href="https://chienmu27.github.io/web-projects/group-buying/purchase/admin.html" target="_blank">後台</a>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Egg團購</div>
-      <div class="links">
-        <a href="https://chienmu27.github.io/web-projects/group-buying/egg/" target="_blank">
-          前往系統
-        </a>
-      </div>
-    </div>
-    
-  </div>
-
-  <!-- Badminton -->
-  <div class="card">
-    <h2>🏸 臨打管理系統</h2>
-
-    <div class="section">
-      <div class="section-title">簡易版</div>
-      <div class="links">
-        <a href="https://chienmu27.github.io/web-projects/badminton/drop-in/" target="_blank">前往系統</a>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">前後台管理版</div>
-      <div class="links">
-        <a href="https://chienmu27.github.io/web-projects/badminton/temporary/" target="_blank">前台</a>
-        <a href="https://chienmu27.github.io/web-projects/badminton/temporary/admin.html" target="_blank">後台</a>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">新增候補版</div>
-      <div class="links">
-        <a href="https://chienmu27.github.io/web-projects/badminton/playing-badminton/" target="_blank">前台</a>
-        <a href="https://chienmu27.github.io/web-projects/badminton/playing-badminton/admin.html" target="_blank">後台</a>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Club新版</div>
-      <div class="links">
-        <a href="https://chienmu27.github.io/web-projects/badminton/club/" target="_blank">前台</a>
-        <a href="https://chienmu27.github.io/web-projects/badminton/club/admin.html" target="_blank">後台</a>
-      </div>
-    </div>
-
-  </div>
-
+  <button class="btn-reset" onclick="clearStorage()">重設回預設值</button>
 </div>
+
+<!-- 顯示區域 -->
+<div class="container" id="cardContainer">
+  <!-- 內容將由 JavaScript 自動生成 -->
+</div>
+
+<script>
+// 預設初始資料
+const defaultData = [
+  {
+    category: "🍳 Breakfast 系統",
+    sections: [
+      { title: "breakfast260222", links: [{ text: "前台訂餐", url: "breakfast/breakfast260222/" }] },
+      { title: "breakfast0222", links: [{ text: "後台管理", url: "breakfast/breakfast0222/admin.html" }] }
+    ]
+  },
+  {
+    category: "🏫 點名系統",
+    sections: [
+      { 
+        title: "社團點名系統", 
+        links: [
+          { text: "04設定匯入版", url: "clubs/rollcall/rollcall0208/" },
+          { text: "05刪除整欄版", url: "clubs/rollcall/rollcall150208/" },
+          { text: "春季風格版", url: "clubs/rollcall/rollcall2602/" }
+        ] 
+      },
+      { title: "基礎班點名簿", links: [{ text: "前往系統", url: "https://chienmu27.github.io/web-projects/rollcall/basic223/" }] },
+      { title: "生教點名簿", links: [{ text: "前往系統", url: "https://chienmu27.github.io/web-projects/rollcall/life-education/" }] },
+      { title: "教學點名簿", links: [{ text: "前往系統", url: "https://chienmu27.github.io/web-projects/rollcall/curriculum213/" }] },
+      { title: "輔導點名簿", links: [{ text: "前往系統", url: "https://chienmu27.github.io/web-projects/rollcall/counseling267/" }] }
+    ]
+  },
+  {
+    category: "📢 公告",
+    sections: [
+      { title: "社團公告系統", links: [{ text: "查看公告", url: "announcement/clubs/index.html" }] }
+    ]
+  },
+  {
+    category: "🛒 團購管理系統",
+    sections: [
+      { 
+        title: "羽球隊團購", 
+        links: [
+          { text: "前台", url: "https://chienmu27.github.io/web-projects/group-buying/purchase/" },
+          { text: "後台", url: "https://chienmu27.github.io/web-projects/group-buying/purchase/admin.html" }
+        ] 
+      },
+      { title: "Egg團購", links: [{ text: "前往系統", url: "https://chienmu27.github.io/web-projects/group-buying/egg/" }] }
+    ]
+  },
+  {
+    category: "🏸 臨打管理系統",
+    sections: [
+      { title: "簡易版", links: [{ text: "前往系統", url: "https://chienmu27.github.io/web-projects/badminton/drop-in/" }] },
+      { 
+        title: "前後台管理版", 
+        links: [
+          { text: "前台", url: "https://chienmu27.github.io/web-projects/badminton/temporary/" },
+          { text: "後台", url: "https://chienmu27.github.io/web-projects/badminton/temporary/admin.html" }
+        ] 
+      },
+      { 
+        title: "新增候補版", 
+        links: [
+          { text: "前台", url: "https://chienmu27.github.io/web-projects/badminton/playing-badminton/" },
+          { text: "後台", url: "https://chienmu27.github.io/web-projects/badminton/playing-badminton/admin.html" }
+        ] 
+      },
+      { 
+        title: "Club新版", 
+        links: [
+          { text: "前台", url: "https://chienmu27.github.io/web-projects/badminton/club/" },
+          { text: "後台", url: "https://chienmu27.github.io/web-projects/badminton/club/admin.html" }
+        ] 
+      }
+    ]
+  }
+];
+
+// 初始化資料：從 LocalStorage 讀取，若無則用預設值
+let siteData = JSON.parse(localStorage.getItem('myWebPortalData')) || defaultData;
+
+// 渲染畫面函數
+function render() {
+  const container = document.getElementById('cardContainer');
+  container.innerHTML = '';
+
+  siteData.forEach((catObj, catIndex) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    
+    let sectionsHtml = '';
+    catObj.sections.forEach(sec => {
+      let linksHtml = '';
+      sec.links.forEach(link => {
+        linksHtml += `<a href="${link.url}" target="_blank" rel="noopener noreferrer">${link.text}</a>`;
+      });
+
+      sectionsHtml += `
+        <div class="section">
+          <div class="section-title">${sec.title}</div>
+          <div class="links">${linksHtml}</div>
+        </div>
+      `;
+    });
+
+    card.innerHTML = `
+      <h2>${catObj.category}</h2>
+      ${sectionsHtml}
+    `;
+    container.appendChild(card);
+  });
+}
+
+// 新增網址函數
+function addLink() {
+  const cat = document.getElementById('catInput').value.trim();
+  const name = document.getElementById('nameInput').value.trim();
+  const url = document.getElementById('urlInput').value.trim();
+
+  if (!cat || !name || !url) {
+    alert('請填寫所有欄位！');
+    return;
+  }
+
+  // 檢查分類是否已存在
+  let categoryObj = siteData.find(item => item.category === cat);
+
+  if (categoryObj) {
+    // 若分類存在，直接加入新的 Section
+    categoryObj.sections.push({
+      title: name,
+      links: [{ text: "前往系統", url: url }]
+    });
+  } else {
+    // 若分類不存在，新增整個分類卡片
+    siteData.push({
+      category: cat,
+      sections: [{ title: name, links: [{ text: "前往系統", url: url }] }]
+    });
+  }
+
+  // 儲存至 LocalStorage
+  saveData();
+  
+  // 清空輸入框
+  document.getElementById('catInput').value = '';
+  document.getElementById('nameInput').value = '';
+  document.getElementById('urlInput').value = '';
+  
+  // 重新渲染
+  render();
+}
+
+// 儲存資料到 LocalStorage
+function saveData() {
+  localStorage.setItem('myWebPortalData', JSON.stringify(siteData));
+}
+
+// 清除資料並回復預設
+function clearStorage() {
+  if (confirm('確定要刪除所有新增的連結並回復至預設狀態嗎？')) {
+    localStorage.removeItem('myWebPortalData');
+    siteData = [...defaultData];
+    render();
+  }
+}
+
+// 初始執行
+render();
+</script>
 
 </body>
 </html>
