@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>chienmu27 系統首頁 - 管理版</title>
+<title>chienmu27 系統管理首頁</title>
 
 <style>
   body {
@@ -21,12 +21,12 @@
 
   /* 表單區塊樣式 */
   .admin-panel {
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto 40px auto;
     background: white;
-    padding: 20px;
+    padding: 25px;
     border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
   }
 
   .admin-panel h3 {
@@ -34,12 +34,13 @@
     color: #007bff;
     border-left: 5px solid #007bff;
     padding-left: 10px;
+    margin-bottom: 20px;
   }
 
   .form-group {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 15px;
     align-items: flex-end;
   }
 
@@ -47,30 +48,37 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    min-width: 150px;
+    min-width: 200px;
   }
 
   .input-item label {
     font-size: 14px;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     font-weight: bold;
   }
 
   .input-item input {
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
     font-size: 14px;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
   }
 
   .btn-submit {
     background: #28a745;
     color: white;
     border: none;
-    padding: 9px 20px;
-    border-radius: 4px;
+    padding: 10px 25px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: bold;
     transition: 0.3s;
   }
 
@@ -79,14 +87,13 @@
   }
 
   .btn-reset {
-    background: #dc3545;
+    background: #6c757d;
     color: white;
     border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
+    padding: 10px 15px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 12px;
-    margin-top: 10px;
+    font-size: 14px;
   }
 
   /* 內容區塊樣式 */
@@ -102,31 +109,58 @@
     padding: 20px;
     border-radius: 12px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-    width: 300px;
-    transition: transform 0.2s;
-  }
-
-  .card:hover {
-    transform: translateY(-5px);
+    width: 320px;
+    display: flex;
+    flex-direction: column;
   }
 
   .card h2 {
     margin-top: 0;
     border-bottom: 2px solid #eee;
-    padding-bottom: 8px;
+    padding-bottom: 10px;
     color: #333;
-    font-size: 1.2rem;
+    font-size: 1.25rem;
   }
 
   .section {
     margin: 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #f0f0f0;
+    position: relative;
+  }
+
+  .section:last-child {
+    border-bottom: none;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
   }
 
   .section-title {
     font-weight: bold;
-    margin-bottom: 8px;
-    color: #555;
+    color: #444;
     font-size: 0.95rem;
+  }
+
+  /* 刪除按鈕樣式 */
+  .btn-delete {
+    background: none;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    transition: 0.2s;
+  }
+
+  .btn-delete:hover {
+    color: #dc3545;
+    background: #fff1f0;
   }
 
   .links {
@@ -149,15 +183,6 @@
   .links a:hover {
     background: #0056b3;
   }
-
-  /* 刪除按鈕 (選配) */
-  .delete-btn {
-    float: right;
-    color: #ccc;
-    cursor: pointer;
-    font-size: 12px;
-  }
-  .delete-btn:hover { color: red; }
 </style>
 </head>
 
@@ -170,8 +195,8 @@
   <h3>➕ 加入新網址</h3>
   <div class="form-group">
     <div class="input-item">
-      <label>網頁分類</label>
-      <input type="text" id="catInput" placeholder="例如：🏫 點名系統" required>
+      <label>網頁分類 (例如: 🏫 點名系統)</label>
+      <input type="text" id="catInput" placeholder="輸入新分類或現有分類" required>
     </div>
     <div class="input-item">
       <label>網頁名稱</label>
@@ -181,9 +206,11 @@
       <label>網址 (URL)</label>
       <input type="url" id="urlInput" placeholder="https://..." required>
     </div>
-    <button class="btn-submit" onclick="addLink()">送出寫入</button>
   </div>
-  <button class="btn-reset" onclick="clearStorage()">重設回預設值</button>
+  <div class="btn-group">
+    <button class="btn-submit" onclick="addLink()">送出寫入</button>
+    <button class="btn-reset" onclick="clearStorage()">初始化資料</button>
+  </div>
 </div>
 
 <!-- 顯示區域 -->
@@ -192,6 +219,9 @@
 </div>
 
 <script>
+// 設定驗證碼 (可自行修改)
+const VERIFY_CODE = "2727";
+
 // 預設初始資料
 const defaultData = [
   {
@@ -241,35 +271,15 @@ const defaultData = [
     category: "🏸 臨打管理系統",
     sections: [
       { title: "簡易版", links: [{ text: "前往系統", url: "https://chienmu27.github.io/web-projects/badminton/drop-in/" }] },
-      { 
-        title: "前後台管理版", 
-        links: [
-          { text: "前台", url: "https://chienmu27.github.io/web-projects/badminton/temporary/" },
-          { text: "後台", url: "https://chienmu27.github.io/web-projects/badminton/temporary/admin.html" }
-        ] 
-      },
-      { 
-        title: "新增候補版", 
-        links: [
-          { text: "前台", url: "https://chienmu27.github.io/web-projects/badminton/playing-badminton/" },
-          { text: "後台", url: "https://chienmu27.github.io/web-projects/badminton/playing-badminton/admin.html" }
-        ] 
-      },
-      { 
-        title: "Club新版", 
-        links: [
-          { text: "前台", url: "https://chienmu27.github.io/web-projects/badminton/club/" },
-          { text: "後台", url: "https://chienmu27.github.io/web-projects/badminton/club/admin.html" }
-        ] 
-      }
+      { title: "前後台管理版", links: [{ text: "前台", url: "https://chienmu27.github.io/web-projects/badminton/temporary/" }, { text: "後台", url: "https://chienmu27.github.io/web-projects/badminton/temporary/admin.html" }] }
     ]
   }
 ];
 
-// 初始化資料：從 LocalStorage 讀取，若無則用預設值
+// 初始化資料
 let siteData = JSON.parse(localStorage.getItem('myWebPortalData')) || defaultData;
 
-// 渲染畫面函數
+// 渲染畫面
 function render() {
   const container = document.getElementById('cardContainer');
   container.innerHTML = '';
@@ -279,7 +289,7 @@ function render() {
     card.className = 'card';
     
     let sectionsHtml = '';
-    catObj.sections.forEach(sec => {
+    catObj.sections.forEach((sec, secIndex) => {
       let linksHtml = '';
       sec.links.forEach(link => {
         linksHtml += `<a href="${link.url}" target="_blank" rel="noopener noreferrer">${link.text}</a>`;
@@ -287,7 +297,10 @@ function render() {
 
       sectionsHtml += `
         <div class="section">
-          <div class="section-title">${sec.title}</div>
+          <div class="section-header">
+            <div class="section-title">${sec.title}</div>
+            <button class="btn-delete" onclick="deleteSection(${catIndex}, ${secIndex})" title="刪除此項目">🗑️ 刪除</button>
+          </div>
           <div class="links">${linksHtml}</div>
         </div>
       `;
@@ -301,7 +314,7 @@ function render() {
   });
 }
 
-// 新增網址函數
+// 新增網址
 function addLink() {
   const cat = document.getElementById('catInput').value.trim();
   const name = document.getElementById('nameInput').value.trim();
@@ -312,50 +325,65 @@ function addLink() {
     return;
   }
 
-  // 檢查分類是否已存在
   let categoryObj = siteData.find(item => item.category === cat);
 
   if (categoryObj) {
-    // 若分類存在，直接加入新的 Section
     categoryObj.sections.push({
       title: name,
       links: [{ text: "前往系統", url: url }]
     });
   } else {
-    // 若分類不存在，新增整個分類卡片
     siteData.push({
       category: cat,
       sections: [{ title: name, links: [{ text: "前往系統", url: url }] }]
     });
   }
 
-  // 儲存至 LocalStorage
   saveData();
-  
-  // 清空輸入框
   document.getElementById('catInput').value = '';
   document.getElementById('nameInput').value = '';
   document.getElementById('urlInput').value = '';
-  
-  // 重新渲染
   render();
 }
 
-// 儲存資料到 LocalStorage
+// 刪除功能
+function deleteSection(catIndex, secIndex) {
+  const userInput = prompt("確定要刪除嗎？請輸入驗證碼：");
+  
+  if (userInput === null) return; // 使用者按取消
+
+  if (userInput === VERIFY_CODE) {
+    // 刪除該分類下的特定項目
+    siteData[catIndex].sections.splice(secIndex, 1);
+    
+    // 如果該分類已經沒有任何項目，則刪除整個分類卡片
+    if (siteData[catIndex].sections.length === 0) {
+      siteData.splice(catIndex, 1);
+    }
+    
+    saveData();
+    render();
+    alert("刪除成功！");
+  } else {
+    alert("驗證碼錯誤，無法刪除。");
+  }
+}
+
+// 儲存至快取
 function saveData() {
   localStorage.setItem('myWebPortalData', JSON.stringify(siteData));
 }
 
-// 清除資料並回復預設
+// 重設
 function clearStorage() {
-  if (confirm('確定要刪除所有新增的連結並回復至預設狀態嗎？')) {
+  if (confirm('確定要初始化資料嗎？這會清除所有手動新增的內容。')) {
     localStorage.removeItem('myWebPortalData');
-    siteData = [...defaultData];
+    siteData = JSON.parse(JSON.stringify(defaultData));
     render();
   }
 }
 
-// 初始執行
+// 初始化
 render();
 </script>
 
