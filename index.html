@@ -19,7 +19,7 @@
     margin-bottom: 20px;
   }
 
-  /* 表單區塊樣式 */
+  /* 管理面板樣式 */
   .admin-panel {
     max-width: 900px;
     margin: 0 auto 40px auto;
@@ -94,9 +94,14 @@
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    transition: 0.3s;
   }
 
-  /* 內容區塊樣式 */
+  .btn-reset:hover {
+    background: #5a6268;
+  }
+
+  /* 容器與卡片樣式 */
   .container {
     display: flex;
     flex-wrap: wrap;
@@ -110,8 +115,6 @@
     border-radius: 12px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.08);
     width: 320px;
-    display: flex;
-    flex-direction: column;
   }
 
   .card h2 {
@@ -126,7 +129,6 @@
     margin: 15px 0;
     padding-bottom: 10px;
     border-bottom: 1px dashed #f0f0f0;
-    position: relative;
   }
 
   .section:last-child {
@@ -146,11 +148,10 @@
     font-size: 0.95rem;
   }
 
-  /* 刪除按鈕樣式 */
   .btn-delete {
     background: none;
     border: none;
-    color: #ccc;
+    color: #bbb;
     cursor: pointer;
     font-size: 12px;
     padding: 2px 5px;
@@ -190,13 +191,13 @@
 
 <h1>chienmu27 系統首頁</h1>
 
-<!-- 新增網址表單區區 -->
+<!-- 管理面板 -->
 <div class="admin-panel">
   <h3>➕ 加入新網址</h3>
   <div class="form-group">
     <div class="input-item">
       <label>網頁分類 (例如: 🏫 點名系統)</label>
-      <input type="text" id="catInput" placeholder="輸入新分類或現有分類" required>
+      <input type="text" id="catInput" placeholder="輸入分類名稱" required>
     </div>
     <div class="input-item">
       <label>網頁名稱</label>
@@ -213,16 +214,15 @@
   </div>
 </div>
 
-<!-- 顯示區域 -->
 <div class="container" id="cardContainer">
-  <!-- 內容將由 JavaScript 自動生成 -->
+  <!-- JavaScript 自動生成內容 -->
 </div>
 
 <script>
-// 設定驗證碼 (可自行修改)
-const VERIFY_CODE = "2727";
+// ================= 設定區域 =================
+const VERIFY_CODE = "2727"; // 刪除與重設的驗證碼
 
-// 預設初始資料
+// 初始預設資料
 const defaultData = [
   {
     category: "🍳 Breakfast 系統",
@@ -276,10 +276,12 @@ const defaultData = [
   }
 ];
 
-// 初始化資料
-let siteData = JSON.parse(localStorage.getItem('myWebPortalData')) || defaultData;
+// ================= 程式邏輯區域 =================
 
-// 渲染畫面
+// 從 LocalStorage 載入資料
+let siteData = JSON.parse(localStorage.getItem('myWebPortalData')) || JSON.parse(JSON.stringify(defaultData));
+
+// 渲染頁面
 function render() {
   const container = document.getElementById('cardContainer');
   container.innerHTML = '';
@@ -299,7 +301,7 @@ function render() {
         <div class="section">
           <div class="section-header">
             <div class="section-title">${sec.title}</div>
-            <button class="btn-delete" onclick="deleteSection(${catIndex}, ${secIndex})" title="刪除此項目">🗑️ 刪除</button>
+            <button class="btn-delete" onclick="deleteSection(${catIndex}, ${secIndex})">🗑️ 刪除</button>
           </div>
           <div class="links">${linksHtml}</div>
         </div>
@@ -314,14 +316,14 @@ function render() {
   });
 }
 
-// 新增網址
+// 新增連結
 function addLink() {
   const cat = document.getElementById('catInput').value.trim();
   const name = document.getElementById('nameInput').value.trim();
   const url = document.getElementById('urlInput').value.trim();
 
   if (!cat || !name || !url) {
-    alert('請填寫所有欄位！');
+    alert('所有欄位皆為必填！');
     return;
   }
 
@@ -339,51 +341,58 @@ function addLink() {
     });
   }
 
-  saveData();
+  saveAndRefresh();
+  // 清空輸入
   document.getElementById('catInput').value = '';
   document.getElementById('nameInput').value = '';
   document.getElementById('urlInput').value = '';
-  render();
 }
 
-// 刪除功能
+// 刪除特定網頁項目 (需驗證)
 function deleteSection(catIndex, secIndex) {
-  const userInput = prompt("確定要刪除嗎？請輸入驗證碼：");
+  const userInput = prompt("⚠️ 確定要刪除此項目嗎？\n請輸入驗證碼以確認：");
   
-  if (userInput === null) return; // 使用者按取消
+  if (userInput === null) return; 
 
   if (userInput === VERIFY_CODE) {
-    // 刪除該分類下的特定項目
     siteData[catIndex].sections.splice(secIndex, 1);
     
-    // 如果該分類已經沒有任何項目，則刪除整個分類卡片
+    // 若分類已空，刪除整個卡片
     if (siteData[catIndex].sections.length === 0) {
       siteData.splice(catIndex, 1);
     }
     
-    saveData();
-    render();
-    alert("刪除成功！");
+    saveAndRefresh();
+    alert("已成功刪除。");
   } else {
-    alert("驗證碼錯誤，無法刪除。");
+    alert("驗證碼錯誤，動作已取消。");
   }
 }
 
-// 儲存至快取
-function saveData() {
-  localStorage.setItem('myWebPortalData', JSON.stringify(siteData));
-}
-
-// 重設
+// 初始化/重設資料 (需驗證)
 function clearStorage() {
-  if (confirm('確定要初始化資料嗎？這會清除所有手動新增的內容。')) {
+  const userInput = prompt("🔥 注意：這將刪除所有新增的網址並回復至預設值！\n請輸入驗證碼以確認：");
+
+  if (userInput === null) return;
+
+  if (userInput === VERIFY_CODE) {
     localStorage.removeItem('myWebPortalData');
+    // 深拷貝預設資料，防止引用污染
     siteData = JSON.parse(JSON.stringify(defaultData));
     render();
+    alert("系統已回復至初始化狀態。");
+  } else {
+    alert("驗證碼錯誤，動作已取消。");
   }
 }
 
-// 初始化
+// 儲存並重繪
+function saveAndRefresh() {
+  localStorage.setItem('myWebPortalData', JSON.stringify(siteData));
+  render();
+}
+
+// 啟動渲染
 render();
 </script>
 
