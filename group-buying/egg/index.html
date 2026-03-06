@@ -70,7 +70,6 @@
         <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
             <div class="w-full md:flex-1 flex items-center gap-3 bg-white/80 rounded-xl px-4 py-2 shadow-sm border border-orange-200">
                 <i class="fas fa-bullhorn text-orange-500 animate-bounce"></i>
-                <!-- 修改：加入 whitespace-pre-wrap 讓文字可以換行 -->
                 <div id="marquee-text" class="text-sm md:text-base text-gray-800 font-bold whitespace-pre-wrap">載入最新公告中...</div>
             </div>
             <div class="flex items-center gap-3 w-full md:w-auto">
@@ -148,7 +147,6 @@
                 <h3 class="font-bold text-gray-700 text-sm"><i class="fas fa-bullhorn text-orange-500 mr-2"></i>公告設定</h3>
             </div>
             <div class="flex gap-2 items-start">
-                <!-- 修改：改用 textarea 以支援多行輸入 -->
                 <textarea id="input-admin-marquee" rows="1" class="flex-1 border rounded-lg px-3 py-2 bg-gray-50 outline-none focus:ring-2 focus:ring-red-500 text-sm h-12" placeholder="輸入公告內容(按Enter可換行)..."></textarea>
                 <button onclick="triggerSaveMarquee()" class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-red-700 transition text-sm whitespace-nowrap h-12">儲存公告</button>
             </div>
@@ -169,7 +167,6 @@
     </div>
 </div>
 
-<!-- (其餘 HTML 結構維持不變) -->
 <div id="cart-sidebar" class="fixed inset-y-0 right-0 w-[85%] sm:w-96 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 z-[60] flex flex-col">
   <div class="p-4 border-b flex justify-between items-center bg-gray-50">
       <h3 class="font-bold text-lg text-red-600"><i class="fas fa-shopping-basket mr-2"></i>購物清單</h3>
@@ -333,9 +330,12 @@ async function fetchMenu() {
     if (res.ok) {
         menuData = res.data;
         if(res.marquee) {
-            document.getElementById('marquee-text').innerText = res.marquee;
+            let rawText = res.marquee;
+            let formattedText = rawText.replace(/([☆★])/g, '<br>$1');
+            if(formattedText.startsWith('<br>')) formattedText = formattedText.substring(4);
+            document.getElementById('marquee-text').innerHTML = formattedText;
             const marqueeInput = document.getElementById('input-admin-marquee');
-            if(marqueeInput) marqueeInput.value = res.marquee;
+            if(marqueeInput) marqueeInput.value = rawText;
         }
         renderCategoryNav();
         displayMenu(menuData);
@@ -416,6 +416,12 @@ async function submitOrder() {
     btn.disabled = false; btn.innerText = "確認送出訂單";
 }
 
+// ------------------------------------------------------------------
+// 修改後的 loadAdminOrders
+// 1. 移除核取方塊
+// 2. 移除底部整單按鈕
+// 3. 每筆資料加入「取貨」(served) 和「結單」(cleared) 按鈕
+// ------------------------------------------------------------------
 async function loadAdminOrders() {
     document.getElementById('admin-status').innerText = "連線中...";
     const res = await callApi({ action: "getPendingOrdersMerged" });
@@ -424,42 +430,40 @@ async function loadAdminOrders() {
         document.getElementById('admin-status').innerText = list.length ? `目前有 ${list.length} 位客戶待處理` : "太棒了，目前沒有待處理訂單";
         
         document.getElementById('admin-orders-container').innerHTML = list.map(t => {
-            const hasPending = t.hasPending;
-            const actionBtn = hasPending
-                ? `<button onclick="triggerMarkServed('${t.name}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition w-full"><i class="fas fa-check mr-1"></i>標記勾選項目取貨</button>`
-                : `<div class="text-center text-gray-400 text-sm font-bold py-2">待結帳品項</div>`;
-
+            
+            // 品項列表渲染
             const itemsHtml = t.items.map(i => {
                 const isPending = i.status === 'pending';
                 const rowIdsStr = JSON.stringify(i.rowIds);
+                const safeRowIds = rowIdsStr.replace(/"/g, '&quot;');
                 
+                // 定義按鈕HTML
+                let servedBtn = '';
                 if (isPending) {
-                    return `<label class="flex justify-between items-center p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" value='${rowIdsStr}' class="order-check-${t.name} w-5 h-5 text-red-600 rounded focus:ring-red-500 cursor-pointer border-gray-300">
-                            <div>
-                                <span class="font-bold text-gray-800">${i.item}</span>
-                                <span class="text-gray-500 text-xs ml-1">x${i.qty}</span>
-                            </div>
-                        </div>
-                        <span class="font-bold text-gray-800">$${i.subtotal}</span>
-                    </label>`;
+                    // 狀態為 pending，顯示藍色「取貨」按鈕，點擊觸發 served
+                    servedBtn = `<button onclick="triggerItemServed(this, ${safeRowIds})" class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded shadow transition font-bold mr-2">取貨</button>`;
                 } else {
-                    const safeRowIds = rowIdsStr.replace(/"/g, '&quot;');
-                    return `<div class="flex justify-between items-center p-2 rounded-lg bg-green-50 border border-green-100">
-                        <div class="flex items-center gap-2">
-                            <i class="fas fa-check-circle text-green-500"></i>
-                            <div>
-                                <span class="font-bold text-green-700">${i.item}</span>
-                                <span class="text-green-600 text-xs ml-1">x${i.qty} (已備妥)</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                             <span class="font-bold text-green-700 mr-2">$${i.subtotal}</span>
-                             <button onclick="reqAuth('batchClear', ${safeRowIds})" class="bg-gray-800 text-white text-xs px-2 py-1.5 rounded shadow hover:bg-black transition">結帳</button>
-                        </div>
-                    </div>`;
+                    // 狀態為 served，顯示灰色/綠色「已取貨」按鈕 (不可點擊)
+                    servedBtn = `<button disabled class="bg-gray-100 text-green-600 border border-green-200 text-xs px-3 py-1.5 rounded shadow-sm font-bold mr-2 cursor-default">已取貨</button>`;
                 }
+
+                // 結單按鈕 (點擊觸發 cleared)
+                const clearBtn = `<button onclick="reqAuth('batchClear', ${safeRowIds})" class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded shadow transition font-bold">結單</button>`;
+
+                // 每一行的 HTML 結構
+                return `<div class="flex justify-between items-center p-2 rounded-lg hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                    <div class="flex items-center gap-2 flex-1">
+                        <div>
+                            <span class="font-bold text-gray-800">${i.item}</span>
+                            <span class="text-gray-500 text-xs ml-1">x${i.qty}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                         <span class="font-bold text-gray-800 mr-3">$${i.subtotal}</span>
+                         ${servedBtn}
+                         ${clearBtn}
+                    </div>
+                </div>`;
             }).join('');
 
             return `<div class="border-2 rounded-2xl p-4 shadow-sm bg-white border-gray-100 animate-fade-in flex flex-col h-full">
@@ -468,40 +472,25 @@ async function loadAdminOrders() {
                         <h3 class="font-black text-xl text-gray-800">${t.name}</h3>
                         <span class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">${formatDateTime(t.time)}</span>
                     </div>
+                    <div class="text-red-600 font-black text-lg">總計 $${t.total}</div>
                 </div>
-                <div class="flex-grow space-y-1 mb-4">
+                <div class="flex-grow space-y-1 mb-2">
                     ${itemsHtml}
-                </div>
-                <div class="mt-auto">
-                    <div class="flex justify-between items-center border-t pt-3 mb-3 font-black text-red-600 text-xl">
-                        <span>總計</span>
-                        <span>$${t.total}</span>
-                    </div>
-                    <div class="flex justify-end">
-                        ${actionBtn}
-                    </div>
                 </div>
             </div>`;
         }).join('') || '<div class="col-span-full text-center py-20 text-gray-200"><i class="fas fa-check-circle text-6xl mb-4"></i><p>暫無訂單</p></div>';
     }
 }
 
-async function triggerMarkServed(userName) {
-    const checkboxes = document.querySelectorAll(`.order-check-${userName}:checked`);
-    if (checkboxes.length === 0) return alert("請勾選要標記取貨的品項");
-    
-    let allRowIds = [];
-    checkboxes.forEach(cb => {
-        const rows = JSON.parse(cb.value);
-        allRowIds = allRowIds.concat(rows);
-    });
-
-    const btn = document.activeElement;
+// 新增：處理單一品項取貨 (不需要密碼)
+async function triggerItemServed(btn, rowIds) {
     const originalText = btn.innerText;
-    btn.innerText = "處理中...";
+    btn.innerText = "...";
     btn.disabled = true;
 
-    const res = await callApi({ action: "batchUpdateStatus", rowIds: allRowIds, status: "served" });
+    // 呼叫 batchUpdateStatus，目標狀態 served
+    // 這裡不需傳 password，因為後端設定 served 不需驗證
+    const res = await callApi({ action: "batchUpdateStatus", rowIds: rowIds, status: "served" });
     if (res.ok) {
         loadAdminOrders();
     } else {
@@ -707,7 +696,6 @@ async function loadAdminMenu() {
 // 新增：觸發儲存公告
 function triggerSaveMarquee() {
     const text = document.getElementById('input-admin-marquee').value;
-    // 不論內容是否為空，都允許儲存（清空公告）
     reqAuth('saveMarquee', text);
 }
 
