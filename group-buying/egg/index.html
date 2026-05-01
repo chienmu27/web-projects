@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Egg團購系統</title>
+<title>Egg團購系統-優化版</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
@@ -27,14 +27,13 @@
     .mobile-table-card td.checkbox-cell { justify-content: flex-start; padding-bottom: 0.5rem; border-bottom: 1px dashed #eee; margin-bottom: 0.5rem;}
     .mobile-table-card td.checkbox-cell::before { content: "選取刪除"; margin-right: 10px;}
   }
-  /* 自定義 Checkbox 樣式 */
   .custom-checkbox:checked + div { background-color: #fef2f2; border-color: #fca5a5; }
   .custom-checkbox:checked + div span.item-name { color: #dc2626; text-decoration: line-through; }
   
-  /* 狀態標籤樣式 */
   .status-badge { @apply px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide; }
   .status-pending { @apply bg-yellow-100 text-yellow-700; }
   .status-served { @apply bg-green-100 text-green-700; }
+  .status-paid { @apply bg-blue-100 text-blue-700; }
   .status-cleared { @apply bg-gray-100 text-gray-500; }
 </style>
 </head>
@@ -45,7 +44,6 @@
     <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2 shrink-0"><i class="fas fa-egg"></i>Egg團購</h1>
     
     <div class="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-end">
-        <!-- 登入/登出按鈕 -->
         <button id="btn-login-logout" onclick="toggleLoginState()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-700 hover:bg-red-800 text-white text-xs md:text-sm font-bold shadow transition border border-red-500">
             <i class="fas fa-sign-in-alt"></i> <span>登入</span>
         </button>
@@ -115,8 +113,8 @@
                 <select id="hist-filter-item" class="border rounded-lg px-2 py-2 bg-gray-50 text-xs focus:ring-2 focus:ring-red-500 outline-none" onchange="applyHistoryFilters()"></select>
                 <select id="hist-filter-name" class="border rounded-lg px-2 py-2 bg-gray-50 text-xs focus:ring-2 focus:ring-red-500 outline-none" onchange="applyHistoryFilters()"></select>
                 <button onclick="resetHistoryFilters()" class="bg-gray-100 text-gray-600 rounded-lg py-2 text-xs font-bold">重置</button>
-                <button onclick="triggerDeleteSelected()" class="bg-orange-100 text-orange-700 rounded-lg py-2 text-xs font-bold border border-orange-200">刪除選取</button>
-                <button onclick="triggerDeleteAllOrders()" class="bg-red-100 text-red-600 rounded-lg py-2 text-xs font-bold border border-red-200">刪除全部</button>
+                <button id="btn-delete-selected" onclick="triggerDeleteSelected()" class="bg-orange-100 text-orange-700 rounded-lg py-2 text-xs font-bold border border-orange-200">刪除選取</button>
+                <button id="btn-delete-all" onclick="triggerDeleteAllOrders()" class="bg-red-100 text-red-600 rounded-lg py-2 text-xs font-bold border border-red-200">刪除全部</button>
             </div>
         </div>
         <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -417,10 +415,7 @@ async function submitOrder() {
 }
 
 // ------------------------------------------------------------------
-// 修改後的 loadAdminOrders
-// 1. 移除核取方塊
-// 2. 移除底部整單按鈕
-// 3. 每筆資料加入「取貨」(served) 和「結單」(cleared) 按鈕
+// 管理端：待處理分頁
 // ------------------------------------------------------------------
 async function loadAdminOrders() {
     document.getElementById('admin-status').innerText = "連線中...";
@@ -430,36 +425,34 @@ async function loadAdminOrders() {
         document.getElementById('admin-status').innerText = list.length ? `目前有 ${list.length} 位客戶待處理` : "太棒了，目前沒有待處理訂單";
         
         document.getElementById('admin-orders-container').innerHTML = list.map(t => {
-            
-            // 品項列表渲染
             const itemsHtml = t.items.map(i => {
-                const isPending = i.status === 'pending';
-                const rowIdsStr = JSON.stringify(i.rowIds);
-                const safeRowIds = rowIdsStr.replace(/"/g, '&quot;');
+                const rowIdsStr = JSON.stringify(i.rowIds).replace(/"/g, '&quot;');
                 
-                // 定義按鈕HTML
-                let servedBtn = '';
-                if (isPending) {
-                    // 狀態為 pending，顯示藍色「取貨」按鈕，點擊觸發 served
-                    servedBtn = `<button onclick="triggerItemServed(this, ${safeRowIds})" class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded shadow transition font-bold mr-2">取貨</button>`;
-                } else {
-                    // 狀態為 served，顯示灰色/綠色「已取貨」按鈕 (不可點擊)
-                    servedBtn = `<button disabled class="bg-gray-100 text-green-600 border border-green-200 text-xs px-3 py-1.5 rounded shadow-sm font-bold mr-2 cursor-default">已取貨</button>`;
-                }
+                // 付款按鈕處理
+                const isPaid = i.status === 'paid' || i.status === 'served';
+                const paidBtn = isPaid 
+                    ? `<button disabled class="bg-gray-100 text-blue-600 border border-blue-200 text-[10px] px-2 py-1 rounded font-bold mr-1 cursor-default">已付款</button>`
+                    : `<button onclick="triggerItemUpdate(this, ${rowIdsStr}, 'paid')" class="bg-blue-500 hover:bg-blue-600 text-white text-[10px] px-2 py-1 rounded shadow transition font-bold mr-1">付款</button>`;
 
-                // 結單按鈕 (點擊觸發 cleared)
-                const clearBtn = `<button onclick="reqAuth('batchClear', ${safeRowIds})" class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded shadow transition font-bold">結單</button>`;
+                // 取貨按鈕處理
+                const isServed = i.status === 'served';
+                const servedBtn = isServed
+                    ? `<button disabled class="bg-gray-100 text-green-600 border border-green-200 text-[10px] px-2 py-1 rounded font-bold mr-1 cursor-default">已取貨</button>`
+                    : `<button onclick="triggerItemUpdate(this, ${rowIdsStr}, 'served')" class="bg-green-500 hover:bg-green-600 text-white text-[10px] px-2 py-1 rounded shadow transition font-bold mr-1">取貨</button>`;
 
-                // 每一行的 HTML 結構
+                // 結單按鈕
+                const clearBtn = `<button onclick="reqAuth('batchClear', ${rowIdsStr})" class="bg-red-500 hover:bg-red-600 text-white text-[10px] px-2 py-1 rounded shadow transition font-bold">結單</button>`;
+
                 return `<div class="flex justify-between items-center p-2 rounded-lg hover:bg-gray-50 border-b border-gray-100 last:border-0">
                     <div class="flex items-center gap-2 flex-1">
                         <div>
-                            <span class="font-bold text-gray-800">${i.item}</span>
+                            <span class="font-bold text-gray-800 text-sm">${i.item}</span>
                             <span class="text-gray-500 text-xs ml-1">x${i.qty}</span>
                         </div>
                     </div>
                     <div class="flex items-center">
-                         <span class="font-bold text-gray-800 mr-3">$${i.subtotal}</span>
+                         <span class="font-bold text-gray-800 mr-2 text-sm">$${i.subtotal}</span>
+                         ${paidBtn}
                          ${servedBtn}
                          ${clearBtn}
                     </div>
@@ -482,21 +475,22 @@ async function loadAdminOrders() {
     }
 }
 
-// 新增：處理單一品項取貨 (不需要密碼)
-async function triggerItemServed(btn, rowIds) {
+// 處理付款/取貨狀態更新，顯示「處理中...」
+async function triggerItemUpdate(btn, rowIds, status) {
     const originalText = btn.innerText;
-    btn.innerText = "...";
+    btn.innerText = "處理中...";
     btn.disabled = true;
+    btn.classList.add('opacity-70');
 
-    // 呼叫 batchUpdateStatus，目標狀態 served
-    // 這裡不需傳 password，因為後端設定 served 不需驗證
-    const res = await callApi({ action: "batchUpdateStatus", rowIds: rowIds, status: "served" });
+    // 付款與取貨通常不需二階段密碼驗證
+    const res = await callApi({ action: "batchUpdateStatus", rowIds: rowIds, status: status });
     if (res.ok) {
         loadAdminOrders();
     } else {
         alert(res.message);
         btn.innerText = originalText;
         btn.disabled = false;
+        btn.classList.remove('opacity-70');
     }
 }
 
@@ -535,8 +529,9 @@ function applyHistoryFilters() {
         tQty += r.qty; tAmt += r.subtotal;
         let badgeClass = "bg-gray-100 text-gray-500";
         if(r.status === 'pending') badgeClass = "bg-yellow-100 text-yellow-700";
+        if(r.status === 'paid') badgeClass = "bg-blue-100 text-blue-700";
         if(r.status === 'served') badgeClass = "bg-green-100 text-green-700";
-        if(r.status === 'cleared') badgeClass = "bg-blue-50 text-blue-700";
+        if(r.status === 'cleared') badgeClass = "bg-gray-100 text-gray-400";
 
         return `<tr class="hover:bg-gray-50">
             <td class="px-4 py-3 text-center checkbox-cell">
@@ -549,7 +544,7 @@ function applyHistoryFilters() {
             <td data-label="小計" class="px-4 py-3 font-black text-red-600">$${r.subtotal}</td>
             <td data-label="操作" class="px-4 py-3 text-center flex items-center justify-center gap-2">
                  <span class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded ${badgeClass}">${r.status}</span>
-                 <button onclick="reqAuth('deleteRow', ${r.row})" class="bg-red-50 text-red-500 w-8 h-8 rounded-full hover:bg-red-100 transition"><i class="fas fa-trash-alt"></i></button>
+                 <button onclick="reqAuth('deleteRow', ${r.row}, this)" class="btn-delete-row bg-red-50 text-red-500 w-8 h-8 rounded-full hover:bg-red-100 transition"><i class="fas fa-trash-alt"></i></button>
             </td>
         </tr>`;
     }).join('');
@@ -581,23 +576,23 @@ function triggerDeleteSelected() {
     const checkboxes = document.querySelectorAll('.history-checkbox:checked');
     if(checkboxes.length === 0) return alert("請先勾選要刪除的訂單");
     const rows = Array.from(checkboxes).map(cb => cb.value);
-    reqAuth('deleteSelected', rows);
+    reqAuth('deleteSelected', rows, document.getElementById('btn-delete-selected'));
 }
 
-function reqAuth(action, target) {
+function reqAuth(action, target, element = null) {
     if (action === 'login') {
-        showAuthModal(action, target);
+        showAuthModal(action, target, element);
         return;
     }
 
     if (adminPwd) {
-        performAction(action, target, adminPwd);
+        performAction(action, target, adminPwd, false, element);
     } else {
-        showAuthModal(action, target);
+        showAuthModal(action, target, element);
     }
 }
 
-function showAuthModal(action, target) {
+function showAuthModal(action, target, element) {
     const modal = document.getElementById('modal-auth');
     const input = document.getElementById('input-auth-pwd');
     const confirmBtn = document.getElementById('btn-auth-confirm');
@@ -620,7 +615,7 @@ function showAuthModal(action, target) {
         if (action === 'login') {
             handleLogin(pwd);
         } else {
-            performAction(action, target, pwd, true); 
+            performAction(action, target, pwd, true, element); 
         }
     };
 }
@@ -644,9 +639,20 @@ async function handleLogin(pwd) {
     btn.innerText = "驗證";
 }
 
-async function performAction(action, target, pwd, isOneTime = false) {
+async function performAction(action, target, pwd, isOneTime = false, element = null) {
     let res;
-    if(isOneTime) document.getElementById('btn-auth-confirm').disabled = true;
+    // 顯示「處理中」訊息
+    const authConfirmBtn = document.getElementById('btn-auth-confirm');
+    const originalElText = element ? element.innerText : "";
+    
+    if(isOneTime) {
+        authConfirmBtn.disabled = true;
+        authConfirmBtn.innerText = "處理中...";
+    }
+    if(element) {
+        element.disabled = true;
+        if(element.tagName === "BUTTON") element.innerText = "處理中...";
+    }
 
     if(action === 'deleteRow') res = await callApi({ action: "deleteOrder", row: target, password: pwd });
     else if(action === 'deleteAll') res = await callApi({ action: "deleteAllOrders", password: pwd });
@@ -654,7 +660,15 @@ async function performAction(action, target, pwd, isOneTime = false) {
     else if(action === 'batchClear') res = await callApi({ action: "batchUpdateStatus", rowIds: target, status: "cleared", password: pwd });
     else if(action === 'saveMarquee') res = await callApi({ action: "saveMarquee", text: target, password: pwd });
 
-    if(isOneTime) document.getElementById('btn-auth-confirm').disabled = false;
+    // 恢復按鈕狀態
+    if(isOneTime) {
+        authConfirmBtn.disabled = false;
+        authConfirmBtn.innerText = "驗證";
+    }
+    if(element) {
+        element.disabled = false;
+        if(element.tagName === "BUTTON") element.innerText = originalElText || (action.includes('delete') ? "刪除" : "確認");
+    }
 
     if(res && res.ok) { 
         if(isOneTime) closeAuthModal(); 
@@ -671,7 +685,11 @@ async function performAction(action, target, pwd, isOneTime = false) {
     }
 }
 
-function triggerDeleteAllOrders() { if(confirm("確定要刪除所有歷史訂單嗎？")) reqAuth('deleteAll', null); }
+function triggerDeleteAllOrders() { 
+    if(confirm("確定要刪除所有歷史訂單嗎？")) {
+        reqAuth('deleteAll', null, document.getElementById('btn-delete-all'));
+    }
+}
 
 async function loadAdminMenu() {
     const res = await callApi({ action: "getMenu" });
@@ -687,13 +705,12 @@ async function loadAdminMenu() {
             <td data-label="價格" class="px-4 py-3 font-black text-red-600">$${i.price}</td>
             <td data-label="操作" class="px-4 py-3 text-center">
                 <button onclick='openMenuModal("edit", ${JSON.stringify(i).replace(/'/g, "&apos;")})' class="bg-blue-50 text-blue-500 w-8 h-8 rounded-full mr-2"><i class="fas fa-edit"></i></button>
-                <button onclick="triggerMenuDelete(${i.row})" class="bg-red-50 text-red-400 w-8 h-8 rounded-full"><i class="fas fa-trash"></i></button>
+                <button onclick="triggerMenuDelete(${i.row}, this)" class="bg-red-50 text-red-400 w-8 h-8 rounded-full"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`).join('');
     }
 }
 
-// 新增：觸發儲存公告
 function triggerSaveMarquee() {
     const text = document.getElementById('input-admin-marquee').value;
     reqAuth('saveMarquee', text);
@@ -735,7 +752,13 @@ function triggerMenuSave() {
 }
 
 async function execMenuSave(payload, row, pwd, isOneTime = false) {
+    const authBtn = document.getElementById('btn-auth-confirm');
+    if(isOneTime) { authBtn.disabled = true; authBtn.innerText = "儲存中..."; }
+    
     const res = await callApi({ action: "saveMenuItem", row, ...payload, password: pwd });
+    
+    if(isOneTime) { authBtn.disabled = false; authBtn.innerText = "驗證"; }
+
     if(res.ok) { 
         if(isOneTime) closeAuthModal(); 
         closeMenuModal(); 
@@ -744,9 +767,9 @@ async function execMenuSave(payload, row, pwd, isOneTime = false) {
     } else alert(res.message);
 }
 
-function triggerMenuDelete(row) {
+function triggerMenuDelete(row, element) {
     if (adminPwd) {
-        execMenuDelete(row, adminPwd);
+        execMenuDelete(row, adminPwd, false, element);
     } else {
         const modal = document.getElementById('modal-auth');
         const input = document.getElementById('input-auth-pwd');
@@ -760,13 +783,21 @@ function triggerMenuDelete(row) {
         
         newBtn.onclick = () => {
             const pwd = input.value;
-            execMenuDelete(row, pwd, true);
+            execMenuDelete(row, pwd, true, element);
         };
     }
 }
 
-async function execMenuDelete(row, pwd, isOneTime = false) {
+async function execMenuDelete(row, pwd, isOneTime = false, element = null) {
+    const authBtn = document.getElementById('btn-auth-confirm');
+    if(isOneTime) { authBtn.disabled = true; authBtn.innerText = "刪除中..."; }
+    if(element) element.disabled = true;
+
     const res = await callApi({ action: "deleteMenuItem", row, password: pwd });
+    
+    if(isOneTime) { authBtn.disabled = false; authBtn.innerText = "驗證"; }
+    if(element) element.disabled = false;
+
     if(res.ok) { 
         if(isOneTime) closeAuthModal(); 
         loadAdminMenu(); 
