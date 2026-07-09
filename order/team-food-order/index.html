@@ -7,175 +7,59 @@
     <style>
         :root {
             --primary-color: #4a90e2;
+            --danger-color: #e74c3c;
             --bg-color: #f4f7f6;
             --notice-bg: #fffbe6;
             --notice-border: #ffe58f;
-            --line-green: #06C755;
-            --danger-color: #e74c3c;
-            --success-color: #2ecc71;
         }
         body { 
-            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
-            margin: 0; 
-            background: var(--bg-color); 
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
+            font-family: "Microsoft JhengHei", sans-serif; 
+            margin: 0; background: var(--bg-color); 
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
         }
-        
-        .header-section {
-            background: white;
-            padding: 10px 20px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
+        .header-section { background: white; padding: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         h1 { margin: 5px 0; font-size: 20px; color: #333; }
-        #announcement {
-            background: var(--notice-bg);
-            border: 1px solid var(--notice-border);
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-size: 13px;
-            color: #856404;
-            display: inline-block;
-            max-width: 90%;
-        }
+        #announcement { background: var(--notice-bg); border: 1px solid var(--notice-border); padding: 6px 12px; border-radius: 4px; font-size: 13px; color: #856404; }
 
-        .tabs { 
-            display: flex; 
-            justify-content: center; 
-            background: #fff; 
-            padding: 10px 0;
-            gap: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        .tab-btn {
-            padding: 8px 20px;
-            border: 1px solid #ddd;
-            background: #f9f9f9;
-            font-size: 15px;
-            font-weight: bold;
-            color: #666;
-            cursor: pointer;
-            border-radius: 20px;
-            transition: 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .tab-btn.active { 
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
+        .tabs { display: flex; justify-content: center; background: #fff; padding: 10px 0; gap: 10px; border-bottom: 1px solid #eee; }
+        .tab-btn { padding: 8px 15px; border: 1px solid #ddd; background: #f9f9f9; font-size: 14px; font-weight: bold; border-radius: 20px; cursor: pointer; transition: 0.3s; }
+        .tab-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
 
         .content-container { flex: 1; position: relative; overflow: hidden; }
-        .page { 
-            display: none; 
-            width: 100%; 
-            height: 100%; 
-            overflow-y: auto; 
-            -webkit-overflow-scrolling: touch;
-        }
+        .page { display: none; width: 100%; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .page.active { display: block; }
 
-        #lineWarning {
-            display: none;
-            background: #fff3cd;
-            color: #856404;
-            padding: 12px;
-            text-align: center;
-            font-size: 14px;
-            border-bottom: 2px solid #ffeeba;
-        }
-        
-        .form-notice {
-            background: #e1f5fe;
-            padding: 12px;
-            text-align: center;
-            font-size: 14px;
-            color: #01579b;
-            border-bottom: 1px solid #b3e5fc;
-        }
-        .force-open-btn {
-            display: inline-block;
-            background: var(--primary-color);
-            color: white !important;
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: bold;
-            margin-top: 5px;
-            border: none;
-            cursor: pointer;
-        }
+        /* 按鈕群組 */
+        .action-bar { display: flex; justify-content: space-between; margin-bottom: 10px; gap: 5px; flex-wrap: wrap; }
+        .btn { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .btn-refresh { background: #2ecc71; color: white; }
+        .btn-delete { background: var(--danger-color); color: white; }
+        .btn-delete-all { background: #34495e; color: white; }
 
-        #formPage { padding: 0; }
-        .iframe-wrapper { width: 100%; height: calc(100% - 85px); }
-        iframe { width: 100%; height: 100%; border: none; }
-
-        /* 查詢頁面樣式 */
-        #queryPage { padding: 15px; }
-        .query-card {
-            background: white; padding: 15px; border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
-            max-width: 600px; 
-            margin: 0 auto 100px;
-        }
-        .filter-group { margin-bottom: 12px; position: relative; }
-        label { display: block; margin-bottom: 4px; font-weight: bold; color: #444; font-size: 14px; }
-        
-        .flex-row { display: flex; gap: 8px; align-items: flex-end; }
-        select { flex: 1; padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 6px; }
-        
-        /* 按鈕樣式 */
-        .btn {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 14px;
-            transition: 0.2s;
-        }
-        .btn-refresh { background-color: var(--success-color); color: white; }
-        .btn-delete-selected { background-color: var(--danger-color); color: white; margin-right: 5px; }
-        .btn-delete-all { background-color: #333; color: white; }
-        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
-
-        .action-bar { margin: 15px 0; display: flex; justify-content: center; }
-
+        .query-card { background: white; padding: 15px; border-radius: 8px; max-width: 600px; margin: 0 auto 100px; }
+        .filter-group { margin-bottom: 10px; }
+        select { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 6px; }
         #countInfo { margin: 10px 0; color: var(--primary-color); font-weight: bold; text-align: center; }
-        .table-container { margin-top: 10px; overflow-x: auto; border: 1px solid #eee; border-radius: 4px; }
-        table { width: 100%; border-collapse: collapse; background: #fff; }
+
+        .table-container { margin-top: 10px; overflow-x: auto; border: 1px solid #eee; }
+        table { width: 100%; border-collapse: collapse; background: #fff; min-width: 300px; }
         th, td { border: 1px solid #eee; padding: 12px 5px; text-align: center; font-size: 14px; }
-        th { background-color: #f8f9fa; position: sticky; top: 0; }
-        
-        /* Checkbox 樣式 */
-        input[type="checkbox"] { transform: scale(1.3); cursor: pointer; }
-        
-        /* 載入中遮罩 */
-        #loadingOverlay {
-            display: none;
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.8);
-            z-index: 2000; justify-content: center; align-items: center;
-            font-weight: bold; color: var(--primary-color);
+        th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 10; }
+        input[type="checkbox"] { transform: scale(1.3); }
+
+        /* 載入中動畫 */
+        #loader { display: none; text-align: center; padding: 10px; color: var(--primary-color); font-weight: bold; }
+
+        @media (max-width: 480px) {
+            .btn { flex: 1; text-align: center; }
         }
     </style>
 </head>
 <body>
 
-    <div id="loadingOverlay">執行中，請稍候...</div>
-
-    <div id="lineWarning">
-        ⚠️ 偵測到您正在使用 LINE 開啟。為了能正常登入 Google 帳號，建議點擊下方按鈕跳轉。
-    </div>
-
     <div class="header-section">
         <h1>羽球隊訂餐系統</h1>
-        <div id="announcement">公告載入中...</div>
+        <div id="announcement">資料載入中...</div>
     </div>
 
     <div class="tabs">
@@ -185,51 +69,40 @@
 
     <div class="content-container">
         <div id="formPage" class="page active">
-            <div class="form-notice">
-                <b>無法登入 Google 帳號？</b><br>
-                <button class="force-open-btn" onclick="handleExternalLink()">🚀 用瀏覽器開啟 (強制跳轉)</button>
-            </div>
-            <div class="iframe-wrapper">
-                <iframe id="googleForm" src="https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform?embedded=true">載入中…</iframe>
-            </div>
+            <iframe id="googleForm" src="https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform?embedded=true" style="width:100%; height:100%; border:none;">載入中…</iframe>
         </div>
 
         <div id="queryPage" class="page">
             <div class="query-card">
+                <div class="action-bar">
+                    <button class="btn btn-refresh" onclick="fetchData()">🔄 重新整理</button>
+                    <button class="btn btn-delete" onclick="deleteSelected()">🗑️ 刪除選取</button>
+                    <button class="btn btn-delete-all" onclick="deleteAll()">⚠️ 全部刪除</button>
+                </div>
+
                 <div class="filter-group">
                     <label>📅 選擇日期：</label>
-                    <div class="flex-row">
-                        <select id="dateSelect">
-                            <option value="">讀取資料中...</option>
-                        </select>
-                        <button class="btn btn-refresh" onclick="refreshData()">🔄 整理</button>
-                    </div>
+                    <select id="dateSelect"><option value="">載入中...</option></select>
                 </div>
                 <div class="filter-group">
                     <label>👤 選擇學生：</label>
-                    <select id="studentSelect">
-                        <option value="">--全部學生--</option>
-                    </select>
+                    <select id="studentSelect"><option value="">--請先選擇日期--</option></select>
                 </div>
 
+                <div id="loader">⏳ 處理中，請稍候...</div>
                 <div id="countInfo"></div>
-
-                <div class="action-bar">
-                    <button id="delSelectedBtn" class="btn btn-delete-selected" onclick="deleteSelected()" disabled>🗑️ 刪除勾選</button>
-                    <button id="delAllBtn" class="btn btn-delete-all" onclick="deleteAllFiltered()" disabled>🔥 全部刪除</button>
-                </div>
 
                 <div class="table-container">
                     <table id="resultTable">
                         <thead>
                             <tr>
-                                <th><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
+                                <th width="40"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
                                 <th>日期</th>
-                                <th>學生姓名</th>
+                                <th>姓名</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td colspan="3">請選擇查詢條件</td></tr>
+                            <tr><td colspan="3">讀取資料中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -238,30 +111,11 @@
     </div>
 
 <script>
-    // 請將下方的 URL 替換為您部署 GAS 後產生的「網頁應用程式 URL」
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbyTc0DD_JLX0U_gDuiNF2KJx88p_G74EnwbLQJ2FI2w8sJBQtIkOEHhnOc1ucoUraS8/exec";
-    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTsZpJrcNtNVi3N32mxia0RM0PhtTJU-JIvDL-LpurlDVIAISdZxonWssNqxd-qBk9VJvrdwUz9qWCv/pub?gid=1115559903&single=true&output=csv";
-    const rawFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform";
+    // ⚠️ 請修改為您的 GAS 部署網址
+    const gasUrl = "https://script.google.com/macros/s/AKfycbyTc0DD_JLX0U_gDuiNF2KJx88p_G74EnwbLQJ2FI2w8sJBQtIkOEHhnOc1ucoUraS8/exec";
     
-    let rows = [];
-    let currentUniqueMatches = [];
-
-    function handleExternalLink() {
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        if (isAndroid) {
-            const intentUrl = `intent://${rawFormUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
-            window.location.href = intentUrl;
-        } else {
-            const externalUrl = rawFormUrl + (rawFormUrl.includes('?') ? '&' : '?') + "openExternalBrowser=1";
-            window.location.href = externalUrl;
-        }
-    }
-
-    function checkBrowser() {
-        if (/Line/i.test(navigator.userAgent)) {
-            document.getElementById('lineWarning').style.display = 'block';
-        }
-    }
+    let allData = [];
+    let filteredMatches = [];
 
     function showPage(pageId, btn) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -270,176 +124,128 @@
         btn.classList.add('active');
     }
 
-    function parseCSV(text) {
-        const result = [];
-        let cur = [], curVal = "", inQuotes = false;
-        for (let i = 0; i < text.length; i++) {
-            const ch = text[i], next = text[i + 1];
-            if (inQuotes) {
-                if (ch === '"' && next === '"') { curVal += '"'; i++; }
-                else if (ch === '"') inQuotes = false;
-                else curVal += ch;
-            } else {
-                if (ch === '"') inQuotes = true;
-                else if (ch === ',') { cur.push(curVal); curVal = ""; }
-                else if (ch === '\n') { cur.push(curVal); result.push(cur); cur = []; curVal = ""; }
-                else if (ch !== '\r') curVal += ch;
-            }
-        }
-        if (curVal || cur.length) { cur.push(curVal); result.push(cur); }
-        return result;
-    }
-
-    async function loadCSV() {
+    // 從 API 讀取即時資料
+    async function fetchData() {
+        document.getElementById('loader').style.display = 'block';
         try {
-            const res = await fetch(csvUrl + "&t=" + new Date().getTime()); // 加時間戳防止快取
-            const text = await res.text();
-            rows = parseCSV(text).filter(r => r.length > 1 && r.some(c => c.trim() !== ""));
-            updateAnnouncement();
+            const response = await fetch(`${gasUrl}?action=fetch`);
+            const json = await response.json();
+            allData = json.rows;
+            document.getElementById('announcement').textContent = "📢 " + json.announcement;
             buildDropdowns();
             runFilter();
         } catch (e) {
-            console.error("載入失敗", e);
+            alert("讀取失敗，請檢查 API 部署與網路");
+        } finally {
+            document.getElementById('loader').style.display = 'none';
         }
-    }
-
-    function updateAnnouncement() {
-        const ann = document.getElementById('announcement');
-        if (rows.length > 1 && rows[0][8]) ann.textContent = "📢 " + rows[0][8].trim();
     }
 
     function buildDropdowns() {
         const dateSet = new Set(), studentSet = new Set();
-        rows.forEach((r, i) => {
+        allData.forEach((r, i) => {
             if (i > 0) { 
-                if (r[6]) dateSet.add(r[6].trim());
-                if (r[7]) studentSet.add(r[7].trim());
+                if (r[2]) dateSet.add(r[2].toString().trim()); // C欄：訂餐日期
+                if (r[3]) studentSet.add(r[3].toString().trim()); // D欄：姓名
             }
         });
         const dates = Array.from(dateSet).sort((a, b) => new Date(b) - new Date(a));
         const students = Array.from(studentSet).sort();
+        
         const dSel = document.getElementById('dateSelect'), sSel = document.getElementById('studentSelect');
-        const prevDate = dSel.value;
-        const prevStudent = sSel.value;
-
-        dSel.innerHTML = '<option value="">--請選擇日期--</option>';
+        dSel.innerHTML = '<option value="">--全部日期--</option>';
         sSel.innerHTML = '<option value="">--全部學生--</option>';
         dates.forEach(d => dSel.add(new Option(d, d)));
         students.forEach(s => sSel.add(new Option(s, s)));
-        
-        dSel.value = prevDate;
-        sSel.value = prevStudent;
     }
 
     function runFilter() {
         const dVal = document.getElementById('dateSelect').value;
         const sVal = document.getElementById('studentSelect').value;
         const tbody = document.querySelector("#resultTable tbody");
-        document.getElementById('selectAll').checked = false;
-
-        const matches = rows.filter((r, i) => {
+        
+        // 篩選與去重邏輯
+        const matches = allData.filter((r, i) => {
             if (i === 0) return false;
-            const dateMatch = !dVal || (r[2] && r[2].trim() === dVal);
-            const studentMatch = !sVal || (r[3] && r[3].trim() === sVal);
-            return dateMatch && studentMatch;
+            return (!dVal || r[2].toString().trim() === dVal) && (!sVal || r[3].toString().trim() === sVal);
         });
 
-        currentUniqueMatches = [];
+        // 去重 (同日期同姓名)
+        const unique = [];
         const seen = new Set();
         matches.forEach(r => {
-            const name = r[3]?.trim();
-            if (name && !seen.has(name)) { 
-                seen.add(name); 
-                currentUniqueMatches.push({date: r[2].trim(), name: name}); 
-            }
+            const key = r[2] + "|" + r[3];
+            if (!seen.has(key)) { seen.add(key); unique.push(r); }
         });
 
-        document.getElementById("countInfo").textContent = dVal ? `📌 篩選結果：共 ${currentUniqueMatches.length} 位學生` : "";
-        
-        const canDelete = dVal !== "" || sVal !== "";
-        document.getElementById('delAllBtn').disabled = !canDelete || currentUniqueMatches.length === 0;
-        document.getElementById('delSelectedBtn').disabled = true;
+        filteredMatches = unique;
+        document.getElementById("countInfo").textContent = `📌 篩選結果：共 ${unique.length} 筆`;
+        document.getElementById('selectAll').checked = false;
 
-        tbody.innerHTML = currentUniqueMatches.length ? "" : "<tr><td colspan='3'>查無紀錄</td></tr>";
-        
-        currentUniqueMatches.forEach((item, index) => {
+        tbody.innerHTML = unique.length ? "" : "<tr><td colspan='3'>查無資料</td></tr>";
+        unique.forEach((r, idx) => {
             const tr = document.createElement('tr');
+            // 使用 A 欄 Timestamp 作為 Value
             tr.innerHTML = `
-                <td><input type="checkbox" class="row-check" data-index="${index}" onclick="updateDeleteBtn()"></td>
-                <td>${item.date}</td>
-                <td>${item.name}</td>
+                <td><input type="checkbox" class="row-check" value="${r[0]}"></td>
+                <td>${r[2]}</td>
+                <td>${r[3]}</td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    function toggleSelectAll(master) {
-        document.querySelectorAll('.row-check').forEach(cb => cb.checked = master.checked);
-        updateDeleteBtn();
+    function toggleSelectAll(mainCb) {
+        document.querySelectorAll('.row-check').forEach(cb => cb.checked = mainCb.checked);
     }
 
-    function updateDeleteBtn() {
-        const anyChecked = document.querySelectorAll('.row-check:checked').length > 0;
-        document.getElementById('delSelectedBtn').disabled = !anyChecked;
-    }
-
-    async function refreshData() {
-        const overlay = document.getElementById('loadingOverlay');
-        overlay.style.display = 'flex';
-        await loadCSV();
-        overlay.style.display = 'none';
-    }
-
+    // 刪除選取
     async function deleteSelected() {
-        if (!confirm("確定要刪除勾選的資料嗎？")) return;
-        
-        const selected = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => {
-            return currentUniqueMatches[cb.getAttribute('data-index')];
-        });
+        const selected = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
+        if (selected.length === 0) return alert("請先選取要刪除的資料");
 
-        await sendDeleteRequest({ action: "deleteSelected", targets: selected });
+        const password = prompt("請輸入管理驗證碼：");
+        if (!password) return;
+
+        if (confirm(`確定要刪除這 ${selected.length} 筆資料嗎？`)) {
+            await executeAction(`action=delete&password=${encodeURIComponent(password)}&rows=${JSON.stringify(selected)}`);
+        }
     }
 
-    async function deleteAllFiltered() {
-        const dVal = document.getElementById('dateSelect').value;
-        const sVal = document.getElementById('studentSelect').value;
-        let msg = "確定要刪除目前條件下的所有資料嗎？";
-        if (!dVal && !sVal) return;
-        
-        if (!confirm(msg)) return;
+    // 全部刪除
+    async function deleteAll() {
+        const password = prompt("⚠️ 注意：這將清空所有訂餐紀錄！\n請輸入管理驗證碼：");
+        if (!password) return;
 
-        await sendDeleteRequest({ action: "deleteAllFiltered", date: dVal, name: sVal });
+        if (confirm("確定要刪除「所有」資料嗎？此動作不可復原！")) {
+            await executeAction(`action=deleteAll&password=${encodeURIComponent(password)}`);
+        }
     }
 
-    async function sendDeleteRequest(payload) {
-        const overlay = document.getElementById('loadingOverlay');
-        overlay.style.display = 'flex';
-
+    async function executeAction(params) {
+        document.getElementById('loader').style.display = 'block';
         try {
-            // 注意：由於跨網域限制，這裡使用 fetch 可能需要將 GAS 設為許可
-            await fetch(scriptUrl, {
-                method: "POST",
-                mode: "no-cors", // 重要：因為 GAS 不支援 CORS
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-            
-            alert("刪除指令已送出！請等待約 10-30 秒讓 Google CSV 更新後再點擊重新整理。");
-            setTimeout(refreshData, 2000); // 兩秒後先自動刷新一次介面
+            const response = await fetch(`${gasUrl}?${params}`);
+            const result = await response.text();
+            if (result === "success") {
+                alert("操作成功！");
+                fetchData(); // 重新整理畫面
+            } else if (result === "wrong_password") {
+                alert("驗證碼錯誤！");
+            } else {
+                alert("執行失敗");
+            }
         } catch (e) {
-            alert("刪除失敗：" + e);
+            alert("系統錯誤");
         } finally {
-            overlay.style.display = 'none';
+            document.getElementById('loader').style.display = 'none';
         }
     }
 
     document.getElementById('dateSelect').addEventListener("change", runFilter);
     document.getElementById('studentSelect').addEventListener("change", runFilter);
     
-    window.onload = () => {
-        loadCSV();
-        checkBrowser();
-    };
+    window.onload = fetchData;
 </script>
 
 </body>
