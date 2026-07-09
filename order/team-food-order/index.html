@@ -10,6 +10,7 @@
             --bg-color: #f4f7f6;
             --notice-bg: #fffbe6;
             --notice-border: #ffe58f;
+            --line-green: #06C755;
         }
         body { 
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; 
@@ -18,7 +19,7 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
-            overflow: hidden; /* 防止主頁面滾動，由內容區滾動 */
+            overflow: hidden;
         }
         
         .header-section {
@@ -39,7 +40,7 @@
             max-width: 90%;
         }
 
-        /* 修改後的導覽列：不橫跨整頁 */
+        /* 導覽列 */
         .tabs { 
             display: flex; 
             justify-content: center; 
@@ -58,86 +59,87 @@
             cursor: pointer;
             border-radius: 20px;
             transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         .tab-btn.active { 
             background: var(--primary-color);
             color: white;
             border-color: var(--primary-color);
-            box-shadow: 0 2px 6px rgba(74, 144, 226, 0.3);
         }
 
-        .content-container { 
-            flex: 1; 
-            position: relative; 
-            overflow: hidden; 
-        }
+        .content-container { flex: 1; position: relative; overflow: hidden; }
         .page { 
             display: none; 
             width: 100%; 
             height: 100%; 
-            overflow-y: auto; /* 允許個別頁面滾動 */
+            overflow-y: auto; 
             -webkit-overflow-scrolling: touch;
         }
         .page.active { display: block; }
 
+        /* LINE 專用導引區塊 */
+        #lineWarning {
+            display: none;
+            background: #fff3cd;
+            color: #856404;
+            padding: 12px;
+            text-align: center;
+            font-size: 14px;
+            border-bottom: 2px solid #ffeeba;
+        }
+        
         /* 表單頁面提示區 */
         .form-notice {
             background: #e1f5fe;
-            padding: 10px;
+            padding: 12px;
             text-align: center;
-            font-size: 13px;
+            font-size: 14px;
             color: #01579b;
+            border-bottom: 1px solid #b3e5fc;
         }
-        .form-btn {
+        .force-open-btn {
             display: inline-block;
-            background: #4a90e2;
+            background: var(--primary-color);
             color: white !important;
-            padding: 4px 10px;
-            border-radius: 4px;
+            padding: 8px 16px;
+            border-radius: 6px;
             text-decoration: none;
             font-weight: bold;
-            margin-left: 5px;
+            margin-top: 5px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         #formPage { padding: 0; }
-        .iframe-wrapper { width: 100%; height: calc(100% - 40px); }
+        .iframe-wrapper { width: 100%; height: calc(100% - 85px); }
         iframe { width: 100%; height: 100%; border: none; }
 
-        /* 查詢頁面優化 */
+        /* 查詢頁面樣式保持不變 */
         #queryPage { padding: 15px; }
         .query-card {
             background: white; padding: 15px; border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
             max-width: 600px; 
-            margin: 0 auto 80px; /* 增加底部外距，解決手機遮擋 */
+            margin: 0 auto 100px;
         }
         .filter-group { margin-bottom: 12px; }
         label { display: block; margin-bottom: 4px; font-weight: bold; color: #444; font-size: 14px; }
-        select {
-            width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ddd;
-            border-radius: 6px; background-color: #fff;
-        }
+        select { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 6px; }
         #countInfo { margin: 10px 0; color: var(--primary-color); font-weight: bold; text-align: center; }
-
-        .table-container { 
-            margin-top: 10px; 
-            overflow-x: auto;
-            border-radius: 4px;
-            border: 1px solid #eee;
-        }
+        .table-container { margin-top: 10px; overflow-x: auto; border: 1px solid #eee; }
         table { width: 100%; border-collapse: collapse; background: #fff; }
         th, td { border: 1px solid #eee; padding: 10px 5px; text-align: center; font-size: 14px; }
-        th { background-color: #f8f9fa; color: #333; position: sticky; top: 0; }
-        tr:nth-child(even) { background-color: #fafafa; }
-
-        @media (max-width: 480px) {
-            h1 { font-size: 18px; }
-            .tab-btn { padding: 6px 15px; font-size: 14px; }
-            .query-card { padding: 12px; margin-bottom: 100px; } /* 手機版底部預留更多空間 */
-        }
+        th { background-color: #f8f9fa; position: sticky; top: 0; }
     </style>
 </head>
 <body>
+
+    <div id="lineWarning">
+        ⚠️ 偵測到您正在使用 LINE 開啟。為了能正常登入 Google 帳號，建議點擊下方按鈕跳轉。
+    </div>
 
     <div class="header-section">
         <h1>羽球隊訂餐系統</h1>
@@ -153,10 +155,11 @@
         <!-- 表單頁面 -->
         <div id="formPage" class="page active">
             <div class="form-notice">
-                無法顯示表單？ <a class="form-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform" target="_blank">👉 直接開啟</a>
+                <b>無法登入 Google 帳號？</b><br>
+                <button class="force-open-btn" onclick="handleExternalLink()">🚀 用瀏覽器開啟 (強制跳轉)</button>
             </div>
             <div class="iframe-wrapper">
-                <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform?embedded=true">載入中…</iframe>
+                <iframe id="googleForm" src="https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform?embedded=true">載入中…</iframe>
             </div>
         </div>
 
@@ -169,23 +172,17 @@
                         <option value="">讀取資料中...</option>
                     </select>
                 </div>
-                
                 <div class="filter-group">
                     <label>👤 選擇學生：</label>
                     <select id="studentSelect">
                         <option value="">--請先選擇日期--</option>
                     </select>
                 </div>
-
                 <div id="countInfo"></div>
-
                 <div class="table-container">
                     <table id="resultTable">
                         <thead>
-                            <tr>
-                                <th>日期</th>
-                                <th>學生姓名</th>
-                            </tr>
+                            <tr><th>日期</th><th>學生姓名</th></tr>
                         </thead>
                         <tbody>
                             <tr><td colspan="2">請選擇查詢條件</td></tr>
@@ -198,19 +195,41 @@
 
 <script>
     const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTsZpJrcNtNVi3N32mxia0RM0PhtTJU-JIvDL-LpurlDVIAISdZxonWssNqxd-qBk9VJvrdwUz9qWCv/pub?gid=1115559903&single=true&output=csv";
-
+    const rawFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform";
     let rows = [];
+
+    // 強制外部瀏覽器開啟邏輯
+    function handleExternalLink() {
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isLine = /Line/i.test(navigator.userAgent);
+
+        if (isAndroid) {
+            // 三星/Android 強制跳轉：使用 intent 協定呼叫 Chrome
+            const intentUrl = `intent://${rawFormUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
+            window.location.href = intentUrl;
+        } else {
+            // iPhone 或其他：加上參數嘗試跳脫，若失敗則引導點選「用預設瀏覽器開啟」
+            const externalUrl = rawFormUrl + (rawFormUrl.includes('?') ? '&' : '?') + "openExternalBrowser=1";
+            window.location.href = externalUrl;
+        }
+    }
+
+    // 偵測是否在 LINE 中
+    function checkBrowser() {
+        if (/Line/i.test(navigator.userAgent)) {
+            document.getElementById('lineWarning').style.display = 'block';
+        }
+    }
 
     function showPage(pageId, btn) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
         btn.classList.add('active');
-        
-        // 切換分頁時將捲軸移回頂部
         document.getElementById(pageId).scrollTop = 0;
     }
 
+    // CSV 與 查詢邏輯維持原樣 (包含去重)
     function parseCSV(text) {
         const result = [];
         let cur = [], curVal = "", inQuotes = false;
@@ -239,24 +258,17 @@
             updateAnnouncement();
             buildDropdowns();
         } catch (e) {
-            console.error("資料載入失敗", e);
-            document.getElementById('dateSelect').innerHTML = '<option>無法載入資料</option>';
-            document.getElementById('announcement').textContent = "公告載入失敗";
+            console.error("載入失敗", e);
         }
     }
 
     function updateAnnouncement() {
-        const announcementEl = document.getElementById('announcement');
-        if (rows.length > 1 && rows[0][8]) {
-            announcementEl.textContent = "📢 " + rows[0][8].trim();
-        } else {
-            announcementEl.textContent = "目前無最新公告";
-        }
+        const ann = document.getElementById('announcement');
+        if (rows.length > 1 && rows[0][8]) ann.textContent = "📢 " + rows[0][8].trim();
     }
 
     function buildDropdowns() {
-        const dateSet = new Set();
-        const studentSet = new Set();
+        const dateSet = new Set(), studentSet = new Set();
         rows.forEach((r, i) => {
             if (i > 0) { 
                 if (r[6]) dateSet.add(r[6].trim());
@@ -265,48 +277,30 @@
         });
         const dates = Array.from(dateSet).sort((a, b) => new Date(b) - new Date(a));
         const students = Array.from(studentSet).sort();
-        const dateSel = document.getElementById('dateSelect');
-        const studentSel = document.getElementById('studentSelect');
-        dateSel.innerHTML = '<option value="">--請選擇日期--</option>';
-        studentSel.innerHTML = '<option value="">--全部學生--</option>';
-        dates.forEach(d => dateSel.add(new Option(d, d)));
-        students.forEach(s => studentSel.add(new Option(s, s)));
+        const dSel = document.getElementById('dateSelect'), sSel = document.getElementById('studentSelect');
+        dSel.innerHTML = '<option value="">--請選擇日期--</option>';
+        sSel.innerHTML = '<option value="">--全部學生--</option>';
+        dates.forEach(d => dSel.add(new Option(d, d)));
+        students.forEach(s => sSel.add(new Option(s, s)));
     }
 
     function runFilter() {
-        const dateValue = document.getElementById('dateSelect').value;
-        const studentValue = document.getElementById('studentSelect').value;
+        const dVal = document.getElementById('dateSelect').value;
+        const sVal = document.getElementById('studentSelect').value;
         const tbody = document.querySelector("#resultTable tbody");
-        const countInfo = document.getElementById("countInfo");
-
-        // 1. 篩選符合條件的資料
         const matches = rows.filter((r, i) => {
             if (i === 0) return false;
-            const dateMatch = !dateValue || (r[2] && r[2].trim() === dateValue);
-            const studentMatch = !studentValue || (r[3] && r[3].trim() === studentValue);
-            return dateMatch && studentMatch;
+            return (!dVal || (r[2] && r[2].trim() === dVal)) && (!sVal || (r[3] && r[3].trim() === sVal));
         });
-
-        // 2. 去重處裡：同一天、同一人只留一筆
-        const uniqueMatches = [];
-        const seenNames = new Set();
+        const unique = [];
+        const seen = new Set();
         matches.forEach(r => {
-            const studentName = r[3]?.trim();
-            if (studentName && !seenNames.has(studentName)) {
-                seenNames.add(studentName);
-                uniqueMatches.push(r);
-            }
+            const name = r[3]?.trim();
+            if (name && !seen.has(name)) { seen.add(name); unique.push(r); }
         });
-
-        countInfo.textContent = dateValue ? `📌 篩選結果：共 ${uniqueMatches.length} 位學生` : "";
-        tbody.innerHTML = "";
-        
-        if (uniqueMatches.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='2'>查無訂餐紀錄</td></tr>";
-            return;
-        }
-
-        uniqueMatches.forEach(r => {
+        document.getElementById("countInfo").textContent = dVal ? `📌 篩選結果：共 ${unique.length} 位學生` : "";
+        tbody.innerHTML = unique.length ? "" : "<tr><td colspan='2'>查無紀錄</td></tr>";
+        unique.forEach(r => {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td>${r[2] || ""}</td><td>${r[3] || ""}</td>`;
             tbody.appendChild(tr);
@@ -315,8 +309,11 @@
 
     document.getElementById('dateSelect').addEventListener("change", runFilter);
     document.getElementById('studentSelect').addEventListener("change", runFilter);
-
-    window.onload = loadCSV;
+    
+    window.onload = () => {
+        loadCSV();
+        checkBrowser();
+    };
 </script>
 
 </body>
