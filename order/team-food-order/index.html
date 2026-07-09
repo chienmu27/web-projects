@@ -7,59 +7,64 @@
     <style>
         :root {
             --primary-color: #4a90e2;
-            --danger-color: #e74c3c;
             --bg-color: #f4f7f6;
             --notice-bg: #fffbe6;
             --notice-border: #ffe58f;
+            --danger-color: #e74c3c;
         }
-        body { 
-            font-family: "Microsoft JhengHei", sans-serif; 
-            margin: 0; background: var(--bg-color); 
-            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-        }
+        body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; background: var(--bg-color); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
         .header-section { background: white; padding: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        h1 { margin: 5px 0; font-size: 20px; color: #333; }
-        #announcement { background: var(--notice-bg); border: 1px solid var(--notice-border); padding: 6px 12px; border-radius: 4px; font-size: 13px; color: #856404; }
+        h1 { margin: 5px 0; font-size: 18px; color: #333; }
+        #announcement { background: var(--notice-bg); border: 1px solid var(--notice-border); padding: 6px 12px; border-radius: 4px; font-size: 13px; color: #856404; display: inline-block; max-width: 90%; }
 
         .tabs { display: flex; justify-content: center; background: #fff; padding: 10px 0; gap: 10px; border-bottom: 1px solid #eee; }
-        .tab-btn { padding: 8px 15px; border: 1px solid #ddd; background: #f9f9f9; font-size: 14px; font-weight: bold; border-radius: 20px; cursor: pointer; transition: 0.3s; }
+        .tab-btn { padding: 8px 15px; border: 1px solid #ddd; background: #f9f9f9; font-size: 14px; font-weight: bold; color: #666; cursor: pointer; border-radius: 20px; }
         .tab-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
 
         .content-container { flex: 1; position: relative; overflow: hidden; }
         .page { display: none; width: 100%; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .page.active { display: block; }
 
-        /* 按鈕群組 */
-        .action-bar { display: flex; justify-content: space-between; margin-bottom: 10px; gap: 5px; flex-wrap: wrap; }
-        .btn { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: bold; }
-        .btn-refresh { background: #2ecc71; color: white; }
-        .btn-delete { background: var(--danger-color); color: white; }
-        .btn-delete-all { background: #34495e; color: white; }
+        /* 按鈕區塊 */
+        .action-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; justify-content: center; }
+        .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; color: white; display: flex; align-items: center; gap: 5px; }
+        .btn-refresh { background-color: #2ecc71; }
+        .btn-delete { background-color: var(--danger-color); }
+        .btn-all { background-color: #95a5a6; }
 
-        .query-card { background: white; padding: 15px; border-radius: 8px; max-width: 600px; margin: 0 auto 100px; }
-        .filter-group { margin-bottom: 10px; }
+        /* 查詢卡片 */
+        #queryPage { padding: 15px; }
+        .query-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto 100px; }
+        .filter-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-weight: bold; color: #444; font-size: 14px; }
         select { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 6px; }
         #countInfo { margin: 10px 0; color: var(--primary-color); font-weight: bold; text-align: center; }
 
-        .table-container { margin-top: 10px; overflow-x: auto; border: 1px solid #eee; }
+        .table-container { margin-top: 10px; overflow-x: auto; border: 1px solid #eee; border-radius: 4px; }
         table { width: 100%; border-collapse: collapse; background: #fff; min-width: 300px; }
-        th, td { border: 1px solid #eee; padding: 12px 5px; text-align: center; font-size: 14px; }
+        th, td { border: 1px solid #eee; padding: 10px 5px; text-align: center; font-size: 14px; }
         th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 10; }
-        input[type="checkbox"] { transform: scale(1.3); }
+        input[type="checkbox"] { transform: scale(1.2); cursor: pointer; }
 
-        /* 載入中動畫 */
-        #loader { display: none; text-align: center; padding: 10px; color: var(--primary-color); font-weight: bold; }
-
-        @media (max-width: 480px) {
-            .btn { flex: 1; text-align: center; }
-        }
+        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 999; font-weight: bold; color: var(--primary-color); }
+        
+        /* LINE 跳轉區與表單 */
+        #lineWarning { display: none; background: #fff3cd; color: #856404; padding: 10px; text-align: center; font-size: 13px; border-bottom: 1px solid #ffeeba; }
+        .form-notice { background: #e1f5fe; padding: 10px; text-align: center; font-size: 13px; color: #01579b; }
+        .force-open-btn { display: inline-block; background: var(--primary-color); color: white!important; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 5px; border: none; }
+        .iframe-wrapper { width: 100%; height: calc(100% - 90px); }
+        iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body>
 
+    <div id="loadingOverlay">資料處理中...</div>
+    <div id="lineWarning">⚠️ 請點擊下方按鈕跳轉至瀏覽器，以正常登入 Google 填寫。</div>
+
     <div class="header-section">
         <h1>羽球隊訂餐系統</h1>
-        <div id="announcement">資料載入中...</div>
+        <div id="announcement">載入中...</div>
     </div>
 
     <div class="tabs">
@@ -69,41 +74,41 @@
 
     <div class="content-container">
         <div id="formPage" class="page active">
-            <iframe id="googleForm" src="https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform?embedded=true" style="width:100%; height:100%; border:none;">載入中…</iframe>
+            <div class="form-notice">無法登入？ <button class="force-open-btn" onclick="handleExternalLink()">🚀 用瀏覽器開啟</button></div>
+            <div class="iframe-wrapper">
+                <iframe id="googleForm" src="https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform?embedded=true"></iframe>
+            </div>
         </div>
 
         <div id="queryPage" class="page">
             <div class="query-card">
                 <div class="action-bar">
-                    <button class="btn btn-refresh" onclick="fetchData()">🔄 重新整理</button>
-                    <button class="btn btn-delete" onclick="deleteSelected()">🗑️ 刪除選取</button>
-                    <button class="btn btn-delete-all" onclick="deleteAll()">⚠️ 全部刪除</button>
+                    <button class="btn btn-refresh" onclick="loadData()">🔄 重新整理</button>
+                    <button class="btn btn-delete" onclick="deleteSelected()">🗑️ 刪除勾選</button>
+                    <button class="btn btn-all" onclick="deleteAll()">🔥 全部清除</button>
                 </div>
 
                 <div class="filter-group">
                     <label>📅 選擇日期：</label>
-                    <select id="dateSelect"><option value="">載入中...</option></select>
+                    <select id="dateSelect" onchange="runFilter()"><option value="">讀取中...</option></select>
                 </div>
                 <div class="filter-group">
                     <label>👤 選擇學生：</label>
-                    <select id="studentSelect"><option value="">--請先選擇日期--</option></select>
+                    <select id="studentSelect" onchange="runFilter()"><option value="">--全部學生--</option></select>
                 </div>
 
-                <div id="loader">⏳ 處理中，請稍候...</div>
                 <div id="countInfo"></div>
 
                 <div class="table-container">
                     <table id="resultTable">
                         <thead>
                             <tr>
-                                <th width="40"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
+                                <th style="width: 40px;"><input type="checkbox" id="selectAll" onclick="toggleAll(this)"></th>
                                 <th>日期</th>
-                                <th>姓名</th>
+                                <th>學生姓名</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr><td colspan="3">讀取資料中...</td></tr>
-                        </tbody>
+                        <tbody></tbody>
                     </table>
                 </div>
             </div>
@@ -111,141 +116,141 @@
     </div>
 
 <script>
-    // ⚠️ 請修改為您的 GAS 部署網址
-    const gasUrl = "https://script.google.com/macros/s/AKfycbyTc0DD_JLX0U_gDuiNF2KJx88p_G74EnwbLQJ2FI2w8sJBQtIkOEHhnOc1ucoUraS8/exec";
+    // ⚠️ 這裡請填入您的 Google Apps Script 部署網址
+    const API_URL = "https://script.google.com/macros/s/AKfycbyTc0DD_JLX0U_gDuiNF2KJx88p_G74EnwbLQJ2FI2w8sJBQtIkOEHhnOc1ucoUraS8/exec";
+    const rawFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform";
     
-    let allData = [];
-    let filteredMatches = [];
+    let allDataRows = [];
 
     function showPage(pageId, btn) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
         btn.classList.add('active');
+        if(pageId === 'queryPage' && allDataRows.length === 0) loadData();
     }
 
-    // 從 API 讀取即時資料
-    async function fetchData() {
-        document.getElementById('loader').style.display = 'block';
+    async function loadData() {
+        showLoading(true);
         try {
-            const response = await fetch(`${gasUrl}?action=fetch`);
-            const json = await response.json();
-            allData = json.rows;
-            document.getElementById('announcement').textContent = "📢 " + json.announcement;
+            const res = await fetch(API_URL);
+            const data = await res.json();
+            allDataRows = data.rows;
+            document.getElementById('announcement').textContent = "📢 " + data.announcement;
             buildDropdowns();
             runFilter();
         } catch (e) {
-            alert("讀取失敗，請檢查 API 部署與網路");
-        } finally {
-            document.getElementById('loader').style.display = 'none';
+            alert("資料載入失敗，請確認部署網址是否正確。");
         }
+        showLoading(false);
     }
 
     function buildDropdowns() {
-        const dateSet = new Set(), studentSet = new Set();
-        allData.forEach((r, i) => {
-            if (i > 0) { 
-                if (r[2]) dateSet.add(r[2].toString().trim()); // C欄：訂餐日期
-                if (r[3]) studentSet.add(r[3].toString().trim()); // D欄：姓名
-            }
+        const dateSet = new Set(), nameSet = new Set();
+        allDataRows.forEach(r => {
+            if (r.g_date) dateSet.add(r.g_date.trim());
+            if (r.h_name) nameSet.add(r.h_name.trim());
         });
-        const dates = Array.from(dateSet).sort((a, b) => new Date(b) - new Date(a));
-        const students = Array.from(studentSet).sort();
         
-        const dSel = document.getElementById('dateSelect'), sSel = document.getElementById('studentSelect');
-        dSel.innerHTML = '<option value="">--全部日期--</option>';
-        sSel.innerHTML = '<option value="">--全部學生--</option>';
-        dates.forEach(d => dSel.add(new Option(d, d)));
-        students.forEach(s => sSel.add(new Option(s, s)));
+        const dSel = document.getElementById('dateSelect'), nSel = document.getElementById('studentSelect');
+        const sortedDates = Array.from(dateSet).sort((a,b) => new Date(b) - new Date(a));
+        const sortedNames = Array.from(nameSet).sort();
+
+        dSel.innerHTML = '<option value="">--請選擇日期--</option>';
+        nSel.innerHTML = '<option value="">--全部學生--</option>';
+        sortedDates.forEach(d => dSel.add(new Option(d, d)));
+        sortedNames.forEach(n => nSel.add(new Option(n, n)));
     }
 
     function runFilter() {
         const dVal = document.getElementById('dateSelect').value;
-        const sVal = document.getElementById('studentSelect').value;
+        const nVal = document.getElementById('studentSelect').value;
         const tbody = document.querySelector("#resultTable tbody");
         
-        // 篩選與去重邏輯
-        const matches = allData.filter((r, i) => {
-            if (i === 0) return false;
-            return (!dVal || r[2].toString().trim() === dVal) && (!sVal || r[3].toString().trim() === sVal);
+        const filtered = allDataRows.filter(r => {
+            return (!dVal || r.date === dVal) && (!nVal || r.name === nVal);
         });
 
-        // 去重 (同日期同姓名)
+        // 去重邏輯：同日期、同姓名只留一筆
         const unique = [];
         const seen = new Set();
-        matches.forEach(r => {
-            const key = r[2] + "|" + r[3];
+        filtered.forEach(r => {
+            const key = `${r.date}-${r.name}`;
             if (!seen.has(key)) { seen.add(key); unique.push(r); }
         });
 
-        filteredMatches = unique;
-        document.getElementById("countInfo").textContent = `📌 篩選結果：共 ${unique.length} 筆`;
-        document.getElementById('selectAll').checked = false;
-
         tbody.innerHTML = unique.length ? "" : "<tr><td colspan='3'>查無資料</td></tr>";
-        unique.forEach((r, idx) => {
+        unique.forEach(r => {
             const tr = document.createElement('tr');
-            // 使用 A 欄 Timestamp 作為 Value
+            const key = `${r.date}-${r.name}`;
             tr.innerHTML = `
-                <td><input type="checkbox" class="row-check" value="${r[0]}"></td>
-                <td>${r[2]}</td>
-                <td>${r[3]}</td>
+                <td><input type="checkbox" class="row-check" value="${key}"></td>
+                <td>${r.date}</td>
+                <td>${r.name}</td>
             `;
             tbody.appendChild(tr);
         });
+        document.getElementById('countInfo').textContent = dVal ? `📌 篩選結果：共 ${unique.length} 位學生` : "";
+        document.getElementById('selectAll').checked = false;
     }
 
-    function toggleSelectAll(mainCb) {
-        document.querySelectorAll('.row-check').forEach(cb => cb.checked = mainCb.checked);
+    function toggleAll(el) {
+        document.querySelectorAll('.row-check').forEach(cb => cb.checked = el.checked);
     }
 
-    // 刪除選取
     async function deleteSelected() {
-        const selected = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
-        if (selected.length === 0) return alert("請先選取要刪除的資料");
-
-        const password = prompt("請輸入管理驗證碼：");
+        const checked = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
+        if (checked.length === 0) return alert("請先勾選要刪除的資料！");
+        
+        const password = prompt("請輸入刪除驗證碼：");
         if (!password) return;
 
-        if (confirm(`確定要刪除這 ${selected.length} 筆資料嗎？`)) {
-            await executeAction(`action=delete&password=${encodeURIComponent(password)}&rows=${JSON.stringify(selected)}`);
+        if (confirm(`確定要刪除這 ${checked.length} 筆資料嗎？`)) {
+            executePost({ action: "deleteSelected", targets: checked, password: password });
         }
     }
 
-    // 全部刪除
     async function deleteAll() {
-        const password = prompt("⚠️ 注意：這將清空所有訂餐紀錄！\n請輸入管理驗證碼：");
+        const password = prompt("🚨 注意：此動作將清除所有訂餐記錄！\n請輸入驗證碼：");
         if (!password) return;
-
-        if (confirm("確定要刪除「所有」資料嗎？此動作不可復原！")) {
-            await executeAction(`action=deleteAll&password=${encodeURIComponent(password)}`);
+        if (confirm("確定要【全部刪除】嗎？此動作無法復原！")) {
+            executePost({ action: "deleteAll", password: password });
         }
     }
 
-    async function executeAction(params) {
-        document.getElementById('loader').style.display = 'block';
+    async function executePost(payload) {
+        showLoading(true);
         try {
-            const response = await fetch(`${gasUrl}?${params}`);
-            const result = await response.text();
-            if (result === "success") {
-                alert("操作成功！");
-                fetchData(); // 重新整理畫面
-            } else if (result === "wrong_password") {
-                alert("驗證碼錯誤！");
+            const res = await fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            if (result.success) {
+                alert("刪除成功！");
+                loadData(); // 立即重新抓取最新資料
             } else {
-                alert("執行失敗");
+                alert(result.msg || "刪除失敗");
             }
         } catch (e) {
-            alert("系統錯誤");
-        } finally {
-            document.getElementById('loader').style.display = 'none';
+            alert("刪除請求失敗，請檢查網頁部署。");
+        }
+        showLoading(false);
+    }
+
+    function showLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
+
+    function handleExternalLink() {
+        if (/Android/i.test(navigator.userAgent)) {
+            window.location.href = `intent://${rawFormUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
+        } else {
+            window.location.href = rawFormUrl + "?openExternalBrowser=1";
         }
     }
 
-    document.getElementById('dateSelect').addEventListener("change", runFilter);
-    document.getElementById('studentSelect').addEventListener("change", runFilter);
-    
-    window.onload = fetchData;
+    window.onload = () => {
+        if (/Line/i.test(navigator.userAgent)) document.getElementById('lineWarning').style.display = 'block';
+    };
 </script>
 
 </body>
