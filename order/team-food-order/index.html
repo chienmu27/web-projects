@@ -13,43 +13,31 @@
             --danger-color: #e74c3c;
         }
         body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; background: var(--bg-color); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        
         .header-section { background: white; padding: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         h1 { margin: 5px 0; font-size: 18px; color: #333; }
         #announcement { background: var(--notice-bg); border: 1px solid var(--notice-border); padding: 6px 12px; border-radius: 4px; font-size: 13px; color: #856404; display: inline-block; max-width: 90%; }
-
         .tabs { display: flex; justify-content: center; background: #fff; padding: 10px 0; gap: 10px; border-bottom: 1px solid #eee; }
         .tab-btn { padding: 8px 15px; border: 1px solid #ddd; background: #f9f9f9; font-size: 14px; font-weight: bold; color: #666; cursor: pointer; border-radius: 20px; }
         .tab-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
-
         .content-container { flex: 1; position: relative; overflow: hidden; }
         .page { display: none; width: 100%; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .page.active { display: block; }
-
-        /* 按鈕區塊 */
         .action-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; justify-content: center; }
-        .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; color: white; display: flex; align-items: center; gap: 5px; }
+        .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; color: white; }
         .btn-refresh { background-color: #2ecc71; }
         .btn-delete { background-color: var(--danger-color); }
         .btn-all { background-color: #95a5a6; }
-
-        /* 查詢卡片 */
         #queryPage { padding: 15px; }
         .query-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto 100px; }
         .filter-group { margin-bottom: 12px; }
         label { display: block; margin-bottom: 4px; font-weight: bold; color: #444; font-size: 14px; }
         select { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 6px; }
         #countInfo { margin: 10px 0; color: var(--primary-color); font-weight: bold; text-align: center; }
-
         .table-container { margin-top: 10px; overflow-x: auto; border: 1px solid #eee; border-radius: 4px; }
         table { width: 100%; border-collapse: collapse; background: #fff; min-width: 300px; }
         th, td { border: 1px solid #eee; padding: 10px 5px; text-align: center; font-size: 14px; }
         th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 10; }
-        input[type="checkbox"] { transform: scale(1.2); cursor: pointer; }
-
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 999; font-weight: bold; color: var(--primary-color); }
-        
-        /* LINE 跳轉區與表單 */
         #lineWarning { display: none; background: #fff3cd; color: #856404; padding: 10px; text-align: center; font-size: 13px; border-bottom: 1px solid #ffeeba; }
         .form-notice { background: #e1f5fe; padding: 10px; text-align: center; font-size: 13px; color: #01579b; }
         .force-open-btn { display: inline-block; background: var(--primary-color); color: white!important; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 5px; border: none; }
@@ -116,7 +104,7 @@
     </div>
 
 <script>
-    // ⚠️ 這裡請填入您的 Google Apps Script 部署網址
+    // ⚠️ 請填入您的 GAS Web App 部署網址
     const API_URL = "https://script.google.com/macros/s/AKfycbyTc0DD_JLX0U_gDuiNF2KJx88p_G74EnwbLQJ2FI2w8sJBQtIkOEHhnOc1ucoUraS8/exec";
     const rawFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform";
     
@@ -140,7 +128,7 @@
             buildDropdowns();
             runFilter();
         } catch (e) {
-            alert("資料載入失敗，請確認部署網址是否正確。");
+            alert("載入失敗，請確認部署網址。");
         }
         showLoading(false);
     }
@@ -153,7 +141,8 @@
         });
         
         const dSel = document.getElementById('dateSelect'), nSel = document.getElementById('studentSelect');
-        const sortedDates = Array.from(dateSet).sort((a,b) => new Date(b) - new Date(a));
+        // 日期排序：新日期在前
+        const sortedDates = Array.from(dateSet).sort((a,b) => b.localeCompare(a));
         const sortedNames = Array.from(nameSet).sort();
 
         dSel.innerHTML = '<option value="">--請選擇日期--</option>';
@@ -171,7 +160,6 @@
             return (!dVal || r.date === dVal) && (!nVal || r.name === nVal);
         });
 
-        // 去重邏輯：同日期、同姓名只留一筆
         const unique = [];
         const seen = new Set();
         filtered.forEach(r => {
@@ -182,12 +170,7 @@
         tbody.innerHTML = unique.length ? "" : "<tr><td colspan='3'>查無資料</td></tr>";
         unique.forEach(r => {
             const tr = document.createElement('tr');
-            const key = `${r.date}-${r.name}`;
-            tr.innerHTML = `
-                <td><input type="checkbox" class="row-check" value="${key}"></td>
-                <td>${r.date}</td>
-                <td>${r.name}</td>
-            `;
+            tr.innerHTML = `<td><input type="checkbox" class="row-check" value="${r.date}-${r.name}"></td><td>${r.date}</td><td>${r.name}</td>`;
             tbody.appendChild(tr);
         });
         document.getElementById('countInfo').textContent = dVal ? `📌 篩選結果：共 ${unique.length} 位學生` : "";
@@ -200,20 +183,18 @@
 
     async function deleteSelected() {
         const checked = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
-        if (checked.length === 0) return alert("請先勾選要刪除的資料！");
-        
+        if (checked.length === 0) return alert("請勾選！");
         const password = prompt("請輸入刪除驗證碼：");
         if (!password) return;
-
-        if (confirm(`確定要刪除這 ${checked.length} 筆資料嗎？`)) {
+        if (confirm(`刪除 ${checked.length} 筆資料？`)) {
             executePost({ action: "deleteSelected", targets: checked, password: password });
         }
     }
 
     async function deleteAll() {
-        const password = prompt("🚨 注意：此動作將清除所有訂餐記錄！\n請輸入驗證碼：");
+        const password = prompt("🚨 警告：清空所有紀錄！\n請輸入驗證碼：");
         if (!password) return;
-        if (confirm("確定要【全部刪除】嗎？此動作無法復原！")) {
+        if (confirm("確定刪除？")) {
             executePost({ action: "deleteAll", password: password });
         }
     }
@@ -221,20 +202,13 @@
     async function executePost(payload) {
         showLoading(true);
         try {
-            const res = await fetch(API_URL, {
-                method: "POST",
-                body: JSON.stringify(payload)
-            });
+            const res = await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await res.json();
             if (result.success) {
                 alert("刪除成功！");
-                loadData(); // 立即重新抓取最新資料
-            } else {
-                alert(result.msg || "刪除失敗");
-            }
-        } catch (e) {
-            alert("刪除請求失敗，請檢查網頁部署。");
-        }
+                loadData();
+            } else { alert(result.msg || "失敗"); }
+        } catch (e) { alert("請求失敗"); }
         showLoading(false);
     }
 
@@ -243,15 +217,10 @@
     function handleExternalLink() {
         if (/Android/i.test(navigator.userAgent)) {
             window.location.href = `intent://${rawFormUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
-        } else {
-            window.location.href = rawFormUrl + "?openExternalBrowser=1";
-        }
+        } else { window.location.href = rawFormUrl + "?openExternalBrowser=1"; }
     }
 
-    window.onload = () => {
-        if (/Line/i.test(navigator.userAgent)) document.getElementById('lineWarning').style.display = 'block';
-    };
+    window.onload = () => { if (/Line/i.test(navigator.userAgent)) document.getElementById('lineWarning').style.display = 'block'; };
 </script>
-
 </body>
 </html>
