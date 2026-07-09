@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-<head>    
-    <meta charset="UTF-8">    
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>羽球隊學生訂餐</title>
     <style>
@@ -75,7 +75,6 @@
                     <button class="btn btn-delete" onclick="deleteSelected()">🗑️ 刪除勾選</button>
                     <button class="btn btn-all" onclick="deleteAll()">🔥 全部清除</button>
                 </div>
-
                 <div class="filter-group">
                     <label>📅 選擇日期：</label>
                     <select id="dateSelect" onchange="runFilter()"><option value="">讀取中...</option></select>
@@ -84,9 +83,7 @@
                     <label>👤 選擇學生：</label>
                     <select id="studentSelect" onchange="runFilter()"><option value="">--全部學生--</option></select>
                 </div>
-
                 <div id="countInfo"></div>
-
                 <div class="table-container">
                     <table id="resultTable">
                         <thead>
@@ -104,7 +101,7 @@
     </div>
 
 <script>
-    // ⚠️ 請填入您的 GAS Web App 部署網址
+    // ⚠️ 這裡填入您的 GAS Web App 部署網址
     const API_URL = "https://script.google.com/macros/s/AKfycbyTc0DD_JLX0U_gDuiNF2KJx88p_G74EnwbLQJ2FI2w8sJBQtIkOEHhnOc1ucoUraS8/exec";
     const rawFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSey2MDtsI7PSoOK7nqyPpk3HhxcplzTUVNjKJhhtZK3f_ecGA/viewform";
     
@@ -115,7 +112,7 @@
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
         btn.classList.add('active');
-        if(pageId === 'queryPage' && allDataRows.length === 0) loadData();
+        // 切換時不需要重新 loadData，因為 onload 已經抓過了
     }
 
     async function loadData() {
@@ -124,11 +121,12 @@
             const res = await fetch(API_URL);
             const data = await res.json();
             allDataRows = data.rows;
+            // 更新公告內容
             document.getElementById('announcement').textContent = "📢 " + data.announcement;
             buildDropdowns();
             runFilter();
         } catch (e) {
-            alert("載入失敗，請確認部署網址。");
+            console.error("載入失敗", e);
         }
         showLoading(false);
     }
@@ -139,12 +137,9 @@
             if (r.g_date) dateSet.add(r.g_date.trim());
             if (r.h_name) nameSet.add(r.h_name.trim());
         });
-        
         const dSel = document.getElementById('dateSelect'), nSel = document.getElementById('studentSelect');
-        // 日期排序：新日期在前
         const sortedDates = Array.from(dateSet).sort((a,b) => b.localeCompare(a));
         const sortedNames = Array.from(nameSet).sort();
-
         dSel.innerHTML = '<option value="">--請選擇日期--</option>';
         nSel.innerHTML = '<option value="">--全部學生--</option>';
         sortedDates.forEach(d => dSel.add(new Option(d, d)));
@@ -155,18 +150,13 @@
         const dVal = document.getElementById('dateSelect').value;
         const nVal = document.getElementById('studentSelect').value;
         const tbody = document.querySelector("#resultTable tbody");
-        
-        const filtered = allDataRows.filter(r => {
-            return (!dVal || r.date === dVal) && (!nVal || r.name === nVal);
-        });
-
+        const filtered = allDataRows.filter(r => (!dVal || r.date === dVal) && (!nVal || r.name === nVal));
         const unique = [];
         const seen = new Set();
         filtered.forEach(r => {
             const key = `${r.date}-${r.name}`;
             if (!seen.has(key)) { seen.add(key); unique.push(r); }
         });
-
         tbody.innerHTML = unique.length ? "" : "<tr><td colspan='3'>查無資料</td></tr>";
         unique.forEach(r => {
             const tr = document.createElement('tr');
@@ -177,26 +167,20 @@
         document.getElementById('selectAll').checked = false;
     }
 
-    function toggleAll(el) {
-        document.querySelectorAll('.row-check').forEach(cb => cb.checked = el.checked);
-    }
+    function toggleAll(el) { document.querySelectorAll('.row-check').forEach(cb => cb.checked = el.checked); }
 
     async function deleteSelected() {
         const checked = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
         if (checked.length === 0) return alert("請勾選！");
         const password = prompt("請輸入刪除驗證碼：");
         if (!password) return;
-        if (confirm(`刪除 ${checked.length} 筆資料？`)) {
-            executePost({ action: "deleteSelected", targets: checked, password: password });
-        }
+        if (confirm(`刪除 ${checked.length} 筆資料？`)) executePost({ action: "deleteSelected", targets: checked, password: password });
     }
 
     async function deleteAll() {
         const password = prompt("🚨 警告：清空所有紀錄！\n請輸入驗證碼：");
         if (!password) return;
-        if (confirm("確定刪除？")) {
-            executePost({ action: "deleteAll", password: password });
-        }
+        if (confirm("確定刪除？")) executePost({ action: "deleteAll", password: password });
     }
 
     async function executePost(payload) {
@@ -204,10 +188,7 @@
         try {
             const res = await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
             const result = await res.json();
-            if (result.success) {
-                alert("刪除成功！");
-                loadData();
-            } else { alert(result.msg || "失敗"); }
+            if (result.success) { alert("刪除成功！"); loadData(); } else { alert(result.msg || "失敗"); }
         } catch (e) { alert("請求失敗"); }
         showLoading(false);
     }
@@ -220,7 +201,11 @@
         } else { window.location.href = rawFormUrl + "?openExternalBrowser=1"; }
     }
 
-    window.onload = () => { if (/Line/i.test(navigator.userAgent)) document.getElementById('lineWarning').style.display = 'block'; };
+    // 修正處：window.onload 直接呼叫 loadData()
+    window.onload = () => { 
+        loadData(); // 初始化即抓取公告與選單資料
+        if (/Line/i.test(navigator.userAgent)) document.getElementById('lineWarning').style.display = 'block'; 
+    };
 </script>
 </body>
 </html>
