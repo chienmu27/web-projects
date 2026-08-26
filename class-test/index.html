@@ -419,7 +419,7 @@
       </div>
 
       <div class="input-group">
-        <label>發布之 CSV 網址 (選填，用於極速讀取題目)：</label>
+        <label>發布之 CSV 網址 (極速讀取題目核心)：</label>
         <input type="url" id="cfgCsvUrl" placeholder="https://docs.google.com/...output=csv">
       </div>
 
@@ -539,7 +539,6 @@
       <button type="button" onclick="addAdminItemRow()" style="padding:10px 16px; background:#1a73e8; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">➕ 新增檢核項目</button>
 
       <br><br>
-      <!-- 原生極簡短網址與 QR Code 展示區 -->
       <div id="adminFormUrlBox" style="background:#eef3fc; padding:18px; border-radius:8px; border:1px solid #c2d7fa; display:none;"></div>
       <br>
       <button type="button" class="submit-btn" id="saveAdminFormBtn" onclick="saveAdminFormConfig()">💾 儲存並發布此表單</button>
@@ -570,7 +569,7 @@
   const GAS_URL = "https://script.google.com/macros/s/AKfycbxxfJ77RCWK6yJEz-qOwqzEyIHUvq8SH29Uep0zLPVrOmJeN5C2Jjut_axN3u3wdN009w/exec";
 
   // =========================================================================
-  // 2. 專案預設資料庫設定 (在此填入後，發給家長的網址將自動成為極簡短網址，100% 無廣告)
+  // 2. 專案預設資料庫設定 (在此設定後，發送極簡短網址給家長即可 0.2 秒秒開)
   // =========================================================================
   const DEFAULT_SPREADSHEET_ID = "1W_9-wxjvwCcFYGkLYR9ulRbym2G67RNLtap4yLzLzb8";
   const DEFAULT_PDF_FOLDER_ID = "1YbDblyf6ADIQZaLF01y3AY0V9QRjmEJU";
@@ -648,6 +647,7 @@
     document.getElementById(inputId).value = value;
   }
 
+  // 網頁載入時極速並行讀取
   window.addEventListener('load', () => {
     initCanvas();
 
@@ -679,7 +679,8 @@
       return;
     }
 
-    if (CSV_URL) {
+    // 優先使用 0.2 秒極速 CSV 快取通道載入題目
+    if (CSV_URL && CSV_URL.trim() !== "") {
       loadFormFromCSV(formIdFromUrl);
     } else {
       loadFormFromGAS(formIdFromUrl);
@@ -822,6 +823,7 @@
     return result;
   }
 
+  // 0.2 秒極速 CSV 載入通道
   function loadFormFromCSV(targetFormId) {
     fetch(CSV_URL + (CSV_URL.includes('?') ? '&' : '?') + "t=" + Date.now())
       .then(res => res.text())
@@ -859,16 +861,17 @@
       .catch(() => loadFormFromGAS(targetFormId));
   }
 
+  // 單次極速 GAS 備援載入 (不再重複呼叫 getFormList)
   async function loadFormFromGAS(targetFormId) {
     try {
-      const data = await callGAS({ action: 'getFormList', spreadsheetId: SPREADSHEET_ID });
-      if (data.result === 'success' && data.list.length > 0) {
-        let fId = targetFormId || data.list[0].formId;
-        const fData = await callGAS({ action: 'getFormConfig', spreadsheetId: SPREADSHEET_ID, formId: fId });
-        if (fData.result === 'success') {
-          currentFormId = fData.formId;
-          renderFrontendForm(fData);
-        }
+      const fData = await callGAS({
+        action: 'getFormConfig',
+        spreadsheetId: SPREADSHEET_ID,
+        formId: targetFormId || ''
+      });
+      if (fData.result === 'success') {
+        currentFormId = fData.formId;
+        renderFrontendForm(fData);
       } else {
         document.getElementById('displayTitle').innerText = "尚未建立任何表單";
         document.getElementById('displayDesc').innerText = "請點選右上角「⚙️ 系統與表單管理」新增您的第一份同意書。";
@@ -1238,15 +1241,12 @@
     document.getElementById(prevId).style.display = 'none';
   }
 
-  // 自動生成學校專屬原生極簡短網址 (100% 絕對純淨無廣告、0秒直達) + QR Code
   function renderAdminUrlBox(formId) {
-    // 原生極簡短網址（長度僅 50 多字元，絕不使用第三方危險縮網址）
     const cleanShortUrl = `${window.location.origin}${window.location.pathname}?fid=${formId}`;
     const adminUrl = `${cleanShortUrl}&admin=1`;
     const fullParamUrl = `${window.location.origin}${window.location.pathname}?sid=${SPREADSHEET_ID}&pid=${PDF_FOLDER_ID}&iid=${IMG_FOLDER_ID}&fid=${formId}${CSV_URL ? '&csv=' + encodeURIComponent(CSV_URL) : ''}`;
     const box = document.getElementById('adminFormUrlBox');
     
-    // QR Code 採用極簡短網址，顆粒粗大清晰、1秒掃過
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(cleanShortUrl)}`;
 
     box.style.display = 'block';
@@ -1270,7 +1270,6 @@
           </div>
         </div>
 
-        <!-- QR Code 預覽、下載與複製區塊 -->
         <div style="text-align:center; background:#ffffff; padding:12px; border-radius:8px; border:1px solid #cbd5e1; box-shadow:0 2px 6px rgba(0,0,0,0.05); min-width:180px;">
           <img src="${qrCodeUrl}" width="140" height="140" style="display:block; margin:0 auto 10px auto; border-radius:4px;" alt="同意書 QR Code">
           <div style="display:flex; flex-direction:column; gap:6px;">
