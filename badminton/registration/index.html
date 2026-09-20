@@ -8,7 +8,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
 
-  <!-- 頂部賽事資訊 (完全依據「設定」工作表標題欄位動態顯示) -->
+  <!-- 頂部賽事資訊 -->
   <header class="bg-blue-600 text-white shadow-md">
     <div class="max-w-4xl mx-auto p-6">
       <h1 id="tourMainTitle" class="text-2xl md:text-3xl font-bold mb-3">載入賽事資訊中...</h1>
@@ -113,24 +113,9 @@
 
   </main>
 
-  <!-- 學生選擇彈跳視窗 (Modal) -->
-  <div id="studentModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-lg max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col">
-      <div class="flex justify-between items-center border-b pb-2">
-        <h3 class="text-lg font-bold text-slate-800">選擇學生名單</h3>
-        <button onclick="closeStudentModal()" class="text-gray-500 hover:text-gray-700 text-xl font-bold">&times;</button>
-      </div>
-      <input type="text" id="studentSearch" oninput="renderStudentList()" placeholder="搜尋學生姓名..." class="border rounded px-3 py-2 text-sm w-full focus:outline-blue-500">
-      <div class="overflow-y-auto flex-1 divide-y border rounded" id="studentListContainer"></div>
-      <div class="text-right">
-        <button onclick="closeStudentModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm">取消</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 修改報名彈跳視窗 (Edit Modal) -->
+  <!-- 修改報名彈跳視窗 (層級維持 z-50) -->
   <div id="editModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
         <h3 class="text-lg font-bold text-slate-800">修改報名資料（編號：<span id="editIdDisplay" class="text-blue-600"></span>）</h3>
         <button onclick="closeEditModal()" class="text-gray-500 hover:text-gray-700 text-xl font-bold">&times;</button>
@@ -169,8 +154,23 @@
     </div>
   </div>
 
+  <!-- 學生選擇彈跳視窗 (💡 層級設為 z-[70]，確保永遠在最上層) -->
+  <div id="studentModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[70] hidden">
+    <div class="bg-white rounded-lg max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-lg font-bold text-slate-800">選擇學生名單</h3>
+        <button onclick="closeStudentModal()" class="text-gray-500 hover:text-gray-700 text-xl font-bold">&times;</button>
+      </div>
+      <input type="text" id="studentSearch" oninput="renderStudentList()" placeholder="搜尋學生姓名..." class="border rounded px-3 py-2 text-sm w-full focus:outline-blue-500">
+      <div class="overflow-y-auto flex-1 divide-y border rounded max-h-64" id="studentListContainer"></div>
+      <div class="text-right">
+        <button onclick="closeStudentModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm">取消</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // ⚠️ 請填入您的 Apps Script 網頁應用程式 URL
+    // ⚠️ 請替換為您的 Apps Script URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbx_NkPKSFQ32DwLREXMfKTnXs3wLPprRlnCp6pEaFDxLq-o5Tr4lVOXTMMxECMxDvYd/exec";
 
     let studentDatabase = [];
@@ -185,7 +185,6 @@
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            // 1. 動態渲染「設定」工作表標題欄位
             const settings = data.settings || [];
             if (settings.length > 0) {
               document.getElementById("tourMainTitle").innerText = settings[0].value || settings[0].title;
@@ -241,7 +240,6 @@
       }
     }
 
-    // 學生選取 Modal
     function openStudentModal(mode, slot) {
       currentModalTarget = { mode, slot };
       document.getElementById("studentSearch").value = "";
@@ -277,7 +275,6 @@
       });
     }
 
-    // 新增暫存清單
     function addToStagingList() {
       const category = document.getElementById("categorySelect").value;
       const eventVal = document.getElementById("eventSelect").value;
@@ -318,7 +315,6 @@
       `).join("");
     }
 
-    // 正式送出新增
     function submitFinalRegistrations() {
       const phone = document.getElementById("mainPhone").value.trim();
       if (!phone) return alert("請填寫手機號碼！");
@@ -350,7 +346,6 @@
       });
     }
 
-    // 查詢手機號碼
     function queryRegistration() {
       const phone = document.getElementById("queryPhoneInput").value.trim();
       if (!phone) return alert("請輸入手機號碼！");
@@ -383,21 +378,17 @@
         });
     }
 
-    // 開啟修改 Modal
     function openEditModal(idx) {
       const record = queryRecordsCache[idx];
       document.getElementById("editRegId").value = record.id;
       document.getElementById("editIdDisplay").innerText = record.id;
 
-      // 設定組別
       document.getElementById("editCategorySelect").value = record.category;
       onCategoryChange('edit');
 
-      // 設定項目
       document.getElementById("editEventSelect").value = record.event;
       handleEventChange('edit');
 
-      // 設定選手
       document.getElementById("editPlayer1Input").value = record.players[0] || "";
       if (record.isDouble) {
         document.getElementById("editPlayer2Input").value = record.players[1] || "";
@@ -410,7 +401,6 @@
       document.getElementById("editModal").classList.add("hidden");
     }
 
-    // 送出修改資料 (覆寫原資料，編號不變)
     function submitEditRegistration() {
       const id = document.getElementById("editRegId").value;
       const category = document.getElementById("editCategorySelect").value;
@@ -442,7 +432,6 @@
       });
     }
 
-    // 刪除報名資料
     function deleteRegistration(id) {
       if (!confirm(`確定要刪除報名編號【${id}】的資料嗎？`)) return;
 
