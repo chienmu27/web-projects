@@ -165,10 +165,10 @@
             document.getElementById("tourName").innerText = s["比賽名稱"] || "羽球錦標賽";
             
             // 2. 日期區塊 (對應「報名日期」、「比賽日期」標題)
-            const regDate = s["報名日期"] || "未定";
+            const regDate = s["截止日期"] || "未定";
             const matchDate = s["比賽日期"] || "未定";
             document.getElementById("dateRow").innerHTML = `
-              <span>📅 <strong>報名日期：</strong>${regDate}</span>
+              <span>📅 <strong>截止日期：</strong>${regDate}</span>
               <span class="mx-2">｜</span>
               <span>🏸 <strong>比賽日期：</strong>${matchDate}</span>
             `;
