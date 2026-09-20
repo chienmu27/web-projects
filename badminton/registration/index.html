@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>羽球賽報名系統</title>
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
@@ -12,9 +11,12 @@
   <!-- 頂部賽事資訊 -->
   <header class="bg-blue-600 text-white shadow-md">
     <div class="max-w-4xl mx-auto p-6">
-      <h1 id="tourName" class="text-2xl md:text-3xl font-bold mb-2">載入賽事資訊中...</h1>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-blue-100" id="tourDetails">
-        <!-- 動態填入 A2:G2 資訊 -->
+      <h1 id="tourName" class="text-2xl md:text-3xl font-bold mb-3">載入賽事資訊中...</h1>
+      
+      <!-- 整合後的日期與相關資訊 -->
+      <div class="bg-blue-700/60 p-3 rounded-lg text-sm space-y-1.5" id="tourDetails">
+        <div id="dateRow">📅 載入日期資訊中...</div>
+        <div id="placeAndLink" class="flex flex-wrap gap-x-6 gap-y-1 text-blue-100"></div>
       </div>
     </div>
   </header>
@@ -35,10 +37,10 @@
             <thead class="bg-slate-100 border-b">
               <tr>
                 <th class="p-2">編號</th>
-                <th class="p-2">姓名</th>
+                <th class="p-2">選手姓名</th>
                 <th class="p-2">組別</th>
                 <th class="p-2">項目</th>
-                <th class="p-2">報名時間</th>
+                <th class="p-2">手機號碼</th>
               </tr>
             </thead>
             <tbody id="queryTableBody"></tbody>
@@ -57,23 +59,18 @@
         <input type="tel" id="mainPhone" placeholder="例如：0912345678" class="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500">
       </div>
 
-      <!-- 組別與項目 -->
+      <!-- 組別與項目 (連動下拉選單) -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-semibold mb-1">選擇組別</label>
-          <select id="categorySelect" class="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500">
-            <option value="高年級">高年級</option>
-            <option value="中年級">中年級</option>
-            <option value="低年級">低年級</option>
+          <select id="categorySelect" onchange="onCategoryChange()" class="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500">
+            <option value="">載入組別中...</option>
           </select>
         </div>
         <div>
           <label class="block text-sm font-semibold mb-1">選擇項目</label>
           <select id="eventSelect" onchange="handleEventChange()" class="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500">
-            <option value="高男單">高男單</option>
-            <option value="高女單">高女單</option>
-            <option value="高男雙">高男雙</option>
-            <option value="高女雙">高女雙</option>
+            <option value="">請先選擇組別</option>
           </select>
         </div>
       </div>
@@ -129,7 +126,7 @@
 
   </main>
 
-  <!-- 學生選擇浮動視窗 (Modal) -->
+  <!-- 學生選擇彈跳視窗 (Modal) -->
   <div id="studentModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden">
     <div class="bg-white rounded-lg max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col">
       <div class="flex justify-between items-center border-b pb-2">
@@ -139,9 +136,7 @@
       
       <input type="text" id="studentSearch" oninput="renderStudentList()" placeholder="搜尋學生姓名..." class="border rounded px-3 py-2 text-sm w-full focus:outline-blue-500">
 
-      <div class="overflow-y-auto flex-1 divide-y border rounded" id="studentListContainer">
-        <!-- 學生清單動態生成 -->
-      </div>
+      <div class="overflow-y-auto flex-1 divide-y border rounded" id="studentListContainer"></div>
 
       <div class="text-right">
         <button onclick="closeStudentModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm">取消</button>
@@ -150,39 +145,87 @@
   </div>
 
   <script>
-    // ⚠️ 請替換為您的 Google Apps Script 部署 URL
+    // ⚠️ 請填入您的 Apps Script 網頁應用程式 URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbx_NkPKSFQ32DwLREXMfKTnXs3wLPprRlnCp6pEaFDxLq-o5Tr4lVOXTMMxECMxDvYd/exec";
 
     let studentDatabase = [];
+    let allCategories = [];
+    let allEvents = [];
     let currentTargetSlot = 1;
     let stagingList = [];
 
-    // 初始化頁面資料
+    // 日期格式化：轉換為「X月X日 下午X點」
+    function formatToHour(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr; // 若非標準日期字串則原樣輸出
+      
+      const m = d.getMonth() + 1;
+      const day = d.getDate();
+      const hour = d.getHours();
+      const ampm = hour < 12 ? '上午' : '下午';
+      const h12 = hour % 12 === 0 ? 12 : hour % 12;
+      return `${m}月${day}日 ${ampm}${h12}點`;
+    }
+
+    // 初始化載入
     window.addEventListener("DOMContentLoaded", () => {
       fetch(`${GAS_URL}?action=getInitData`)
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            // 填入設定 (A2:G2)
             const s = data.settings;
             document.getElementById("tourName").innerText = s[0] || "羽球錦標賽";
-            document.getElementById("tourDetails").innerHTML = `
-              <div>📅 報名期間：${s[1] || ''} ~ ${s[2] || ''}</div>
-              <div>🏸 比賽日期：${s[3] || ''}</div>
-              <div>📍 比賽地點：${s[4] || ''}</div>
-              <div>🔗 相關連結：<a href="${s[5] || '#'}" target="_blank" class="underline text-yellow-200">競賽規程</a></div>
+            
+            // 格式化報名與比賽日期
+            const regStart = formatToHour(s[1]);
+            const regEnd = formatToHour(s[2]);
+            const matchDate = s[3] || '未定';
+            
+            document.getElementById("dateRow").innerHTML = `
+              <div>📅 <strong>報名期間：</strong>${regStart} ~ ${regEnd} ｜ 🏸 <strong>比賽日期：</strong>${matchDate}</div>
             `;
-            // 學生名單
+            document.getElementById("placeAndLink").innerHTML = `
+              <span>📍 地點：${s[4] || '本校體育館'}</span>
+              <span>🔗 連結：<a href="${s[5] || '#'}" target="_blank" class="underline text-yellow-200">競賽規程</a></span>
+            `;
+
             studentDatabase = data.students || [];
+            allCategories = data.categories || [];
+            allEvents = data.events || [];
+
+            // 渲染組別下拉選單
+            renderCategoryOptions();
           }
         });
-      handleEventChange();
     });
 
-    // 項目改變時切換 單打(1人) / 雙打(2人)
+    // 渲染組別選單
+    function renderCategoryOptions() {
+      const catSelect = document.getElementById("categorySelect");
+      catSelect.innerHTML = allCategories.map(c => `<option value="${c.name}" data-id="${c.id}">${c.name}</option>`).join("");
+      onCategoryChange();
+    }
+
+    // 當組別改變時，根據「組別編號 == 項目編號」動態更新項目選單
+    function onCategoryChange() {
+      const catSelect = document.getElementById("categorySelect");
+      const selectedOption = catSelect.options[catSelect.selectedIndex];
+      if (!selectedOption) return;
+
+      const categoryId = selectedOption.getAttribute("data-id");
+      const filteredEvents = allEvents.filter(e => e.id === categoryId);
+
+      const eventSelect = document.getElementById("eventSelect");
+      eventSelect.innerHTML = filteredEvents.map(e => `<option value="${e.name}">${e.name}</option>`).join("");
+
+      handleEventChange();
+    }
+
+    // 判斷單打/雙打顯示欄位
     function handleEventChange() {
       const eventVal = document.getElementById("eventSelect").value;
-      const isDouble = !eventVal.includes("單");
+      const isDouble = eventVal.includes("雙");
       const p2Row = document.getElementById("player2Row");
       if (isDouble) {
         p2Row.classList.remove("hidden");
@@ -192,7 +235,7 @@
       }
     }
 
-    // 開啟學生彈窗
+    // 彈跳視窗選取學生
     function openStudentModal(slot) {
       currentTargetSlot = slot;
       document.getElementById("studentSearch").value = "";
@@ -204,7 +247,6 @@
       document.getElementById("studentModal").classList.add("hidden");
     }
 
-    // 渲染學生列表
     function renderStudentList() {
       const keyword = document.getElementById("studentSearch").value.trim().toLowerCase();
       const container = document.getElementById("studentListContainer");
@@ -213,39 +255,34 @@
       const filtered = studentDatabase.filter(s => s.name.toLowerCase().includes(keyword));
       
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="p-3 text-center text-gray-400 text-sm">查無符合學生</div>`;
+        container.innerHTML = `<div class="p-3 text-center text-gray-400 text-sm">查無學生名單</div>`;
         return;
       }
 
       filtered.forEach(s => {
         const div = document.createElement("div");
         div.className = "p-3 hover:bg-blue-50 cursor-pointer flex justify-between items-center text-sm";
-        div.innerHTML = `<span class="font-medium">${s.name}</span><span class="text-xs bg-gray-200 px-2 py-0.5 rounded text-gray-600">${s.gender || '不分'}</span>`;
-        div.onclick = () => selectStudent(s.name);
+        div.innerHTML = `<span class="font-medium">${s.name}</span><span class="text-xs bg-gray-200 px-2 py-0.5 rounded text-gray-600">${s.gender || ''}</span>`;
+        div.onclick = () => {
+          if (currentTargetSlot === 1) document.getElementById("player1Input").value = s.name;
+          else document.getElementById("player2Input").value = s.name;
+          closeStudentModal();
+        };
         container.appendChild(div);
       });
-    }
-
-    function selectStudent(name) {
-      if (currentTargetSlot === 1) {
-        document.getElementById("player1Input").value = name;
-      } else {
-        document.getElementById("player2Input").value = name;
-      }
-      closeStudentModal();
     }
 
     // 加入暫存清單
     function addToStagingList() {
       const category = document.getElementById("categorySelect").value;
       const eventVal = document.getElementById("eventSelect").value;
-      const isDouble = !eventVal.includes("單");
+      const isDouble = eventVal.includes("雙");
       const p1 = document.getElementById("player1Input").value;
       const p2 = document.getElementById("player2Input").value;
 
       if (!p1) return alert("請選擇選手一！");
       if (isDouble && !p2) return alert("雙打項目請選擇選手二！");
-      if (isDouble && p1 === p2) return alert("選手一與選手二不能為同一人！");
+      if (isDouble && p1 === p2) return alert("兩位選手不能為同一人！");
 
       stagingList.push({
         category: category,
@@ -255,14 +292,12 @@
         player2: isDouble ? p2 : ""
       });
 
-      // 清空選手輸入欄
       document.getElementById("player1Input").value = "";
       document.getElementById("player2Input").value = "";
 
       renderStagingTable();
     }
 
-    // 渲染暫存表格
     function renderStagingTable() {
       const tbody = document.getElementById("stagingTableBody");
       const submitBtn = document.getElementById("submitBtn");
@@ -280,26 +315,21 @@
           <td class="p-2">${item.event}</td>
           <td class="p-2 font-medium">${item.isDouble ? `${item.player1} / ${item.player2}` : item.player1}</td>
           <td class="p-2 text-center">
-            <button onclick="removeStagingItem(${idx})" class="text-red-500 hover:text-red-700 text-xs border border-red-200 px-2 py-1 rounded">刪除</button>
+            <button onclick="stagingList.splice(${idx}, 1); renderStagingTable();" class="text-red-500 hover:text-red-700 text-xs border border-red-200 px-2 py-1 rounded">刪除</button>
           </td>
         </tr>
       `).join("");
     }
 
-    function removeStagingItem(idx) {
-      stagingList.splice(idx, 1);
-      renderStagingTable();
-    }
-
-    // 送出報名到 Google 試算表
+    // 送出至試算表
     function submitFinalRegistrations() {
       const phone = document.getElementById("mainPhone").value.trim();
-      if (!phone) return alert("請填寫報名人手機號碼！");
-      if (stagingList.length === 0) return alert("暫存清單內無任何報名項目！");
+      if (!phone) return alert("請填寫手機號碼！");
+      if (stagingList.length === 0) return alert("暫存清單無項目！");
 
       const submitBtn = document.getElementById("submitBtn");
       submitBtn.disabled = true;
-      submitBtn.innerText = "資料寫入中，請稍候...";
+      submitBtn.innerText = "資料傳送中...";
 
       fetch(GAS_URL, {
         method: "POST",
@@ -311,27 +341,26 @@
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          alert("報名成功！已成功寫入試算表。");
+          alert("報名完成！已成功寫入試算表。");
           stagingList = [];
           renderStagingTable();
-          // 自動幫填表人查詢最新資料
           document.getElementById("queryPhoneInput").value = phone;
           queryRegistration();
         } else {
           alert("報名失敗：" + data.error);
         }
       })
-      .catch(err => alert("送出失敗：" + err))
+      .catch(err => alert("發生錯誤：" + err))
       .finally(() => {
         submitBtn.disabled = false;
         submitBtn.innerText = "正式送出報名";
       });
     }
 
-    // 手機號碼查詢
+    // 查詢手機紀錄
     function queryRegistration() {
       const phone = document.getElementById("queryPhoneInput").value.trim();
-      if (!phone) return alert("請輸入要查詢的手機號碼！");
+      if (!phone) return alert("請輸入手機號碼！");
 
       const area = document.getElementById("queryResultArea");
       const tbody = document.getElementById("queryTableBody");
@@ -345,10 +374,10 @@
             tbody.innerHTML = data.records.map(r => `
               <tr class="border-b">
                 <td class="p-2 font-bold text-blue-600">${r.id}</td>
-                <td class="p-2">${r.name}</td>
+                <td class="p-2 font-medium">${r.name}</td>
                 <td class="p-2">${r.category}</td>
                 <td class="p-2">${r.event}</td>
-                <td class="p-2 text-xs text-gray-500">${r.time}</td>
+                <td class="p-2 text-gray-500">${r.phone}</td>
               </tr>
             `).join("");
           } else {
