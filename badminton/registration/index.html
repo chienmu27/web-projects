@@ -13,7 +13,7 @@
     <div class="max-w-4xl mx-auto p-6">
       <h1 id="tourName" class="text-2xl md:text-3xl font-bold mb-3">載入賽事資訊中...</h1>
       
-      <!-- 整合後的日期與相關資訊 -->
+      <!-- 動態依標題欄位呈現 -->
       <div class="bg-blue-700/60 p-3 rounded-lg text-sm space-y-1.5" id="tourDetails">
         <div id="dateRow">📅 載入日期資訊中...</div>
         <div id="placeAndLink" class="flex flex-wrap gap-x-6 gap-y-1 text-blue-100"></div>
@@ -75,7 +75,7 @@
         </div>
       </div>
 
-      <!-- 選手選擇列 (動態顯示1列或2列) -->
+      <!-- 選手選擇列 -->
       <div class="space-y-3 bg-slate-50 p-4 rounded border">
         <!-- 選手 1 -->
         <div class="flex items-center gap-3">
@@ -83,7 +83,7 @@
           <input type="text" id="player1Input" readonly placeholder="點擊按鈕選擇學生" class="flex-1 bg-white border rounded px-3 py-2 text-sm">
           <button type="button" onclick="openStudentModal(1)" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">選擇選手</button>
         </div>
-        <!-- 選手 2 (雙打才顯示) -->
+        <!-- 選手 2 (雙打顯示) -->
         <div id="player2Row" class="flex items-center gap-3 hidden">
           <span class="text-sm font-semibold w-20">選手二：</span>
           <input type="text" id="player2Input" readonly placeholder="點擊按鈕選擇學生" class="flex-1 bg-white border rounded px-3 py-2 text-sm">
@@ -154,60 +154,48 @@
     let currentTargetSlot = 1;
     let stagingList = [];
 
-    // 日期格式化：轉換為「X月X日 下午X點」
-    function formatToHour(dateStr) {
-      if (!dateStr) return '';
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr; // 若非標準日期字串則原樣輸出
-      
-      const m = d.getMonth() + 1;
-      const day = d.getDate();
-      const hour = d.getHours();
-      const ampm = hour < 12 ? '上午' : '下午';
-      const h12 = hour % 12 === 0 ? 12 : hour % 12;
-      return `${m}月${day}日 ${ampm}${h12}點`;
-    }
-
-    // 初始化載入
     window.addEventListener("DOMContentLoaded", () => {
       fetch(`${GAS_URL}?action=getInitData`)
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            const s = data.settings;
-            document.getElementById("tourName").innerText = s[0] || "羽球錦標賽";
+            const s = data.settings || {};
             
-            // 格式化報名與比賽日期
-            const regStart = formatToHour(s[1]);
-            const regEnd = formatToHour(s[2]);
-            const matchDate = s[3] || '未定';
+            // 1. 比賽名稱 (對應「比賽名稱」標題)
+            document.getElementById("tourName").innerText = s["比賽名稱"] || "羽球錦標賽";
             
+            // 2. 日期區塊 (對應「報名日期」、「比賽日期」標題)
+            const regDate = s["報名日期"] || "未定";
+            const matchDate = s["比賽日期"] || "未定";
             document.getElementById("dateRow").innerHTML = `
-              <div>📅 <strong>報名期間：</strong>${regStart} ~ ${regEnd} ｜ 🏸 <strong>比賽日期：</strong>${matchDate}</div>
-            `;
-            document.getElementById("placeAndLink").innerHTML = `
-              <span>📍 地點：${s[4] || '本校體育館'}</span>
-              <span>🔗 連結：<a href="${s[5] || '#'}" target="_blank" class="underline text-yellow-200">競賽規程</a></span>
+              <span>📅 <strong>報名日期：</strong>${regDate}</span>
+              <span class="mx-2">｜</span>
+              <span>🏸 <strong>比賽日期：</strong>${matchDate}</span>
             `;
 
+            // 3. 地點與規程連結 (對應「比賽地點」、「競賽章程」或「競賽規程」標題)
+            const place = s["比賽地點"] ? `<span>📍 地點：${s["比賽地點"]}</span>` : "";
+            const ruleLink = s["競賽章程"] || s["競賽規程"] || s["參考連結"] || "";
+            const linkHtml = ruleLink ? `<span>🔗 連結：<a href="${ruleLink}" target="_blank" class="underline text-yellow-200 hover:text-white">競賽章程</a></span>` : "";
+            
+            document.getElementById("placeAndLink").innerHTML = place + (place && linkHtml ? "&nbsp;&nbsp;" : "") + linkHtml;
+
+            // 4. 名單與組別
             studentDatabase = data.students || [];
             allCategories = data.categories || [];
             allEvents = data.events || [];
 
-            // 渲染組別下拉選單
             renderCategoryOptions();
           }
         });
     });
 
-    // 渲染組別選單
     function renderCategoryOptions() {
       const catSelect = document.getElementById("categorySelect");
       catSelect.innerHTML = allCategories.map(c => `<option value="${c.name}" data-id="${c.id}">${c.name}</option>`).join("");
       onCategoryChange();
     }
 
-    // 當組別改變時，根據「組別編號 == 項目編號」動態更新項目選單
     function onCategoryChange() {
       const catSelect = document.getElementById("categorySelect");
       const selectedOption = catSelect.options[catSelect.selectedIndex];
@@ -222,7 +210,6 @@
       handleEventChange();
     }
 
-    // 判斷單打/雙打顯示欄位
     function handleEventChange() {
       const eventVal = document.getElementById("eventSelect").value;
       const isDouble = eventVal.includes("雙");
@@ -235,7 +222,6 @@
       }
     }
 
-    // 彈跳視窗選取學生
     function openStudentModal(slot) {
       currentTargetSlot = slot;
       document.getElementById("studentSearch").value = "";
@@ -272,7 +258,6 @@
       });
     }
 
-    // 加入暫存清單
     function addToStagingList() {
       const category = document.getElementById("categorySelect").value;
       const eventVal = document.getElementById("eventSelect").value;
@@ -321,7 +306,6 @@
       `).join("");
     }
 
-    // 送出至試算表
     function submitFinalRegistrations() {
       const phone = document.getElementById("mainPhone").value.trim();
       if (!phone) return alert("請填寫手機號碼！");
@@ -357,7 +341,6 @@
       });
     }
 
-    // 查詢手機紀錄
     function queryRegistration() {
       const phone = document.getElementById("queryPhoneInput").value.trim();
       if (!phone) return alert("請輸入手機號碼！");
