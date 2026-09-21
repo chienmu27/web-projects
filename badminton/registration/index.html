@@ -18,12 +18,21 @@
 
   <main class="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
 
-    <!-- 1. 手機查詢與修改/刪除區塊 -->
+    <!-- 1. 報名資料查詢區塊 (支援手機號碼 / 學生姓名切換) -->
     <div class="bg-white rounded-lg shadow p-5">
-      <h2 class="text-lg font-bold border-b pb-2 mb-3 text-slate-700">🔍 報名資料查詢 / 修改</h2>
-      <div class="flex gap-2">
-        <input type="tel" id="queryPhoneInput" placeholder="請輸入手機號碼查詢" class="flex-1 border rounded px-3 py-2 text-sm focus:outline-blue-500">
-        <button onclick="queryRegistration()" class="bg-slate-700 text-white px-5 py-2 rounded text-sm hover:bg-slate-800 transition">查詢</button>
+      <h2 class="text-lg font-bold border-b pb-2 mb-3 text-slate-700">🔍 報名資料查詢</h2>
+      
+      <div class="flex flex-col sm:flex-row gap-2">
+        <!-- 查詢模式切換 -->
+        <select id="searchType" onchange="handleSearchTypeChange()" class="border rounded px-3 py-2 text-sm bg-slate-50 font-medium focus:outline-blue-500">
+          <option value="phone">📱 手機號碼 (可修改/刪除)</option>
+          <option value="name">👤 學生姓名 (僅供檢視)</option>
+        </select>
+        
+        <!-- 查詢輸入框 -->
+        <input type="text" id="queryKeywordInput" placeholder="請輸入手機號碼查詢" class="flex-1 border rounded px-3 py-2 text-sm focus:outline-blue-500">
+        
+        <button onclick="executeQuery()" class="bg-slate-700 hover:bg-slate-800 text-white px-6 py-2 rounded text-sm transition">查詢</button>
       </div>
       
       <!-- 查詢結果清單 -->
@@ -36,7 +45,7 @@
                 <th class="p-2">組別</th>
                 <th class="p-2">項目</th>
                 <th class="p-2">選手姓名</th>
-                <th class="p-2 text-center">操作</th>
+                <th class="p-2 text-center" id="actionHeader">操作</th>
               </tr>
             </thead>
             <tbody id="queryTableBody"></tbody>
@@ -113,7 +122,7 @@
 
   </main>
 
-  <!-- 修改報名彈跳視窗 (層級維持 z-50) -->
+  <!-- 修改報名彈跳視窗 (z-50) -->
   <div id="editModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden">
     <div class="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -154,7 +163,7 @@
     </div>
   </div>
 
-  <!-- 學生選擇彈跳視窗 (💡 層級設為 z-[70]，確保永遠在最上層) -->
+  <!-- 學生選擇彈跳視窗 (z-[70] 頂層) -->
   <div id="studentModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[70] hidden">
     <div class="bg-white rounded-lg max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -170,7 +179,7 @@
   </div>
 
   <script>
-    // ⚠️ 請替換為您的 Apps Script URL
+    // ⚠️ 請填入您的 Apps Script URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbx_NkPKSFQ32DwLREXMfKTnXs3wLPprRlnCp6pEaFDxLq-o5Tr4lVOXTMMxECMxDvYd/exec";
 
     let studentDatabase = [];
@@ -179,6 +188,8 @@
     let stagingList = [];
     let currentModalTarget = { mode: 'add', slot: 1 };
     let queryRecordsCache = [];
+    let currentSearchType = "phone";
+    let lastQueriedPhone = "";
 
     window.addEventListener("DOMContentLoaded", () => {
       fetch(`${GAS_URL}?action=getInitData`)
@@ -206,6 +217,18 @@
           }
         });
     });
+
+    // 切換查詢模式
+    function handleSearchTypeChange() {
+      const type = document.getElementById("searchType").value;
+      currentSearchType = type;
+      const input = document.getElementById("queryKeywordInput");
+      if (type === "phone") {
+        input.placeholder = "請輸入手機號碼查詢 (可修改/刪除)";
+      } else {
+        input.placeholder = "請輸入學生完整姓名查詢 (僅供檢視)";
+      }
+    }
 
     function renderCategoryOptions(mode) {
       const select = document.getElementById(mode === 'add' ? "categorySelect" : "editCategorySelect");
@@ -334,8 +357,10 @@
           alert("報名完成！已成功寫入試算表。");
           stagingList = [];
           renderStagingTable();
-          document.getElementById("queryPhoneInput").value = phone;
-          queryRegistration();
+          document.getElementById("searchType").value = "phone";
+          handleSearchTypeChange();
+          document.getElementById("queryKeywordInput").value = phone;
+          executeQuery();
         } else {
           alert("報名失敗：" + data.error);
         }
@@ -346,34 +371,44 @@
       });
     }
 
-    function queryRegistration() {
-      const phone = document.getElementById("queryPhoneInput").value.trim();
-      if (!phone) return alert("請輸入手機號碼！");
+    // 執行查詢 (依手機或姓名)
+    function executeQuery() {
+      const type = document.getElementById("searchType").value;
+      const keyword = document.getElementById("queryKeywordInput").value.trim();
+      if (!keyword) return alert(type === 'phone' ? "請輸入手機號碼！" : "請輸入學生姓名！");
+
+      if (type === 'phone') lastQueriedPhone = keyword;
 
       const area = document.getElementById("queryResultArea");
       const tbody = document.getElementById("queryTableBody");
       tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-slate-400">查詢中...</td></tr>`;
       area.classList.remove("hidden");
 
-      fetch(`${GAS_URL}?action=queryPhone&phone=${encodeURIComponent(phone)}`)
+      fetch(`${GAS_URL}?action=queryData&type=${encodeURIComponent(type)}&keyword=${encodeURIComponent(keyword)}`)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.records.length > 0) {
             queryRecordsCache = data.records;
+            const isPhoneQuery = (data.type === "phone");
+
             tbody.innerHTML = data.records.map((r, idx) => `
               <tr class="border-b hover:bg-slate-50">
                 <td class="p-2 font-bold text-blue-600">${r.id}</td>
                 <td class="p-2">${r.category}</td>
                 <td class="p-2">${r.event}</td>
                 <td class="p-2 font-medium">${r.players.join(" / ")}</td>
-                <td class="p-2 text-center space-x-2">
-                  <button onclick="openEditModal(${idx})" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2.5 py-1 rounded shadow">✏️ 修改</button>
-                  <button onclick="deleteRegistration('${r.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs px-2.5 py-1 rounded shadow">🗑️ 刪除</button>
+                <td class="p-2 text-center">
+                  ${isPhoneQuery ? `
+                    <button onclick="openEditModal(${idx})" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2.5 py-1 rounded shadow">✏️ 修改</button>
+                    <button onclick="deleteRegistration('${r.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs px-2.5 py-1 rounded shadow ml-1">🗑️ 刪除</button>
+                  ` : `
+                    <span class="text-xs text-slate-400 italic">僅供檢視</span>
+                  `}
                 </td>
               </tr>
             `).join("");
           } else {
-            tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-red-400">查無此手機號碼的報名紀錄</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-red-400">查無相關報名紀錄</td></tr>`;
           }
         });
     }
@@ -408,7 +443,7 @@
       const isDouble = eventVal.includes("雙");
       const p1 = document.getElementById("editPlayer1Input").value;
       const p2 = document.getElementById("editPlayer2Input").value;
-      const phone = document.getElementById("queryPhoneInput").value.trim();
+      const phone = lastQueriedPhone || document.getElementById("queryKeywordInput").value.trim();
 
       if (!p1) return alert("請選擇選手一！");
       if (isDouble && !p2) return alert("雙打項目請選擇選手二！");
@@ -425,7 +460,7 @@
         if (data.success) {
           alert(`編號 ${id} 修改成功！`);
           closeEditModal();
-          queryRegistration();
+          executeQuery();
         } else {
           alert("修改失敗：" + data.error);
         }
@@ -443,7 +478,7 @@
       .then(data => {
         if (data.success) {
           alert(`編號 ${id} 已成功刪除！`);
-          queryRegistration();
+          executeQuery();
         } else {
           alert("刪除失敗：" + data.error);
         }
