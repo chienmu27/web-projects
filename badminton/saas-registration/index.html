@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>賽事報名系統 - 多人共用版</title>
+  <title>賽事報名系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
 
-  <!-- 0. 試算表綁定與管理列 (若網址已有 sid 可摺疊) -->
-  <div class="bg-slate-800 text-white shadow-inner">
+  <!-- 0. 試算表綁定管理列 (專屬網址開啟時會自動隱藏) -->
+  <div id="adminBar" class="bg-slate-800 text-white shadow-inner">
     <div class="max-w-4xl mx-auto p-4 flex flex-col md:flex-row items-center gap-3">
       <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">資料來源試算表：</span>
       <input type="text" id="spreadsheetUrlInput" placeholder="請貼上 Google 試算表網址或 ID..." class="flex-1 bg-slate-700 text-white text-sm px-3 py-1.5 rounded border border-slate-600 focus:outline-blue-400">
@@ -25,7 +25,7 @@
   <!-- 頂部賽事資訊 -->
   <header class="bg-blue-600 text-white shadow-md">
     <div class="max-w-4xl mx-auto p-6">
-      <h1 id="tourMainTitle" class="text-2xl md:text-3xl font-bold mb-3">請先綁定試算表...</h1>
+      <h1 id="tourMainTitle" class="text-2xl md:text-3xl font-bold mb-3">載入中...</h1>
       <div id="tourDynamicSettings" class="bg-blue-700/60 p-3.5 rounded-lg text-sm flex flex-wrap gap-x-6 gap-y-2 text-blue-50"></div>
     </div>
   </header>
@@ -67,9 +67,7 @@
       <h2 class="text-lg font-bold border-b pb-2 text-slate-700">📝 新增報名項目</h2>
 
       <!-- 動態報名人基本資料 -->
-      <div id="dynamicFieldsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded border">
-        <!-- 由 JS 自動產生欄位 -->
-      </div>
+      <div id="dynamicFieldsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded border"></div>
 
       <!-- 組別與項目 -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -83,7 +81,7 @@
         </div>
       </div>
 
-      <!-- 選手輸入區 (可手動輸入 + 彈跳視窗選擇名單) -->
+      <!-- 選手輸入區 (可手動打字輸入 + 彈跳視窗選擇) -->
       <div class="space-y-3 bg-blue-50/50 p-4 rounded border border-blue-200">
         <div class="flex items-center gap-3">
           <span class="text-sm font-semibold w-20">選手一：<span class="text-red-500">*</span></span>
@@ -189,7 +187,7 @@
   </div>
 
   <script>
-    // ⚠️ 請填入您的獨立專案 GAS Web App 部署網址
+    // ⚠️ 請填入您的獨立專案 GAS 部署 Web App URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxbXfdX7Vor7W9Q-pxcB1J7XFFU6em2MlFGU2-ebgXcQXuZRO4WUxied2U5nTmo4g63/exec";
 
     let currentSid = "";
@@ -202,17 +200,22 @@
     let queryRecordsCache = [];
 
     window.addEventListener("DOMContentLoaded", () => {
-      // 自動從網址參數抓取 sid
       const params = new URLSearchParams(window.location.search);
       const sidFromParam = params.get("sid");
+
       if (sidFromParam) {
+        // 專屬報名表模式：隱藏頂部試算表設定列
+        document.getElementById("adminBar").classList.add("hidden");
         document.getElementById("spreadsheetUrlInput").value = sidFromParam;
         currentSid = sidFromParam;
         loadInitData();
+      } else {
+        // 管理者模式：顯示頂部設定列
+        document.getElementById("adminBar").classList.remove("hidden");
+        document.getElementById("tourMainTitle").innerText = "請在上方輸入試算表網址並綁定";
       }
     });
 
-    // 綁定試算表按鈕
     function bindSpreadsheet() {
       const val = document.getElementById("spreadsheetUrlInput").value.trim();
       if (!val) return alert("請輸入試算表網址或 ID！");
@@ -220,21 +223,22 @@
       loadInitData();
     }
 
-    // 複製獨立報名專屬網址
     function copyShareLink() {
       if (!currentSid) return alert("請先輸入並綁定試算表！");
-      const cleanSid = currentSid.includes("/d/") ? currentSid.match(/\/d\/([a-zA-Z0-9-_]+)/)[1] : currentSid;
+      const match = currentSid.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      const cleanSid = match ? match[1] : currentSid;
       const shareUrl = `${window.location.origin}${window.location.pathname}?sid=${encodeURIComponent(cleanSid)}`;
       navigator.clipboard.writeText(shareUrl).then(() => {
-        alert("已成功複製專屬報名網址：\n" + shareUrl);
+        alert("已複製專屬報名網址：\n" + shareUrl);
       });
     }
 
-    // 一鍵初始化試算表
     function initSpreadsheet() {
       const val = document.getElementById("spreadsheetUrlInput").value.trim();
       if (!val) return alert("請輸入試算表網址或 ID！");
-      if (!confirm("確定要在此試算表上自動建立所需的工作表嗎？(已有同名工作表不會覆蓋已有資料)")) return;
+      if (!confirm("確定要在此試算表上自動建立所需的工作表嗎？")) return;
+
+      document.getElementById("tourMainTitle").innerText = "初始化工作表中...";
 
       fetch(GAS_URL, {
         method: "POST",
@@ -243,23 +247,26 @@
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          alert("初始化成功！");
+          alert("初始化成功！已建立相關工作表。");
           currentSid = val;
           loadInitData();
         } else {
           alert("初始化失敗：" + data.error);
         }
+      })
+      .catch(err => {
+        alert("連線失敗：" + err.message);
+        document.getElementById("tourMainTitle").innerText = "連線失敗";
       });
     }
 
-    // 載入資料
     function loadInitData() {
       document.getElementById("tourMainTitle").innerText = "讀取賽事資料中...";
+      
       fetch(`${GAS_URL}?action=getInitData&sid=${encodeURIComponent(currentSid)}`)
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            // 賽事資訊
             const settings = data.settings || [];
             if (settings.length > 0) {
               document.getElementById("tourMainTitle").innerText = settings[0].value || settings[0].title;
@@ -270,9 +277,10 @@
                 const valHtml = isUrl ? `<a href="${item.value}" target="_blank" class="underline text-yellow-200 hover:text-white">${item.title}</a>` : item.value;
                 return `<div><strong>${item.title}：</strong>${valHtml}</div>`;
               }).join("");
+            } else {
+              document.getElementById("tourMainTitle").innerText = "羽球賽事報名系統";
             }
 
-            // 動態產生報名人欄位
             customFields = data.fields || [];
             renderDynamicFields();
 
@@ -283,13 +291,16 @@
             renderCategoryOptions('add');
             renderCategoryOptions('edit');
           } else {
-            alert("載入失敗：" + (data.message || data.error));
-            document.getElementById("tourMainTitle").innerText = "載入失敗，請確認試算表權限！";
+            alert("資料載入失敗：" + (data.message || data.error));
+            document.getElementById("tourMainTitle").innerText = "載入失敗，請確認試算表共用權限！";
           }
+        })
+        .catch(err => {
+          alert("無法連線至後端服務，請確認 GAS 部署網址是否正確。");
+          document.getElementById("tourMainTitle").innerText = "載入逾時或連線失敗";
         });
     }
 
-    // 渲染動態基本欄位
     function renderDynamicFields() {
       const container = document.getElementById("dynamicFieldsContainer");
       container.innerHTML = customFields.map((f, i) => `
@@ -310,6 +321,10 @@
 
     function renderCategoryOptions(mode) {
       const select = document.getElementById(mode === 'add' ? "categorySelect" : "editCategorySelect");
+      if (allCategories.length === 0) {
+        select.innerHTML = `<option value="">尚未設定組別</option>`;
+        return;
+      }
       select.innerHTML = allCategories.map(c => `<option value="${c.name}" data-id="${c.id}">${c.name}</option>`).join("");
       onCategoryChange(mode);
     }
@@ -317,12 +332,16 @@
     function onCategoryChange(mode) {
       const catSelect = document.getElementById(mode === 'add' ? "categorySelect" : "editCategorySelect");
       const selectedOption = catSelect.options[catSelect.selectedIndex];
-      if (!selectedOption) return;
+      const eventSelect = document.getElementById(mode === 'add' ? "eventSelect" : "editEventSelect");
+
+      if (!selectedOption || !selectedOption.getAttribute("data-id")) {
+        eventSelect.innerHTML = `<option value="">無對應項目</option>`;
+        return;
+      }
 
       const categoryId = selectedOption.getAttribute("data-id");
       const filteredEvents = allEvents.filter(e => e.id === categoryId);
 
-      const eventSelect = document.getElementById(mode === 'add' ? "eventSelect" : "editEventSelect");
       eventSelect.innerHTML = filteredEvents.map(e => `<option value="${e.name}">${e.name}</option>`).join("");
       handleEventChange(mode);
     }
@@ -358,7 +377,7 @@
 
       const filtered = studentDatabase.filter(s => s.name.toLowerCase().includes(keyword));
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="p-3 text-center text-gray-400 text-sm">查無名單資料 (可直接在輸入框手動填寫)</div>`;
+        container.innerHTML = `<div class="p-3 text-center text-gray-400 text-sm">查無名單（可直接在輸入框手動填寫姓名）</div>`;
         return;
       }
 
@@ -382,6 +401,7 @@
       const p1 = document.getElementById("player1Input").value.trim();
       const p2 = document.getElementById("player2Input").value.trim();
 
+      if (!category || !eventVal) return alert("請先選擇組別與項目！");
       if (!p1) return alert("請填寫選手一姓名！");
       if (isDouble && !p2) return alert("雙打項目請填寫選手二姓名！");
       if (isDouble && p1 === p2) return alert("兩位選手不能為同一人！");
@@ -419,15 +439,14 @@
       if (!currentSid) return alert("尚未綁定試算表！");
       if (stagingList.length === 0) return alert("暫存清單無項目！");
 
-      // 檢查動態欄位必填
       const userData = {};
       let hasError = false;
       customFields.forEach((f, i) => {
         const input = document.getElementById(`customField_${i}`);
-        const val = input.value.trim();
+        const val = input ? input.value.trim() : "";
         if (f.required && !val) {
           alert(`請填寫必填欄位：${f.name}`);
-          input.focus();
+          if (input) input.focus();
           hasError = true;
           return;
         }
@@ -449,7 +468,6 @@
           alert("報名完成！已成功寫入試算表。");
           stagingList = [];
           renderStagingTable();
-          // 若有填寫手機號碼則自動帶入查詢
           if (userData["手機號碼"]) {
             document.getElementById("searchType").value = "phone";
             handleSearchTypeChange();
@@ -460,6 +478,7 @@
           alert("報名失敗：" + data.error);
         }
       })
+      .catch(err => alert("傳送失敗：" + err.message))
       .finally(() => {
         submitBtn.disabled = false;
         submitBtn.innerText = "正式送出報名";
@@ -503,6 +522,9 @@
           } else {
             tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-red-400">查無相關報名紀錄</td></tr>`;
           }
+        })
+        .catch(err => {
+          tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-red-400">查詢失敗：${err.message}</td></tr>`;
         });
     }
 
