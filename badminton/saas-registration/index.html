@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>賽事報名系統</title>
+  <title>羽球賽事報名系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
@@ -81,7 +81,7 @@
         </div>
       </div>
 
-      <!-- 選手輸入區 (手動打字 + 彈窗選擇) -->
+      <!-- 選手輸入區 (可直接輸入姓名 + 彈跳視窗名單) -->
       <div class="space-y-3 bg-blue-50/50 p-4 rounded border border-blue-200">
         <div class="flex items-center gap-3">
           <span class="text-sm font-semibold w-20">選手一：<span class="text-red-500">*</span></span>
@@ -187,7 +187,7 @@
   </div>
 
   <script>
-    // ⚠️ 請填入您的獨立專案 GAS 部署 Web App URL (結尾必須是 /exec)
+    // ✅ 已依您的最新部署更新 GAS_URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxbXfdX7Vor7W9Q-pxcB1J7XFFU6em2MlFGU2-ebgXcQXuZRO4WUxied2U5nTmo4g63/exec";
 
     let currentSid = "";
@@ -199,37 +199,28 @@
     let currentModalTarget = { mode: 'add', slot: 1 };
     let queryRecordsCache = [];
 
-    // 安全 API 呼叫器：避免觸發 CORS Preflight 並防止解析失敗
-    async function callGasApi(url, options = {}) {
-      const fetchOptions = { ...options };
-      if (fetchOptions.method === "POST" && !fetchOptions.headers) {
-        // 使用 text/plain 避免瀏覽器發送 OPTIONS 預檢請求
-        fetchOptions.headers = { "Content-Type": "text/plain;charset=utf-8" };
-      }
+    // 🌟 JSONP 跨域核心引擎（徹底解決 Failed to fetch 與 302 轉址錯誤）
+    function jsonpRequest(params) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'gas_callback_' + Math.round(100000 * Math.random());
+        window[callbackName] = function(data) {
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          resolve(data);
+        };
 
-      try {
-        const res = await fetch(url, fetchOptions);
-        const text = await res.text();
-        try {
-          return JSON.parse(text);
-        } catch (e) {
-          if (text.includes("<!DOCTYPE") || text.includes("<html")) {
-            throw new Error("後端權限異常：Google 回傳了登入頁面。\n請確認 GAS 部署作業中的「誰可以存取」是否已選為【所有人】。");
-          }
-          throw new Error("伺服器回應格式錯誤: " + text.substring(0, 80));
-        }
-      } catch (err) {
-        if (err.name === "TypeError" || err.message.includes("Failed to fetch")) {
-          throw new Error(
-            "連線失敗 (Failed to fetch)！請檢查：\n" +
-            "1. GAS 部署的「誰可以存取」必須設為【所有人 (Anyone)】\n" +
-            "2. GAS 部署的「執行身分」必須設為【我 (Me)】\n" +
-            "3. 試算表共用權限需設為「知道連結的人皆為【編輯者】」\n" +
-            "4. HTML 內的 GAS_URL 網址結尾必須為 /exec"
-          );
-        }
-        throw err;
-      }
+        const queryParams = new URLSearchParams(params);
+        queryParams.set('callback', callbackName);
+
+        const script = document.createElement('script');
+        script.src = `${GAS_URL}?${queryParams.toString()}`;
+        script.onerror = function() {
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          reject(new Error("伺服器連線失敗，請確認試算表共用權限為【知道連結皆為編輯者】"));
+        };
+        document.body.appendChild(script);
+      });
     }
 
     window.addEventListener("DOMContentLoaded", () => {
@@ -272,10 +263,8 @@
       document.getElementById("tourMainTitle").innerText = "初始化工作表中...";
 
       try {
-        const data = await callGasApi(GAS_URL, {
-          method: "POST",
-          body: JSON.stringify({ op: "initSheets", sid: val })
-        });
+        const payload = JSON.stringify({ op: "initSheets", sid: val });
+        const data = await jsonpRequest({ action: "executeOp", sid: val, payload: encodeURIComponent(payload) });
         if (data.success) {
           alert("初始化成功！已建立相關工作表。");
           currentSid = val;
@@ -293,7 +282,7 @@
       document.getElementById("tourMainTitle").innerText = "讀取賽事資料中...";
       
       try {
-        const data = await callGasApi(`${GAS_URL}?action=getInitData&sid=${encodeURIComponent(currentSid)}`);
+        const data = await jsonpRequest({ action: "getInitData", sid: currentSid });
         if (data.success) {
           const settings = data.settings || [];
           if (settings.length > 0) {
@@ -319,8 +308,8 @@
           renderCategoryOptions('add');
           renderCategoryOptions('edit');
         } else {
-          alert("資料載入失敗：" + (data.error || "請先執行「一鍵初始化」"));
-          document.getElementById("tourMainTitle").innerText = "載入失敗，請先點擊一鍵初始化！";
+          alert("資料載入失敗：" + (data.error || "請確認試算表狀態"));
+          document.getElementById("tourMainTitle").innerText = "載入失敗，請確認試算表共用權限！";
         }
       } catch (err) {
         alert(err.message);
@@ -404,7 +393,7 @@
 
       const filtered = studentDatabase.filter(s => s.name.toLowerCase().includes(keyword));
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="p-3 text-center text-gray-400 text-sm">查無名單（可直接在輸入框手動填寫姓名）</div>`;
+        container.innerHTML = `<div class="p-3 text-center text-gray-400 text-sm">查無名單（可直接在輸入框手動填寫）</div>`;
         return;
       }
 
@@ -486,10 +475,9 @@
       submitBtn.innerText = "資料傳送中...";
 
       try {
-        const data = await callGasApi(GAS_URL, {
-          method: "POST",
-          body: JSON.stringify({ op: "add", sid: currentSid, userData: userData, list: stagingList })
-        });
+        const payload = JSON.stringify({ op: "add", sid: currentSid, userData: userData, list: stagingList });
+        const data = await jsonpRequest({ action: "executeOp", sid: currentSid, payload: encodeURIComponent(payload) });
+
         if (data.success) {
           alert("報名完成！已成功寫入試算表。");
           stagingList = [];
@@ -523,7 +511,7 @@
       area.classList.remove("hidden");
 
       try {
-        const data = await callGasApi(`${GAS_URL}?action=queryData&sid=${encodeURIComponent(currentSid)}&type=${encodeURIComponent(type)}&keyword=${encodeURIComponent(keyword)}`);
+        const data = await jsonpRequest({ action: "queryData", sid: currentSid, type: type, keyword: keyword });
         if (data.success && data.records.length > 0) {
           queryRecordsCache = data.records;
           const isPhoneQuery = (data.type === "phone");
@@ -589,10 +577,9 @@
       const item = { id, category, event: eventVal, isDouble, player1: p1, player2: isDouble ? p2 : "" };
 
       try {
-        const data = await callGasApi(GAS_URL, {
-          method: "POST",
-          body: JSON.stringify({ op: "update", sid: currentSid, item: item, userData: {} })
-        });
+        const payload = JSON.stringify({ op: "update", sid: currentSid, item: item, userData: {} });
+        const data = await jsonpRequest({ action: "executeOp", sid: currentSid, payload: encodeURIComponent(payload) });
+
         if (data.success) {
           alert(`編號 ${id} 修改成功！`);
           closeEditModal();
@@ -609,10 +596,9 @@
       if (!confirm(`確定要刪除報名編號【${id}】的項目嗎？`)) return;
 
       try {
-        const data = await callGasApi(GAS_URL, {
-          method: "POST",
-          body: JSON.stringify({ op: "delete", sid: currentSid, id: id })
-        });
+        const payload = JSON.stringify({ op: "delete", sid: currentSid, id: id });
+        const data = await jsonpRequest({ action: "executeOp", sid: currentSid, payload: encodeURIComponent(payload) });
+
         if (data.success) {
           alert(`編號 ${id} 已成功刪除！`);
           executeQuery();
