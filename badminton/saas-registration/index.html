@@ -8,7 +8,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
 
-  <!-- 0. 試算表綁定管理列 (專屬網址開啟時會自動隱藏) -->
+  <!-- 0. 試算表綁定管理列 (專屬網址開啟時自動隱藏) -->
   <div id="adminBar" class="bg-slate-800 text-white shadow-inner">
     <div class="max-w-4xl mx-auto p-4 flex flex-col md:flex-row items-center gap-3">
       <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">資料來源試算表：</span>
@@ -81,7 +81,7 @@
         </div>
       </div>
 
-      <!-- 選手輸入區 (可手動打字輸入 + 彈跳視窗選擇) -->
+      <!-- 選手輸入區 (可手動直接打字 + 彈窗選擇名單) -->
       <div class="space-y-3 bg-blue-50/50 p-4 rounded border border-blue-200">
         <div class="flex items-center gap-3">
           <span class="text-sm font-semibold w-20">選手一：<span class="text-red-500">*</span></span>
@@ -187,7 +187,7 @@
   </div>
 
   <script>
-    // ⚠️ 請填入您的獨立專案 GAS 部署 Web App URL
+    // ⚠️ 請填入您的獨立專案 GAS 部署 Web App URL (結尾必須是 /exec)
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxbXfdX7Vor7W9Q-pxcB1J7XFFU6em2MlFGU2-ebgXcQXuZRO4WUxied2U5nTmo4g63/exec";
 
     let currentSid = "";
@@ -198,6 +198,20 @@
     let stagingList = [];
     let currentModalTarget = { mode: 'add', slot: 1 };
     let queryRecordsCache = [];
+
+    // 安全的 API 呼叫包裝器 (防止 Unexpected token '<' 錯誤)
+    async function callGasApi(url, options = {}) {
+      const res = await fetch(url, options);
+      const text = await res.text();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        if (text.includes("<!DOCTYPE") || text.includes("<html")) {
+          throw new Error("後端回傳了 HTML 頁面。請確認：\n1. GAS 部署設定中的「誰可以存取」是否已設為【所有人】。\n2. 試算表共用權限是否已開放為【編輯者】。");
+        }
+        throw new Error("JSON 解析失敗: " + text.substring(0, 100));
+      }
+    }
 
     window.addEventListener("DOMContentLoaded", () => {
       const params = new URLSearchParams(window.location.search);
@@ -233,19 +247,18 @@
       });
     }
 
-    function initSpreadsheet() {
+    async function initSpreadsheet() {
       const val = document.getElementById("spreadsheetUrlInput").value.trim();
       if (!val) return alert("請輸入試算表網址或 ID！");
       if (!confirm("確定要在此試算表上自動建立所需的工作表嗎？")) return;
 
       document.getElementById("tourMainTitle").innerText = "初始化工作表中...";
 
-      fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({ op: "initSheets", sid: val })
-      })
-      .then(res => res.json())
-      .then(data => {
+      try {
+        const data = await callGasApi(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify({ op: "initSheets", sid: val })
+        });
         if (data.success) {
           alert("初始化成功！已建立相關工作表。");
           currentSid = val;
@@ -253,52 +266,49 @@
         } else {
           alert("初始化失敗：" + data.error);
         }
-      })
-      .catch(err => {
-        alert("連線失敗：" + err.message);
-        document.getElementById("tourMainTitle").innerText = "連線失敗";
-      });
+      } catch (err) {
+        alert(err.message);
+        document.getElementById("tourMainTitle").innerText = "初始化失敗";
+      }
     }
 
-    function loadInitData() {
+    async function loadInitData() {
       document.getElementById("tourMainTitle").innerText = "讀取賽事資料中...";
       
-      fetch(`${GAS_URL}?action=getInitData&sid=${encodeURIComponent(currentSid)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            const settings = data.settings || [];
-            if (settings.length > 0) {
-              document.getElementById("tourMainTitle").innerText = settings[0].value || settings[0].title;
-              const detailsContainer = document.getElementById("tourDynamicSettings");
-              detailsContainer.innerHTML = settings.slice(1).map(item => {
-                if (!item.value) return '';
-                const isUrl = item.value.startsWith("http://") || item.value.startsWith("https://");
-                const valHtml = isUrl ? `<a href="${item.value}" target="_blank" class="underline text-yellow-200 hover:text-white">${item.title}</a>` : item.value;
-                return `<div><strong>${item.title}：</strong>${valHtml}</div>`;
-              }).join("");
-            } else {
-              document.getElementById("tourMainTitle").innerText = "羽球賽事報名系統";
-            }
-
-            customFields = data.fields || [];
-            renderDynamicFields();
-
-            studentDatabase = data.students || [];
-            allCategories = data.categories || [];
-            allEvents = data.events || [];
-
-            renderCategoryOptions('add');
-            renderCategoryOptions('edit');
+      try {
+        const data = await callGasApi(`${GAS_URL}?action=getInitData&sid=${encodeURIComponent(currentSid)}`);
+        if (data.success) {
+          const settings = data.settings || [];
+          if (settings.length > 0) {
+            document.getElementById("tourMainTitle").innerText = settings[0].value || settings[0].title;
+            const detailsContainer = document.getElementById("tourDynamicSettings");
+            detailsContainer.innerHTML = settings.slice(1).map(item => {
+              if (!item.value) return '';
+              const isUrl = item.value.startsWith("http://") || item.value.startsWith("https://");
+              const valHtml = isUrl ? `<a href="${item.value}" target="_blank" class="underline text-yellow-200 hover:text-white">${item.title}</a>` : item.value;
+              return `<div><strong>${item.title}：</strong>${valHtml}</div>`;
+            }).join("");
           } else {
-            alert("資料載入失敗：" + (data.message || data.error));
-            document.getElementById("tourMainTitle").innerText = "載入失敗，請確認試算表共用權限！";
+            document.getElementById("tourMainTitle").innerText = "賽事報名系統";
           }
-        })
-        .catch(err => {
-          alert("無法連線至後端服務，請確認 GAS 部署網址是否正確。");
-          document.getElementById("tourMainTitle").innerText = "載入逾時或連線失敗";
-        });
+
+          customFields = data.fields || [];
+          renderDynamicFields();
+
+          studentDatabase = data.students || [];
+          allCategories = data.categories || [];
+          allEvents = data.events || [];
+
+          renderCategoryOptions('add');
+          renderCategoryOptions('edit');
+        } else {
+          alert("資料載入失敗：" + (data.error || "請先執行「一鍵初始化」"));
+          document.getElementById("tourMainTitle").innerText = "載入失敗，請確認試算表狀態";
+        }
+      } catch (err) {
+        alert(err.message);
+        document.getElementById("tourMainTitle").innerText = "連線失敗";
+      }
     }
 
     function renderDynamicFields() {
@@ -435,7 +445,7 @@
       `).join("");
     }
 
-    function submitFinalRegistrations() {
+    async function submitFinalRegistrations() {
       if (!currentSid) return alert("尚未綁定試算表！");
       if (stagingList.length === 0) return alert("暫存清單無項目！");
 
@@ -458,12 +468,11 @@
       submitBtn.disabled = true;
       submitBtn.innerText = "資料傳送中...";
 
-      fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({ op: "add", sid: currentSid, userData: userData, list: stagingList })
-      })
-      .then(res => res.json())
-      .then(data => {
+      try {
+        const data = await callGasApi(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify({ op: "add", sid: currentSid, userData: userData, list: stagingList })
+        });
         if (data.success) {
           alert("報名完成！已成功寫入試算表。");
           stagingList = [];
@@ -477,15 +486,15 @@
         } else {
           alert("報名失敗：" + data.error);
         }
-      })
-      .catch(err => alert("傳送失敗：" + err.message))
-      .finally(() => {
+      } catch (err) {
+        alert(err.message);
+      } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = "正式送出報名";
-      });
+      }
     }
 
-    function executeQuery() {
+    async function executeQuery() {
       if (!currentSid) return alert("尚未綁定試算表！");
       const type = document.getElementById("searchType").value;
       const keyword = document.getElementById("queryKeywordInput").value.trim();
@@ -496,36 +505,34 @@
       tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-slate-400">查詢中...</td></tr>`;
       area.classList.remove("hidden");
 
-      fetch(`${GAS_URL}?action=queryData&sid=${encodeURIComponent(currentSid)}&type=${encodeURIComponent(type)}&keyword=${encodeURIComponent(keyword)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.records.length > 0) {
-            queryRecordsCache = data.records;
-            const isPhoneQuery = (data.type === "phone");
+      try {
+        const data = await callGasApi(`${GAS_URL}?action=queryData&sid=${encodeURIComponent(currentSid)}&type=${encodeURIComponent(type)}&keyword=${encodeURIComponent(keyword)}`);
+        if (data.success && data.records.length > 0) {
+          queryRecordsCache = data.records;
+          const isPhoneQuery = (data.type === "phone");
 
-            tbody.innerHTML = data.records.map((r, idx) => `
-              <tr class="border-b hover:bg-slate-50">
-                <td class="p-2 font-bold text-blue-600">${r.id}</td>
-                <td class="p-2">${r.category}</td>
-                <td class="p-2">${r.event}</td>
-                <td class="p-2 font-medium">${r.isDouble ? `${r.player1} / ${r.player2}` : r.player1}</td>
-                <td class="p-2 text-center">
-                  ${isPhoneQuery ? `
-                    <button onclick="openEditModal(${idx})" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2.5 py-1 rounded shadow">✏️ 修改</button>
-                    <button onclick="deleteRegistration('${r.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs px-2.5 py-1 rounded shadow ml-1">🗑️ 刪除</button>
-                  ` : `
-                    <span class="text-xs text-slate-400 italic">僅供檢視</span>
-                  `}
-                </td>
-              </tr>
-            `).join("");
-          } else {
-            tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-red-400">查無相關報名紀錄</td></tr>`;
-          }
-        })
-        .catch(err => {
-          tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-red-400">查詢失敗：${err.message}</td></tr>`;
-        });
+          tbody.innerHTML = data.records.map((r, idx) => `
+            <tr class="border-b hover:bg-slate-50">
+              <td class="p-2 font-bold text-blue-600">${r.id}</td>
+              <td class="p-2">${r.category}</td>
+              <td class="p-2">${r.event}</td>
+              <td class="p-2 font-medium">${r.isDouble ? `${r.player1} / ${r.player2}` : r.player1}</td>
+              <td class="p-2 text-center">
+                ${isPhoneQuery ? `
+                  <button onclick="openEditModal(${idx})" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2.5 py-1 rounded shadow">✏️ 修改</button>
+                  <button onclick="deleteRegistration('${r.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs px-2.5 py-1 rounded shadow ml-1">🗑️ 刪除</button>
+                ` : `
+                  <span class="text-xs text-slate-400 italic">僅供檢視</span>
+                `}
+              </td>
+            </tr>
+          `).join("");
+        } else {
+          tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-red-400">查無相關報名紀錄</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-red-400">查詢失敗：${err.message}</td></tr>`;
+      }
     }
 
     function openEditModal(idx) {
@@ -551,7 +558,7 @@
       document.getElementById("editModal").classList.add("hidden");
     }
 
-    function submitEditRegistration() {
+    async function submitEditRegistration() {
       const id = document.getElementById("editRegId").value;
       const category = document.getElementById("editCategorySelect").value;
       const eventVal = document.getElementById("editEventSelect").value;
@@ -564,12 +571,11 @@
 
       const item = { id, category, event: eventVal, isDouble, player1: p1, player2: isDouble ? p2 : "" };
 
-      fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({ op: "update", sid: currentSid, item: item, userData: {} })
-      })
-      .then(res => res.json())
-      .then(data => {
+      try {
+        const data = await callGasApi(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify({ op: "update", sid: currentSid, item: item, userData: {} })
+        });
         if (data.success) {
           alert(`編號 ${id} 修改成功！`);
           closeEditModal();
@@ -577,25 +583,28 @@
         } else {
           alert("修改失敗：" + data.error);
         }
-      });
+      } catch (err) {
+        alert(err.message);
+      }
     }
 
-    function deleteRegistration(id) {
+    async function deleteRegistration(id) {
       if (!confirm(`確定要刪除報名編號【${id}】的項目嗎？`)) return;
 
-      fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({ op: "delete", sid: currentSid, id: id })
-      })
-      .then(res => res.json())
-      .then(data => {
+      try {
+        const data = await callGasApi(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify({ op: "delete", sid: currentSid, id: id })
+        });
         if (data.success) {
           alert(`編號 ${id} 已成功刪除！`);
           executeQuery();
         } else {
           alert("刪除失敗：" + data.error);
         }
-      });
+      } catch (err) {
+        alert(err.message);
+      }
     }
   </script>
 </body>
