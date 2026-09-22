@@ -8,14 +8,15 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
 
-  <!-- 1. 管理者專用主控台 (💡 參賽者開啟專用網址時會自動完全隱藏) -->
+  <!-- 1. 管理者專用主控台 (參賽者透過專屬網址進入會自動隱藏) -->
   <div id="adminPanel" class="bg-slate-800 text-white p-3 text-xs border-b border-slate-700 hidden">
     <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
-      <div class="flex items-center gap-2 w-full md:w-auto">
+      <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
         <span class="bg-blue-600 px-2 py-0.5 rounded font-bold">主控台</span>
         <input type="text" id="adminSheetUrlInput" placeholder="請貼入 Google 試算表完整網址..." class="text-slate-800 px-2.5 py-1.5 rounded flex-1 md:w-80 text-xs focus:outline-none">
         <button onclick="bindSpreadsheet()" class="bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded font-medium">連線</button>
-        <button onclick="initSpreadsheet()" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded font-medium" title="自動在空試算表中建立所需工作表">一鍵初始化</button>
+        <button onclick="initSpreadsheet()" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded font-medium">一鍵初始化</button>
+        <button onclick="testConnection()" class="bg-slate-600 hover:bg-slate-700 px-2.5 py-1.5 rounded font-medium text-slate-200">🧪 檢測連線</button>
       </div>
       <div id="shareLinkArea" class="hidden flex items-center gap-2">
         <button onclick="copyShareUrl()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-3 py-1.5 rounded shadow">📋 複製參賽者專屬網址</button>
@@ -67,7 +68,6 @@
     <div class="bg-white rounded-lg shadow p-5 space-y-4">
       <h2 class="text-lg font-bold border-b pb-2 text-slate-700">📝 新增報名項目</h2>
       
-      <!-- 動態基本資料欄位 -->
       <div id="dynamicContactContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
@@ -81,7 +81,6 @@
         </div>
       </div>
 
-      <!-- 選手選擇列 (可手動輸入也可彈窗選擇) -->
       <div class="space-y-3 bg-slate-50 p-4 rounded border">
         <div class="flex items-center gap-3">
           <span class="text-sm font-semibold w-20">選手一：</span>
@@ -130,7 +129,7 @@
 
   </main>
 
-  <!-- 修改視窗 (Modal) -->
+  <!-- 修改視窗 -->
   <div id="editModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden">
     <div class="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -170,7 +169,7 @@
     </div>
   </div>
 
-  <!-- 學生名單視窗 (z-[70] 頂層) -->
+  <!-- 學生名單視窗 -->
   <div id="studentModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[70] hidden">
     <div class="bg-white rounded-lg max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -186,7 +185,6 @@
   </div>
 
   <script>
-    // ⚠️ 請填入您的獨立 Apps Script URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzD_MomDy__L3eSG6uwLrXG4ZYWfPSQEqdwi4szF-Fv-a5opIlF01L1rtm01DYjHw/exec";
 
     let currentSid = "";
@@ -198,21 +196,30 @@
     let currentModalTarget = { mode: 'add', slot: 1 };
     let queryRecordsCache = [];
 
+    // 🧪 測試後端連線狀況
+    function testConnection() {
+      fetch(`${GAS_URL}?action=getInitData&sid=test`, { method: "GET", redirect: "follow" })
+        .then(res => res.json())
+        .then(data => {
+          alert("✅ 後端 Apps Script 連線正常！API 運作中。");
+        })
+        .catch(err => {
+          alert("❌ 連線失敗 (Failed to fetch)！\n原因：Google 拒絕了連線。\n請確認 Apps Script 部署設定中「誰可以存取」是否已設為「任何人 (Anyone)」。");
+        });
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
       const urlParams = new URLSearchParams(window.location.search);
       const paramSid = urlParams.get('sid');
       
       if (paramSid) {
-        // 💡 參賽者模式：隱藏頂部主控台，直接連線
         document.getElementById("adminPanel").classList.add("hidden");
         bindSpreadsheet(paramSid);
       } else {
-        // 💡 管理者模式：顯示主控台
         document.getElementById("adminPanel").classList.remove("hidden");
       }
     });
 
-    // 綁定試算表
     function bindSpreadsheet(directSid) {
       const input = directSid || document.getElementById("adminSheetUrlInput").value.trim();
       if (!input) return alert("請輸入 Google 試算表網址！");
@@ -220,7 +227,7 @@
       currentSid = input;
       document.getElementById("tourMainTitle").innerText = "連線讀取中...";
 
-      fetch(`${GAS_URL}?action=getInitData&sid=${encodeURIComponent(currentSid)}`)
+      fetch(`${GAS_URL}?action=getInitData&sid=${encodeURIComponent(currentSid)}`, { method: "GET", redirect: "follow" })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -250,20 +257,21 @@
               document.getElementById("shareLinkArea").classList.remove("hidden");
             }
           } else {
-            alert(data.error);
+            alert("連線失敗：\n" + data.error);
             document.getElementById("tourMainTitle").innerText = "連線失敗";
           }
         })
-        .catch(err => alert("連線錯誤：" + err));
+        .catch(err => {
+          alert("連線失敗 (Failed to fetch)！請檢查：\n1. Apps Script 部署設定中的「誰可以存取」是否為「任何人 (Anyone)」\n2. 試算表共用權限是否已設為「知道連結的任何人均為編輯者」");
+        });
     }
 
-    // 一鍵初始化
     function initSpreadsheet() {
       const input = document.getElementById("adminSheetUrlInput").value.trim();
       if (!input) return alert("請先在輸入框貼入 Google 試算表網址！");
       if (!confirm("將會在此試算表中自動建立「設定」、「學生名單」、「比賽組別」、「報名資料」工作表，是否繼續？")) return;
 
-      fetch(`${GAS_URL}?action=initSheet&sid=${encodeURIComponent(input)}`)
+      fetch(`${GAS_URL}?action=initSheet&sid=${encodeURIComponent(input)}`, { method: "GET", redirect: "follow" })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -273,10 +281,11 @@
             alert("❌ 初始化失敗：\n" + data.error);
           }
         })
-        .catch(err => alert("執行錯誤：" + err));
+        .catch(err => {
+          alert("連線失敗 (Failed to fetch)！請檢查：\n1. Apps Script 部署存取權是否為「任何人 (Anyone)」\n2. 試算表共用權限是否已開啟「知道連結的任何人均為編輯者」");
+        });
     }
 
-    // 複製參賽者專屬網址
     function copyShareUrl() {
       const match = currentSid.match(/\/d\/([a-zA-Z0-9-_]+)/) || currentSid.match(/([a-zA-Z0-9-_]{25,})/);
       const pureId = match ? (match[1] || match[0]) : currentSid;
@@ -422,7 +431,8 @@
 
       fetch(GAS_URL, {
         method: "POST",
-        body: JSON.stringify({ sid: currentSid, op: "add", contact: contactObj, list: stagingList })
+        body: JSON.stringify({ sid: currentSid, op: "add", contact: contactObj, list: stagingList }),
+        redirect: "follow"
       })
       .then(res => res.json())
       .then(data => {
@@ -457,7 +467,7 @@
       tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-slate-400">查詢中...</td></tr>`;
       area.classList.remove("hidden");
 
-      fetch(`${GAS_URL}?action=queryData&sid=${encodeURIComponent(currentSid)}&type=${encodeURIComponent(type)}&keyword=${encodeURIComponent(keyword)}`)
+      fetch(`${GAS_URL}?action=queryData&sid=${encodeURIComponent(currentSid)}&type=${encodeURIComponent(type)}&keyword=${encodeURIComponent(keyword)}`, { method: "GET", redirect: "follow" })
         .then(res => res.json())
         .then(data => {
           if (data.success && data.records.length > 0) {
@@ -522,7 +532,8 @@
 
       fetch(GAS_URL, {
         method: "POST",
-        body: JSON.stringify({ sid: currentSid, op: "update", item })
+        body: JSON.stringify({ sid: currentSid, op: "update", item }),
+        redirect: "follow"
       })
       .then(res => res.json())
       .then(data => {
@@ -541,7 +552,8 @@
 
       fetch(GAS_URL, {
         method: "POST",
-        body: JSON.stringify({ sid: currentSid, op: "delete", id })
+        body: JSON.stringify({ sid: currentSid, op: "delete", id }),
+        redirect: "follow"
       })
       .then(res => res.json())
       .then(data => {
