@@ -8,7 +8,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
 
-  <!-- 1. 管理者專用主控台 (參賽者進入時自動隱藏) -->
+  <!-- 1. 管理者專用主控台 -->
   <div id="adminPanel" class="bg-slate-800 text-white p-3 text-xs border-b border-slate-700 hidden">
     <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
       <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
@@ -184,6 +184,7 @@
   </div>
 
   <script>
+    // ⚠️ 請填入您的 Apps Script 網頁應用程式 URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzD_MomDy__L3eSG6uwLrXG4ZYWfPSQEqdwi4szF-Fv-a5opIlF01L1rtm01DYjHw/exec";
 
     let currentPureSid = "";
@@ -195,7 +196,33 @@
     let currentModalTarget = { mode: 'add', slot: 1 };
     let queryRecordsCache = [];
 
-    // 💡 前端純化 ID 函式 (避免將完整網址送出被 Google 阻擋)
+    // 💡 終極免 CORS 阻擋之 JSONP 通訊函式
+    function callGAS(action, params = {}) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'gasCallback_' + Math.round(100000 * Math.random());
+        window[callbackName] = function(data) {
+          delete window[callbackName];
+          document.body.removeChild(script);
+          resolve(data);
+        };
+
+        params.action = action;
+        params.callback = callbackName;
+        const queryString = Object.keys(params)
+          .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(params[key]))
+          .join('&');
+
+        const script = document.createElement('script');
+        script.src = `${GAS_URL}?${queryString}`;
+        script.onerror = function() {
+          delete window[callbackName];
+          document.body.removeChild(script);
+          reject(new Error("網路請求失敗，請檢查網路或 Apps Script 網址！"));
+        };
+        document.body.appendChild(script);
+      });
+    }
+
     function parsePureId(input) {
       if (!input) return "";
       input = String(input).trim();
@@ -223,8 +250,7 @@
       currentPureSid = pureId;
       document.getElementById("tourMainTitle").innerText = "連線讀取中...";
 
-      fetch(`${GAS_URL}?action=getInitData&sid=${encodeURIComponent(pureId)}`)
-        .then(res => res.json())
+      callGAS('getInitData', { sid: pureId })
         .then(data => {
           if (data.success) {
             const settings = data.settings || [];
@@ -257,9 +283,7 @@
             document.getElementById("tourMainTitle").innerText = "連線失敗";
           }
         })
-        .catch(err => {
-          alert("連線錯誤：" + err);
-        });
+        .catch(err => alert("連線錯誤：" + err.message));
     }
 
     function initSpreadsheet() {
@@ -268,8 +292,7 @@
       if (!pureId) return alert("請先貼入有效的 Google 試算表網址！");
       if (!confirm("將會在此試算表中自動建立「設定」、「學生名單」、「比賽組別」、「報名資料」工作表，是否繼續？")) return;
 
-      fetch(`${GAS_URL}?action=initSheet&sid=${encodeURIComponent(pureId)}`)
-        .then(res => res.json())
+      callGAS('initSheet', { sid: pureId })
         .then(data => {
           if (data.success) {
             alert("🎉 初始化成功！已自動建立工作表範本。");
@@ -278,15 +301,13 @@
             alert("❌ 初始化失敗：\n" + data.error);
           }
         })
-        .catch(err => {
-          alert("連線失敗：" + err);
-        });
+        .catch(err => alert("執行錯誤：" + err.message));
     }
 
     function copyShareUrl() {
       const shareUrl = `${window.location.origin}${window.location.pathname}?sid=${currentPureSid}`;
       navigator.clipboard.writeText(shareUrl).then(() => {
-        alert("✅ 參賽者專用網址已複製！\n（參賽者開啟此網址將不會看到管理主控台）\n\n" + shareUrl);
+        alert("✅ 參賽者專用網址已複製！\n\n" + shareUrl);
       });
     }
 
@@ -350,7 +371,7 @@
 
       const filtered = studentDatabase.filter(s => s.name.toLowerCase().includes(keyword));
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="p-3 text-center text-gray-400 text-sm">查無學生名單 (您可直接在欄位自行手動輸入)</div>`;
+        container.innerHTML = `<div class="p-3 text-center text-gray-400 text-sm">查無學生名單 (您可直接手動輸入)</div>`;
         return;
       }
 
@@ -424,24 +445,22 @@
       submitBtn.disabled = true;
       submitBtn.innerText = "資料傳送中...";
 
-      fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({ sid: currentPureSid, op: "add", contact: contactObj, list: stagingList })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          alert("報名完成！已成功寫入試算表。");
-          stagingList = [];
-          renderStagingTable();
-        } else {
-          alert("報名失敗：" + data.error);
-        }
-      })
-      .finally(() => {
-        submitBtn.disabled = false;
-        submitBtn.innerText = "正式送出報名";
-      });
+      const payload = { op: "add", contact: contactObj, list: stagingList };
+      callGAS('submitData', { sid: currentPureSid, payload: JSON.stringify(payload) })
+        .then(data => {
+          if (data.success) {
+            alert("報名完成！已成功寫入試算表。");
+            stagingList = [];
+            renderStagingTable();
+          } else {
+            alert("報名失敗：" + data.error);
+          }
+        })
+        .catch(err => alert("送出錯誤：" + err.message))
+        .finally(() => {
+          submitBtn.disabled = false;
+          submitBtn.innerText = "正式送出報名";
+        });
     }
 
     function handleSearchTypeChange() {
@@ -461,8 +480,7 @@
       tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-slate-400">查詢中...</td></tr>`;
       area.classList.remove("hidden");
 
-      fetch(`${GAS_URL}?action=queryData&sid=${encodeURIComponent(currentPureSid)}&type=${encodeURIComponent(type)}&keyword=${encodeURIComponent(keyword)}`)
-        .then(res => res.json())
+      callGAS('queryData', { sid: currentPureSid, type: type, keyword: keyword })
         .then(data => {
           if (data.success && data.records.length > 0) {
             queryRecordsCache = data.records;
@@ -485,7 +503,8 @@
           } else {
             tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-red-400">查無相關報名紀錄</td></tr>`;
           }
-        });
+        })
+        .catch(err => alert("查詢失敗：" + err.message));
     }
 
     function openEditModal(idx) {
@@ -523,39 +542,35 @@
       if (isDouble && p1 === p2) return alert("兩位選手不能為同一人！");
 
       const item = { id, category, event: eventVal, isDouble, player1: p1, player2: isDouble ? p2 : "" };
+      const payload = { op: "update", item: item };
 
-      fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({ sid: currentPureSid, op: "update", item })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          alert(`編號 ${id} 修改成功！`);
-          closeEditModal();
-          executeQuery();
-        } else {
-          alert("修改失敗：" + data.error);
-        }
-      });
+      callGAS('submitData', { sid: currentPureSid, payload: JSON.stringify(payload) })
+        .then(data => {
+          if (data.success) {
+            alert(`編號 ${id} 修改成功！`);
+            closeEditModal();
+            executeQuery();
+          } else {
+            alert("修改失敗：" + data.error);
+          }
+        })
+        .catch(err => alert("修改錯誤：" + err.message));
     }
 
     function deleteRegistration(id) {
       if (!confirm(`確定要刪除報名編號【${id}】的資料嗎？`)) return;
 
-      fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({ sid: currentPureSid, op: "delete", id })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          alert(`編號 ${id} 已成功刪除！`);
-          executeQuery();
-        } else {
-          alert("刪除失敗：" + data.error);
-        }
-      });
+      const payload = { op: "delete", id: id };
+      callGAS('submitData', { sid: currentPureSid, payload: JSON.stringify(payload) })
+        .then(data => {
+          if (data.success) {
+            alert(`編號 ${id} 已成功刪除！`);
+            executeQuery();
+          } else {
+            alert("刪除失敗：" + data.error);
+          }
+        })
+        .catch(err => alert("刪除錯誤：" + err.message));
     }
   </script>
 </body>
