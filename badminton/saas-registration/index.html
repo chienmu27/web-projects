@@ -81,7 +81,7 @@
         </div>
       </div>
 
-      <!-- 選手輸入區 (可手動直接打字 + 彈窗選擇名單) -->
+      <!-- 選手輸入區 (手動打字 + 彈窗選擇) -->
       <div class="space-y-3 bg-blue-50/50 p-4 rounded border border-blue-200">
         <div class="flex items-center gap-3">
           <span class="text-sm font-semibold w-20">選手一：<span class="text-red-500">*</span></span>
@@ -199,17 +199,36 @@
     let currentModalTarget = { mode: 'add', slot: 1 };
     let queryRecordsCache = [];
 
-    // 安全的 API 呼叫包裝器 (防止 Unexpected token '<' 錯誤)
+    // 安全 API 呼叫器：避免觸發 CORS Preflight 並防止解析失敗
     async function callGasApi(url, options = {}) {
-      const res = await fetch(url, options);
-      const text = await res.text();
+      const fetchOptions = { ...options };
+      if (fetchOptions.method === "POST" && !fetchOptions.headers) {
+        // 使用 text/plain 避免瀏覽器發送 OPTIONS 預檢請求
+        fetchOptions.headers = { "Content-Type": "text/plain;charset=utf-8" };
+      }
+
       try {
-        return JSON.parse(text);
-      } catch (e) {
-        if (text.includes("<!DOCTYPE") || text.includes("<html")) {
-          throw new Error("後端回傳了 HTML 頁面。請確認：\n1. GAS 部署設定中的「誰可以存取」是否已設為【所有人】。\n2. 試算表共用權限是否已開放為【編輯者】。");
+        const res = await fetch(url, fetchOptions);
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          if (text.includes("<!DOCTYPE") || text.includes("<html")) {
+            throw new Error("後端權限異常：Google 回傳了登入頁面。\n請確認 GAS 部署作業中的「誰可以存取」是否已選為【所有人】。");
+          }
+          throw new Error("伺服器回應格式錯誤: " + text.substring(0, 80));
         }
-        throw new Error("JSON 解析失敗: " + text.substring(0, 100));
+      } catch (err) {
+        if (err.name === "TypeError" || err.message.includes("Failed to fetch")) {
+          throw new Error(
+            "連線失敗 (Failed to fetch)！請檢查：\n" +
+            "1. GAS 部署的「誰可以存取」必須設為【所有人 (Anyone)】\n" +
+            "2. GAS 部署的「執行身分」必須設為【我 (Me)】\n" +
+            "3. 試算表共用權限需設為「知道連結的人皆為【編輯者】」\n" +
+            "4. HTML 內的 GAS_URL 網址結尾必須為 /exec"
+          );
+        }
+        throw err;
       }
     }
 
@@ -218,13 +237,11 @@
       const sidFromParam = params.get("sid");
 
       if (sidFromParam) {
-        // 專屬報名表模式：隱藏頂部試算表設定列
         document.getElementById("adminBar").classList.add("hidden");
         document.getElementById("spreadsheetUrlInput").value = sidFromParam;
         currentSid = sidFromParam;
         loadInitData();
       } else {
-        // 管理者模式：顯示頂部設定列
         document.getElementById("adminBar").classList.remove("hidden");
         document.getElementById("tourMainTitle").innerText = "請在上方輸入試算表網址並綁定";
       }
@@ -303,7 +320,7 @@
           renderCategoryOptions('edit');
         } else {
           alert("資料載入失敗：" + (data.error || "請先執行「一鍵初始化」"));
-          document.getElementById("tourMainTitle").innerText = "載入失敗，請確認試算表狀態";
+          document.getElementById("tourMainTitle").innerText = "載入失敗，請先點擊一鍵初始化！";
         }
       } catch (err) {
         alert(err.message);
