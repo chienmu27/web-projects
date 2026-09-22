@@ -3,23 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>羽球賽報名系統 (多賽事共用版)</title>
+  <title>羽球賽報名系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
 
-  <!-- 1. 頂部管理者綁定區塊 (可隨時更換試算表、初始化、複製專用網址) -->
-  <div class="bg-slate-800 text-white p-3 text-xs border-b border-slate-700">
+  <!-- 1. 管理者專用主控台 (💡 參賽者開啟專用網址時會自動完全隱藏) -->
+  <div id="adminPanel" class="bg-slate-800 text-white p-3 text-xs border-b border-slate-700 hidden">
     <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
       <div class="flex items-center gap-2 w-full md:w-auto">
         <span class="bg-blue-600 px-2 py-0.5 rounded font-bold">主控台</span>
-        <input type="text" id="adminSheetUrlInput" placeholder="貼入 Google 試算表網址..." class="text-slate-800 px-2.5 py-1.5 rounded flex-1 md:w-80 text-xs focus:outline-none">
+        <input type="text" id="adminSheetUrlInput" placeholder="請貼入 Google 試算表完整網址..." class="text-slate-800 px-2.5 py-1.5 rounded flex-1 md:w-80 text-xs focus:outline-none">
         <button onclick="bindSpreadsheet()" class="bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded font-medium">連線</button>
-        <button onclick="initSpreadsheet()" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded font-medium" title="自動在空試算表中建立所需格式">一鍵初始化</button>
+        <button onclick="initSpreadsheet()" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded font-medium" title="自動在空試算表中建立所需工作表">一鍵初始化</button>
       </div>
       <div id="shareLinkArea" class="hidden flex items-center gap-2">
-        <span class="text-slate-300">專屬報名網址：</span>
-        <button onclick="copyShareUrl()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-2.5 py-1.5 rounded shadow">📋 複製專屬報名網址</button>
+        <button onclick="copyShareUrl()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-3 py-1.5 rounded shadow">📋 複製參賽者專屬網址</button>
       </div>
     </div>
   </div>
@@ -27,7 +26,7 @@
   <!-- 2. 賽事資訊展示區 -->
   <header class="bg-blue-600 text-white shadow-md">
     <div class="max-w-4xl mx-auto p-6">
-      <h1 id="tourMainTitle" class="text-2xl md:text-3xl font-bold mb-3">請先於上方連線試算表...</h1>
+      <h1 id="tourMainTitle" class="text-2xl md:text-3xl font-bold mb-3">羽球錦標賽報名系統</h1>
       <div id="tourDynamicSettings" class="bg-blue-700/60 p-3.5 rounded-lg text-sm flex flex-wrap gap-x-6 gap-y-2 text-blue-50"></div>
     </div>
   </header>
@@ -68,10 +67,8 @@
     <div class="bg-white rounded-lg shadow p-5 space-y-4">
       <h2 class="text-lg font-bold border-b pb-2 text-slate-700">📝 新增報名項目</h2>
       
-      <!-- 動態聯絡基本資料欄位 (自「設定」工作表讀取) -->
-      <div id="dynamicContactContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- 動態產生欄位 -->
-      </div>
+      <!-- 動態基本資料欄位 -->
+      <div id="dynamicContactContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
         <div>
@@ -84,16 +81,16 @@
         </div>
       </div>
 
-      <!-- 選手選擇列 (支援自行輸入 或 點按選取) -->
+      <!-- 選手選擇列 (可手動輸入也可彈窗選擇) -->
       <div class="space-y-3 bg-slate-50 p-4 rounded border">
         <div class="flex items-center gap-3">
           <span class="text-sm font-semibold w-20">選手一：</span>
-          <input type="text" id="player1Input" placeholder="可直接輸入或點右方選擇" class="flex-1 bg-white border rounded px-3 py-2 text-sm focus:outline-blue-500">
+          <input type="text" id="player1Input" placeholder="直接手動輸入 或 點右方選擇" class="flex-1 bg-white border rounded px-3 py-2 text-sm focus:outline-blue-500">
           <button type="button" onclick="openStudentModal('add', 1)" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">名單選取</button>
         </div>
         <div id="player2Row" class="flex items-center gap-3 hidden">
           <span class="text-sm font-semibold w-20">選手二：</span>
-          <input type="text" id="player2Input" placeholder="可直接輸入或點右方選擇" class="flex-1 bg-white border rounded px-3 py-2 text-sm focus:outline-blue-500">
+          <input type="text" id="player2Input" placeholder="直接手動輸入 或 點右方選擇" class="flex-1 bg-white border rounded px-3 py-2 text-sm focus:outline-blue-500">
           <button type="button" onclick="openStudentModal('add', 2)" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">名單選取</button>
         </div>
       </div>
@@ -173,7 +170,7 @@
     </div>
   </div>
 
-  <!-- 學生清單視窗 (z-[70] 頂層) -->
+  <!-- 學生名單視窗 (z-[70] 頂層) -->
   <div id="studentModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[70] hidden">
     <div class="bg-white rounded-lg max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -189,7 +186,7 @@
   </div>
 
   <script>
-    // ⚠️ 請填入您的獨立 Apps Script 主引擎 URL
+    // ⚠️ 請填入您的獨立 Apps Script URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzD_MomDy__L3eSG6uwLrXG4ZYWfPSQEqdwi4szF-Fv-a5opIlF01L1rtm01DYjHw/exec";
 
     let currentSid = "";
@@ -202,19 +199,23 @@
     let queryRecordsCache = [];
 
     window.addEventListener("DOMContentLoaded", () => {
-      // 讀取網址列是否有 sid 參數 (?sid=試算表ID)
       const urlParams = new URLSearchParams(window.location.search);
       const paramSid = urlParams.get('sid');
+      
       if (paramSid) {
-        document.getElementById("adminSheetUrlInput").value = paramSid;
+        // 💡 參賽者模式：隱藏頂部主控台，直接連線
+        document.getElementById("adminPanel").classList.add("hidden");
         bindSpreadsheet(paramSid);
+      } else {
+        // 💡 管理者模式：顯示主控台
+        document.getElementById("adminPanel").classList.remove("hidden");
       }
     });
 
-    // 綁定/更換試算表
+    // 綁定試算表
     function bindSpreadsheet(directSid) {
       const input = directSid || document.getElementById("adminSheetUrlInput").value.trim();
-      if (!input) return alert("請輸入 Google 試算表網址或 ID！");
+      if (!input) return alert("請輸入 Google 試算表網址！");
 
       currentSid = input;
       document.getElementById("tourMainTitle").innerText = "連線讀取中...";
@@ -223,7 +224,6 @@
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            // 1. 動態渲染設定
             const settings = data.settings || [];
             if (settings.length > 0) {
               document.getElementById("tourMainTitle").innerText = settings[0].value || settings[0].title;
@@ -236,11 +236,9 @@
               }).join("");
             }
 
-            // 2. 自訂聯絡基本欄位
             customContactFields = data.customFields || ["手機號碼", "報名人姓名"];
             renderDynamicContactFields();
 
-            // 3. 名單與組別項目
             studentDatabase = data.students || [];
             allCategories = data.categories || [];
             allEvents = data.events || [];
@@ -248,43 +246,46 @@
             renderCategoryOptions('add');
             renderCategoryOptions('edit');
 
-            // 顯示專屬網址複製按鈕
-            document.getElementById("shareLinkArea").classList.remove("hidden");
+            if (document.getElementById("shareLinkArea")) {
+              document.getElementById("shareLinkArea").classList.remove("hidden");
+            }
           } else {
-            alert(data.error || "讀取失敗，請確認試算表權限！");
+            alert(data.error);
+            document.getElementById("tourMainTitle").innerText = "連線失敗";
           }
-        });
+        })
+        .catch(err => alert("連線錯誤：" + err));
     }
 
-    // 一鍵初始化空白試算表
+    // 一鍵初始化
     function initSpreadsheet() {
       const input = document.getElementById("adminSheetUrlInput").value.trim();
-      if (!input) return alert("請先輸入目標 Google 試算表網址！");
-      if (!confirm("將會在此試算表中自動建立「設定」、「學生名單」、「比賽組別」、「報名資料」等工作表，是否繼續？")) return;
+      if (!input) return alert("請先在輸入框貼入 Google 試算表網址！");
+      if (!confirm("將會在此試算表中自動建立「設定」、「學生名單」、「比賽組別」、「報名資料」工作表，是否繼續？")) return;
 
       fetch(`${GAS_URL}?action=initSheet&sid=${encodeURIComponent(input)}`)
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            alert("初始化成功！已建立所需欄位模板。");
+            alert("🎉 初始化成功！已自動建立 4 個工作表範本。");
             bindSpreadsheet(input);
           } else {
-            alert("初始化失敗：" + data.error);
+            alert("❌ 初始化失敗：\n" + data.error);
           }
-        });
+        })
+        .catch(err => alert("執行錯誤：" + err));
     }
 
-    // 複製專屬報名表網址
+    // 複製參賽者專屬網址
     function copyShareUrl() {
-      const match = currentSid.match(/[-\w]{25,}/);
-      const pureId = match ? match[0] : currentSid;
+      const match = currentSid.match(/\/d\/([a-zA-Z0-9-_]+)/) || currentSid.match(/([a-zA-Z0-9-_]{25,})/);
+      const pureId = match ? (match[1] || match[0]) : currentSid;
       const shareUrl = `${window.location.origin}${window.location.pathname}?sid=${pureId}`;
       navigator.clipboard.writeText(shareUrl).then(() => {
-        alert("專屬報名網址已複製到剪貼簿！\n\n" + shareUrl);
+        alert("✅ 參賽者專用網址已複製！\n（參賽者開啟此網址將不會看到管理主控台）\n\n" + shareUrl);
       });
     }
 
-    // 渲染自訂聯絡人欄位
     function renderDynamicContactFields() {
       const container = document.getElementById("dynamicContactContainer");
       container.innerHTML = customContactFields.map((field, idx) => `
@@ -406,7 +407,6 @@
       if (!currentSid) return alert("請先連線試算表！");
       if (stagingList.length === 0) return alert("暫存清單無項目！");
 
-      // 檢查聯絡欄位
       let contactObj = {};
       for (let i = 0; i < customContactFields.length; i++) {
         const inputEl = document.getElementById(`contactField_${i}`);
@@ -438,6 +438,12 @@
         submitBtn.disabled = false;
         submitBtn.innerText = "正式送出報名";
       });
+    }
+
+    function handleSearchTypeChange() {
+      const type = document.getElementById("searchType").value;
+      const input = document.getElementById("queryKeywordInput");
+      input.placeholder = type === 'phone' ? "請輸入手機號碼查詢 (可修改/刪除)" : "請輸入學生完整姓名查詢 (僅供檢視)";
     }
 
     function executeQuery() {
