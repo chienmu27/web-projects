@@ -8,20 +8,18 @@
 </head>
 <body class="bg-amber-50/40 text-slate-800 min-h-screen">
 
-  <!-- 1. 快捷控制列 (一鍵建立與設定) -->
-  <div class="bg-slate-900 text-white p-3 text-xs shadow-md">
-    <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
-      <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
-        <span class="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded">系統工具</span>
-        <input type="text" id="sheetUrlInput" value="1Z09jyeIgkwHEDUCmYEbLG3PE6UGoPmeAadoCX2lmL3Q" placeholder="試算表 ID 或 網址" class="text-slate-900 px-2 py-1 rounded w-64 text-xs bg-white">
-        <button onclick="loadAllData()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded font-medium transition">🔄 重新讀取</button>
-        <button onclick="initSheetTemplate()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded font-bold transition">⚡ 一鍵建立所需工作表</button>
-      </div>
-      <span id="loadStatusTag" class="text-amber-300 font-mono">連線檢查中...</span>
+  <!-- 狀態提示列 -->
+  <div class="bg-slate-900 text-white px-4 py-2 text-xs flex justify-between items-center">
+    <div class="flex items-center gap-2">
+      <span class="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded">系統狀態</span>
+      <span id="loadStatusTag" class="text-amber-200">讀取中...</span>
+    </div>
+    <div class="text-slate-400">
+      如需修改設定或重設工作表，請至 Google 試算表選單【🥤 團購系統管理】
     </div>
   </div>
 
-  <!-- 2. 活動看板橫幅 -->
+  <!-- 活動看板橫幅 -->
   <header class="bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-lg">
     <div class="max-w-4xl mx-auto p-6">
       <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
@@ -36,7 +34,7 @@
 
   <main class="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
 
-    <!-- 3. 訂購資料查詢區塊 -->
+    <!-- 1. 訂單查詢區塊 -->
     <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-5">
       <h2 class="text-lg font-bold border-b pb-2 mb-3 text-slate-700 flex items-center gap-2">
         <span>🔍</span> 訂單查詢
@@ -73,7 +71,7 @@
       </div>
     </div>
 
-    <!-- 4. 新增訂購表單 -->
+    <!-- 2. 新增訂購表單 -->
     <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-5 space-y-4">
       <h2 class="text-lg font-bold border-b pb-2 text-slate-700 flex items-center gap-2">
         <span>📝</span> 填寫訂購商品
@@ -122,7 +120,7 @@
       </div>
     </div>
 
-    <!-- 5. 暫存購物車清單 -->
+    <!-- 3. 暫存清單 -->
     <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-5">
       <h2 class="text-lg font-bold border-b pb-2 mb-3 text-slate-700 flex items-center justify-between">
         <span>📋 本次暫存清單 (待送出)</span>
@@ -157,7 +155,7 @@
 
   </main>
 
-  <!-- 修改訂單彈窗 -->
+  <!-- 修改訂單視窗 -->
   <div id="editModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden backdrop-blur-sm">
     <div class="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -195,7 +193,7 @@
     </div>
   </div>
 
-  <!-- 常用訂購人名單彈窗 -->
+  <!-- 常用名單挑選彈窗 -->
   <div id="memberModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden backdrop-blur-sm">
     <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -211,10 +209,13 @@
   </div>
 
   <script>
-    // ⚠️ 部署 Apps Script 後取得的網頁應用程式 URL
+    // ⚠️ 您的 Google Apps Script 部署 URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbygegAhKyzW6tAROoT29e5LBndEycPZbgLw3Sn8dgXSUk4O9BWgNcHRQINZNUx7PqCiMw/exec";
+    
+    // 預設試算表 ID
+    const DEFAULT_SPREADSHEET_ID = "1Z09jyeIgkwHEDUCmYEbLG3PE6UGoPmeAadoCX2lmL3Q";
 
-    let currentPureSid = "";
+    let currentPureSid = DEFAULT_SPREADSHEET_ID;
     let membersDatabase = [];
     let productsDatabase = [];
     let stagingList = [];
@@ -245,23 +246,14 @@
       return r;
     }
 
-    // 透過 Google CSV 引擎極速載入工作表
     async function fetchSheetCSV(sheetName) {
       const url = `https://docs.google.com/spreadsheets/d/${currentPureSid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&t=${Date.now()}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`無法讀取「${sheetName}」，請確認試算表共用權限設為「知道連結的使用者均可查看」！`);
+      if (!res.ok) throw new Error(`讀取「${sheetName}」失敗，請確認已於試算表執行一鍵建立，並將共用權限設為「知道連結的任何人均可查看」！`);
       const text = await res.text();
       return parseCSV(text);
     }
 
-    function parsePureId(input) {
-      if (!input) return "";
-      input = String(input).trim();
-      const match = input.match(/\/d\/([a-zA-Z0-9-_]+)/) || input.match(/([a-zA-Z0-9-_]{25,})/);
-      return match ? (match[1] || match[0]) : input;
-    }
-
-    // JSONP 寫入引擎
     function callGAS(action, params = {}) {
       return new Promise((resolve, reject) => {
         const callbackName = 'gasCb_' + Math.round(100000 * Math.random());
@@ -278,28 +270,25 @@
         script.onerror = () => {
           delete window[callbackName];
           if (document.body.contains(script)) document.body.removeChild(script);
-          reject(new Error("後端連線超時，請檢查 GAS 部署權限"));
+          reject(new Error("後端連線超時，請檢查 GAS 部署是否已設為「所有人 (Anyone)」"));
         };
         document.body.appendChild(script);
       });
     }
 
     window.addEventListener("DOMContentLoaded", () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const sidFromUrl = urlParams.get('sid');
+      if (sidFromUrl) currentPureSid = sidFromUrl;
       loadAllData();
     });
 
     async function loadAllData() {
-      const input = document.getElementById("sheetUrlInput").value.trim();
-      currentPureSid = parsePureId(input);
-      if (!currentPureSid) return alert("請輸入有效的試算表網址或 ID！");
-
       const statusTag = document.getElementById("loadStatusTag");
       statusTag.innerText = "⚡ 正在以 CSV 極速載入...";
 
       try {
         const startTime = performance.now();
-
-        // 平行載入 設定、產品清單、訂購名單
         const [settingsData, productsData, membersData] = await Promise.all([
           fetchSheetCSV("設定"),
           fetchSheetCSV("產品清單"),
@@ -307,7 +296,7 @@
         ]);
 
         const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
-        statusTag.innerText = `✅ 載入成功 (${elapsed}s)`;
+        statusTag.innerText = `✅ 連線成功 (${elapsed} 秒)`;
 
         // 1. 渲染設定看板
         if (settingsData && settingsData.length > 1) {
@@ -340,7 +329,7 @@
         }
         renderProductDropdown();
 
-        // 3. 儲存名單
+        // 3. 常用名單
         membersDatabase = [];
         for (let i = 1; i < membersData.length; i++) {
           if (membersData[i][0]) {
@@ -352,34 +341,12 @@
         }
 
       } catch (err) {
-        statusTag.innerText = "❌ 載入失敗";
+        statusTag.innerText = "❌ 讀取失敗";
         document.getElementById("shopSettingsBox").innerHTML = `
           <div class="text-red-300 font-bold">讀取失敗：${err.message}</div>
-          <div class="text-xs text-amber-200 mt-1">💡 解決方式：請至 Google 試算表點擊右上角「共用」設為「知道連結的任何人均可查看」，或點擊上方「⚡ 一鍵建立所需工作表」。</div>
+          <div class="text-xs text-amber-200 mt-2">💡 請開啟 Google 試算表，點選上方選單【🥤 團購系統管理】$\to$【⚡ 一鍵建立/重設所有工作表】，並確認右上角「共用」已開放「知道連結的任何人」查看。</div>
         `;
       }
-    }
-
-    // 一鍵建立所有工作表
-    function initSheetTemplate() {
-      const input = document.getElementById("sheetUrlInput").value.trim();
-      const pureId = parsePureId(input);
-      if (!pureId) return alert("請先填入試算表網址！");
-      if (!confirm("將會在試算表中自動建立「設定」、「訂購名單」、「產品清單」、「訂購資料」4 個工作表，是否繼續？")) return;
-
-      const statusTag = document.getElementById("loadStatusTag");
-      statusTag.innerText = "⏳ 正在初始化試算表結構...";
-
-      callGAS("initSheet", { sid: pureId })
-        .then(res => {
-          if (res.success) {
-            alert("🎉 初始化完成！已自動建立 4 個標準工作表。");
-            loadAllData();
-          } else {
-            alert("❌ 初始化失敗：" + res.error);
-          }
-        })
-        .catch(err => alert("執行錯誤：" + err.message));
     }
 
     function renderProductDropdown() {
@@ -522,7 +489,6 @@
         });
     }
 
-    // 透過 CSV 引擎極速查詢
     async function executeQuery() {
       const type = document.getElementById("searchType").value;
       const keyword = document.getElementById("queryKeyword").value.trim();
