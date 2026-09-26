@@ -8,23 +8,11 @@
 </head>
 <body class="bg-amber-50/40 text-slate-800 min-h-screen">
 
-  <!-- 系統管理頂列 (可自由切換 GAS 部署網址) -->
-  <div class="bg-slate-900 text-white p-3 text-xs shadow-md">
-    <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
-      <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
-        <span class="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded">GAS 部署網址</span>
-        <input type="text" id="gasUrlInput" placeholder="請貼入 Apps Script 部署 URL..." class="text-slate-900 px-2 py-1 rounded w-80 text-xs bg-white focus:outline-none">
-        <button onclick="saveGasUrl()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded font-medium transition">儲存網址</button>
-      </div>
-      <span id="loadStatusTag" class="text-amber-300 font-mono">載入中...</span>
-    </div>
-  </div>
-
   <!-- 活動看板橫幅 -->
   <header class="bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-lg">
     <div class="max-w-4xl mx-auto p-6">
       <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
-        <h1 id="shopTitle" class="text-2xl md:text-3xl font-extrabold">🥤 鮮茶道寄杯團購</h1>
+        <h1 id="shopTitle" class="text-2xl md:text-3xl font-extrabold tracking-wide">🥤 鮮茶道寄杯團購</h1>
         <span id="shopMerchant" class="bg-amber-800 text-amber-200 px-3 py-1 rounded-full text-xs font-semibold">鮮茶道</span>
       </div>
       <div id="shopSettingsBox" class="bg-black/25 p-4 rounded-xl text-sm space-y-1.5 border border-white/10 text-amber-100 leading-relaxed">
@@ -119,7 +107,7 @@
       </div>
     </div>
 
-    <!-- 3. 暫存購物車 -->
+    <!-- 3. 暫存清單 -->
     <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-5">
       <h2 class="text-lg font-bold border-b pb-2 mb-3 text-slate-700 flex items-center justify-between">
         <span>📋 本次暫存清單 (待送出)</span>
@@ -154,7 +142,7 @@
 
   </main>
 
-  <!-- 修改訂單視窗 -->
+  <!-- 修改訂單彈窗 -->
   <div id="editModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden backdrop-blur-sm">
     <div class="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -191,7 +179,7 @@
     </div>
   </div>
 
-  <!-- 名單彈窗 -->
+  <!-- 常用名單挑選彈窗 -->
   <div id="memberModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden backdrop-blur-sm">
     <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -207,25 +195,18 @@
   </div>
 
   <script>
-    // 預設設定
-    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbygegAhKyzW6tAROoT29e5LBndEycPZbgLw3Sn8dgXSUk4O9BWgNcHRQINZNUx7PqCiMw/exec";
+    // ==========================================
+    // ⚙️ 管理者設定區（請在此設定部署網址與試算表 ID）
+    // ==========================================
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbygegAhKyzW6tAROoT29e5LBndEycPZbgLw3Sn8dgXSUk4O9BWgNcHRQINZNUx7PqCiMw/exec"; 
     const SPREADSHEET_ID = "1Z09jyeIgkwHEDUCmYEbLG3PE6UGoPmeAadoCX2lmL3Q";
 
-    let currentGasUrl = localStorage.getItem("tea_gas_url") || DEFAULT_GAS_URL;
     let membersDatabase = [];
     let productsDatabase = [];
     let stagingList = [];
     let queryRecordsCache = [];
 
-    function saveGasUrl() {
-      const val = document.getElementById("gasUrlInput").value.trim();
-      if (!val) return alert("請輸入有效的 Apps Script URL！");
-      localStorage.setItem("tea_gas_url", val);
-      currentGasUrl = val;
-      alert("✅ GAS 網址已儲存！");
-    }
-
-    // CSV 極速解析
+    // 極速 CSV 解析器
     function parseCSV(text) {
       let p = '', c = '', r = [];
       let q = false;
@@ -253,12 +234,12 @@
     async function fetchSheetCSV(sheetName) {
       const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&t=${Date.now()}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`讀取「${sheetName}」失敗，請確認試算表已設為公開查看`);
+      if (!res.ok) throw new Error(`讀取「${sheetName}」失敗`);
       const text = await res.text();
       return parseCSV(text);
     }
 
-    // 終極雙模式寫入引擎 (先 JSONP，超時自動降級 no-cors 確保必達)
+    // 終極可靠寫入引擎 (JSONP + POST 備援)
     function callGAS(action, params = {}) {
       return new Promise((resolve, reject) => {
         const callbackName = 'gasCb_' + Math.round(100000 * Math.random());
@@ -269,15 +250,14 @@
             isDone = true;
             if (document.body.contains(script)) document.body.removeChild(script);
             
-            // 如果 JSONP 逾時，發送 POST no-cors 備用通道
-            fetch(currentGasUrl, {
+            fetch(GAS_URL, {
               method: 'POST',
               mode: 'no-cors',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(Object.assign({ action: action, sid: SPREADSHEET_ID }, params))
             }).then(() => {
               resolve({ success: true, fallback: true });
-            }).catch(e => reject(new Error("無法連線至 Google Apps Script，請檢查網址與部署權限！")));
+            }).catch(e => reject(new Error("後端連線失敗，請檢查網路！")));
           }
         }, 3500);
 
@@ -297,7 +277,7 @@
         const queryString = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
         
         const script = document.createElement('script');
-        script.src = `${currentGasUrl}?${queryString}`;
+        script.src = `${GAS_URL}?${queryString}`;
         script.onerror = () => {
           if (!isDone) {
             isDone = true;
@@ -305,14 +285,14 @@
             delete window[callbackName];
             if (document.body.contains(script)) document.body.removeChild(script);
             
-            fetch(currentGasUrl, {
+            fetch(GAS_URL, {
               method: 'POST',
               mode: 'no-cors',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(params)
             }).then(() => {
               resolve({ success: true, fallback: true });
-            }).catch(e => reject(new Error("後端連線失敗，請檢查 Apps Script 部署 URL 是否正確！")));
+            }).catch(e => reject(new Error("後端連線失敗，請檢查 Apps Script 部署 URL！")));
           }
         };
         document.body.appendChild(script);
@@ -320,24 +300,16 @@
     }
 
     window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("gasUrlInput").value = currentGasUrl;
       loadAllData();
     });
 
     async function loadAllData() {
-      const statusTag = document.getElementById("loadStatusTag");
-      statusTag.innerText = "⚡ 正在以 CSV 極速載入...";
-
       try {
-        const startTime = performance.now();
         const [settingsData, productsData, membersData] = await Promise.all([
           fetchSheetCSV("設定"),
           fetchSheetCSV("產品清單"),
           fetchSheetCSV("訂購名單")
         ]);
-
-        const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
-        statusTag.innerText = `✅ 連線成功 (${elapsed}s)`;
 
         // 渲染設定
         if (settingsData && settingsData.length > 1) {
@@ -382,7 +354,6 @@
         }
 
       } catch (err) {
-        statusTag.innerText = "❌ 讀取失敗";
         document.getElementById("shopSettingsBox").innerHTML = `
           <div class="text-red-300 font-bold">讀取失敗：${err.message}</div>
           <div class="text-xs text-amber-200 mt-2">請確認試算表右上角「共用」已開放「知道連結的任何人」查看。</div>
@@ -438,7 +409,7 @@
       filtered.forEach(m => {
         const div = document.createElement("div");
         div.className = "p-3 hover:bg-amber-50 cursor-pointer flex justify-between items-center text-sm";
-        div.innerHTML = `<span class="font-bold text-slate-800">${m.name}</span><span class="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${m.phone}</span>`;
+        div.innerHTML = `<span class="font-bold text-slate-800">${m.name}</span><span class="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${m.phone || '無電話'}</span>`;
         div.onclick = () => {
           document.getElementById("buyerNameInput").value = m.name;
           if (m.phone) document.getElementById("buyerPhoneInput").value = m.phone;
@@ -516,9 +487,10 @@
       callGAS("submitData", { payload: JSON.stringify(payload) })
         .then(res => {
           if (res.success) {
-            alert("🎉 訂單已成功寫入試算表！");
+            alert("🎉 訂單已成功寫入試算表，名單已同步更新！");
             stagingList = [];
             renderStagingTable();
+            loadAllData(); // 重新整理名單
           } else {
             alert("❌ 送出失敗：" + (res.error || "未知錯誤"));
           }
