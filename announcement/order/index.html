@@ -8,14 +8,15 @@
 </head>
 <body class="bg-amber-50/40 text-slate-800 min-h-screen">
 
-  <!-- 狀態提示列 -->
-  <div class="bg-slate-900 text-white px-4 py-2 text-xs flex justify-between items-center">
-    <div class="flex items-center gap-2">
-      <span class="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded">系統狀態</span>
-      <span id="loadStatusTag" class="text-amber-200">讀取中...</span>
-    </div>
-    <div class="text-slate-400">
-      如需修改設定或重設工作表，請至 Google 試算表選單【🥤 團購系統管理】
+  <!-- 系統管理頂列 (可自由切換 GAS 部署網址) -->
+  <div class="bg-slate-900 text-white p-3 text-xs shadow-md">
+    <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
+      <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
+        <span class="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded">GAS 部署網址</span>
+        <input type="text" id="gasUrlInput" placeholder="請貼入 Apps Script 部署 URL..." class="text-slate-900 px-2 py-1 rounded w-80 text-xs bg-white focus:outline-none">
+        <button onclick="saveGasUrl()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded font-medium transition">儲存網址</button>
+      </div>
+      <span id="loadStatusTag" class="text-amber-300 font-mono">載入中...</span>
     </div>
   </div>
 
@@ -44,7 +45,7 @@
           <option value="phone">📱 手機號碼 (可查詢、修改、刪除)</option>
           <option value="name">👤 訂購人姓名 (僅供檢視)</option>
         </select>
-        <input type="text" id="queryKeyword" placeholder="請輸入完整手機號碼或姓名" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500">
+        <input type="text" id="queryKeyword" placeholder="請輸入手機號碼或姓名" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500">
         <button onclick="executeQuery()" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition">查詢</button>
       </div>
       
@@ -77,22 +78,20 @@
         <span>📝</span> 填寫訂購商品
       </h2>
       
-      <!-- 訂購人資訊 -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-amber-50/50 p-4 rounded-lg border border-amber-100">
         <div>
           <div class="flex justify-between items-center mb-1">
             <label class="block text-sm font-semibold text-slate-700">訂購人姓名 <span class="text-red-500">*</span></label>
-            <button type="button" onclick="openMemberModal()" class="text-xs bg-amber-600 hover:bg-amber-700 text-white px-2 py-0.5 rounded transition">從常用名單挑選</button>
+            <button type="button" onclick="openMemberModal()" class="text-xs bg-amber-600 hover:bg-amber-700 text-white px-2 py-0.5 rounded transition">從名單挑選</button>
           </div>
           <input type="text" id="buyerNameInput" placeholder="請輸入姓名" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-amber-500">
         </div>
         <div>
-          <label class="block text-sm font-semibold text-slate-700 mb-1">手機號碼 <span class="text-red-500">* (供日後修改查詢)</span></label>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">手機號碼 <span class="text-red-500">* (供修改查詢)</span></label>
           <input type="text" id="buyerPhoneInput" placeholder="如 0912345678" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-amber-500">
         </div>
       </div>
 
-      <!-- 商品挑選 -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
         <div>
           <label class="block text-sm font-semibold mb-1 text-slate-700">選擇品項</label>
@@ -109,7 +108,7 @@
       </div>
 
       <div>
-        <label class="block text-sm font-semibold mb-1 text-slate-700">備註 (如統編、特製需求)</label>
+        <label class="block text-sm font-semibold mb-1 text-slate-700">備註 (統編或特殊需求)</label>
         <input type="text" id="productNote" placeholder="選填" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500">
       </div>
 
@@ -120,7 +119,7 @@
       </div>
     </div>
 
-    <!-- 3. 暫存清單 -->
+    <!-- 3. 暫存購物車 -->
     <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-5">
       <h2 class="text-lg font-bold border-b pb-2 mb-3 text-slate-700 flex items-center justify-between">
         <span>📋 本次暫存清單 (待送出)</span>
@@ -135,7 +134,7 @@
               <th class="p-2.5">單價</th>
               <th class="p-2.5">數量</th>
               <th class="p-2.5">小計</th>
-              <th class="p-2.5">買1送1總杯數</th>
+              <th class="p-2.5">總杯數</th>
               <th class="p-2.5">備註</th>
               <th class="p-2.5 text-center">操作</th>
             </tr>
@@ -163,7 +162,6 @@
         <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
       </div>
       <input type="hidden" id="editOrderId">
-
       <div>
         <label class="block text-sm font-semibold mb-1 text-slate-700">訂購人姓名</label>
         <input type="text" id="editBuyerName" class="w-full border rounded-lg px-3 py-2 text-sm">
@@ -193,14 +191,14 @@
     </div>
   </div>
 
-  <!-- 常用名單挑選彈窗 -->
+  <!-- 名單彈窗 -->
   <div id="memberModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden backdrop-blur-sm">
     <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
         <h3 class="text-lg font-bold text-slate-800">選擇常用訂購人</h3>
         <button onclick="closeMemberModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
       </div>
-      <input type="text" id="memberSearch" oninput="renderMemberList()" placeholder="搜尋姓名或手機..." class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-full">
+      <input type="text" id="memberSearch" oninput="renderMemberList()" placeholder="搜尋姓名或電話..." class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-full">
       <div class="overflow-y-auto flex-1 divide-y border rounded-lg max-h-64" id="memberListContainer"></div>
       <div class="text-right">
         <button onclick="closeMemberModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">取消</button>
@@ -209,19 +207,25 @@
   </div>
 
   <script>
-    // ⚠️ 您的 Google Apps Script 部署 URL
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbygegAhKyzW6tAROoT29e5LBndEycPZbgLw3Sn8dgXSUk4O9BWgNcHRQINZNUx7PqCiMw/exec";
-    
-    // 預設試算表 ID
-    const DEFAULT_SPREADSHEET_ID = "1Z09jyeIgkwHEDUCmYEbLG3PE6UGoPmeAadoCX2lmL3Q";
+    // 預設設定
+    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbygegAhKyzW6tAROoT29e5LBndEycPZbgLw3Sn8dgXSUk4O9BWgNcHRQINZNUx7PqCiMw/exec";
+    const SPREADSHEET_ID = "1Z09jyeIgkwHEDUCmYEbLG3PE6UGoPmeAadoCX2lmL3Q";
 
-    let currentPureSid = DEFAULT_SPREADSHEET_ID;
+    let currentGasUrl = localStorage.getItem("tea_gas_url") || DEFAULT_GAS_URL;
     let membersDatabase = [];
     let productsDatabase = [];
     let stagingList = [];
     let queryRecordsCache = [];
 
-    // 極速 CSV 解析器
+    function saveGasUrl() {
+      const val = document.getElementById("gasUrlInput").value.trim();
+      if (!val) return alert("請輸入有效的 Apps Script URL！");
+      localStorage.setItem("tea_gas_url", val);
+      currentGasUrl = val;
+      alert("✅ GAS 網址已儲存！");
+    }
+
+    // CSV 極速解析
     function parseCSV(text) {
       let p = '', c = '', r = [];
       let q = false;
@@ -247,39 +251,76 @@
     }
 
     async function fetchSheetCSV(sheetName) {
-      const url = `https://docs.google.com/spreadsheets/d/${currentPureSid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&t=${Date.now()}`;
+      const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&t=${Date.now()}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`讀取「${sheetName}」失敗，請確認已於試算表執行一鍵建立，並將共用權限設為「知道連結的任何人均可查看」！`);
+      if (!res.ok) throw new Error(`讀取「${sheetName}」失敗，請確認試算表已設為公開查看`);
       const text = await res.text();
       return parseCSV(text);
     }
 
+    // 終極雙模式寫入引擎 (先 JSONP，超時自動降級 no-cors 確保必達)
     function callGAS(action, params = {}) {
       return new Promise((resolve, reject) => {
         const callbackName = 'gasCb_' + Math.round(100000 * Math.random());
+        let isDone = false;
+
+        const timer = setTimeout(() => {
+          if (!isDone) {
+            isDone = true;
+            if (document.body.contains(script)) document.body.removeChild(script);
+            
+            // 如果 JSONP 逾時，發送 POST no-cors 備用通道
+            fetch(currentGasUrl, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(Object.assign({ action: action, sid: SPREADSHEET_ID }, params))
+            }).then(() => {
+              resolve({ success: true, fallback: true });
+            }).catch(e => reject(new Error("無法連線至 Google Apps Script，請檢查網址與部署權限！")));
+          }
+        }, 3500);
+
         window[callbackName] = function(data) {
-          delete window[callbackName];
-          if (document.body.contains(script)) document.body.removeChild(script);
-          resolve(data);
+          if (!isDone) {
+            isDone = true;
+            clearTimeout(timer);
+            delete window[callbackName];
+            if (document.body.contains(script)) document.body.removeChild(script);
+            resolve(data);
+          }
         };
+
         params.action = action;
+        params.sid = SPREADSHEET_ID;
         params.callback = callbackName;
         const queryString = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+        
         const script = document.createElement('script');
-        script.src = `${GAS_URL}?${queryString}`;
+        script.src = `${currentGasUrl}?${queryString}`;
         script.onerror = () => {
-          delete window[callbackName];
-          if (document.body.contains(script)) document.body.removeChild(script);
-          reject(new Error("後端連線超時，請檢查 GAS 部署是否已設為「所有人 (Anyone)」"));
+          if (!isDone) {
+            isDone = true;
+            clearTimeout(timer);
+            delete window[callbackName];
+            if (document.body.contains(script)) document.body.removeChild(script);
+            
+            fetch(currentGasUrl, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(params)
+            }).then(() => {
+              resolve({ success: true, fallback: true });
+            }).catch(e => reject(new Error("後端連線失敗，請檢查 Apps Script 部署 URL 是否正確！")));
+          }
         };
         document.body.appendChild(script);
       });
     }
 
     window.addEventListener("DOMContentLoaded", () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const sidFromUrl = urlParams.get('sid');
-      if (sidFromUrl) currentPureSid = sidFromUrl;
+      document.getElementById("gasUrlInput").value = currentGasUrl;
       loadAllData();
     });
 
@@ -296,9 +337,9 @@
         ]);
 
         const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
-        statusTag.innerText = `✅ 連線成功 (${elapsed} 秒)`;
+        statusTag.innerText = `✅ 連線成功 (${elapsed}s)`;
 
-        // 1. 渲染設定看板
+        // 渲染設定
         if (settingsData && settingsData.length > 1) {
           const headers = settingsData[0];
           const values = settingsData[1];
@@ -316,7 +357,7 @@
           document.getElementById("shopSettingsBox").innerHTML = html;
         }
 
-        // 2. 渲染產品選單
+        // 渲染產品
         productsDatabase = [];
         for (let i = 1; i < productsData.length; i++) {
           if (productsData[i][0]) {
@@ -329,7 +370,7 @@
         }
         renderProductDropdown();
 
-        // 3. 常用名單
+        // 常用名單
         membersDatabase = [];
         for (let i = 1; i < membersData.length; i++) {
           if (membersData[i][0]) {
@@ -344,7 +385,7 @@
         statusTag.innerText = "❌ 讀取失敗";
         document.getElementById("shopSettingsBox").innerHTML = `
           <div class="text-red-300 font-bold">讀取失敗：${err.message}</div>
-          <div class="text-xs text-amber-200 mt-2">💡 請開啟 Google 試算表，點選上方選單【🥤 團購系統管理】$\to$【⚡ 一鍵建立/重設所有工作表】，並確認右上角「共用」已開放「知道連結的任何人」查看。</div>
+          <div class="text-xs text-amber-200 mt-2">請確認試算表右上角「共用」已開放「知道連結的任何人」查看。</div>
         `;
       }
     }
@@ -468,18 +509,18 @@
 
       const submitBtn = document.getElementById("submitBtn");
       submitBtn.disabled = true;
-      submitBtn.innerText = "送出中...";
+      submitBtn.innerText = "寫入試算表中...";
 
       const payload = { op: "add", contact: { name, phone }, list: stagingList };
 
-      callGAS("submitData", { sid: currentPureSid, payload: JSON.stringify(payload) })
+      callGAS("submitData", { payload: JSON.stringify(payload) })
         .then(res => {
           if (res.success) {
-            alert("🎉 訂單已成功送出！");
+            alert("🎉 訂單已成功寫入試算表！");
             stagingList = [];
             renderStagingTable();
           } else {
-            alert("❌ 送出失敗：" + res.error);
+            alert("❌ 送出失敗：" + (res.error || "未知錯誤"));
           }
         })
         .catch(err => alert("錯誤：" + err.message))
@@ -585,14 +626,14 @@
       const note = document.getElementById("editNote").value.trim();
 
       const item = { id, name, product, price, qty, note };
-      callGAS("submitData", { sid: currentPureSid, payload: JSON.stringify({ op: "update", item }) })
+      callGAS("submitData", { payload: JSON.stringify({ op: "update", item }) })
         .then(res => {
           if (res.success) {
             alert(`訂單 ${id} 修改成功！`);
             closeEditModal();
             executeQuery();
           } else {
-            alert("修改失敗：" + res.error);
+            alert("修改失敗：" + (res.error || ""));
           }
         })
         .catch(err => alert("修改錯誤：" + err.message));
@@ -600,13 +641,13 @@
 
     function deleteOrder(id) {
       if (!confirm(`確定要刪除訂單【${id}】嗎？`)) return;
-      callGAS("submitData", { sid: currentPureSid, payload: JSON.stringify({ op: "delete", id }) })
+      callGAS("submitData", { payload: JSON.stringify({ op: "delete", id }) })
         .then(res => {
           if (res.success) {
             alert(`訂單 ${id} 已刪除！`);
             executeQuery();
           } else {
-            alert("刪除失敗：" + res.error);
+            alert("刪除失敗：" + (res.error || ""));
           }
         })
         .catch(err => alert("刪除錯誤：" + err.message));
