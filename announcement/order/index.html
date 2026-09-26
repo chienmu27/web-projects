@@ -11,11 +11,12 @@
   <!-- 活動看板橫幅 -->
   <header class="bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-lg">
     <div class="max-w-4xl mx-auto p-6">
-      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
         <h1 id="shopTitle" class="text-2xl md:text-3xl font-extrabold tracking-wide">🥤 鮮茶道寄杯團購</h1>
         <span id="shopMerchant" class="bg-amber-800 text-amber-200 px-3 py-1 rounded-full text-xs font-semibold">鮮茶道</span>
       </div>
-      <div id="shopSettingsBox" class="bg-black/25 p-4 rounded-xl text-sm space-y-1.5 border border-white/10 text-amber-100 leading-relaxed">
+      <!-- 活動設定與備註區塊 (支援 Alt+Enter 換行顯示) -->
+      <div id="shopSettingsBox" class="bg-black/25 p-4 rounded-xl text-sm space-y-2 border border-white/10 text-amber-100 leading-relaxed whitespace-pre-line">
         載入活動資訊中...
       </div>
     </div>
@@ -68,14 +69,15 @@
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-amber-50/50 p-4 rounded-lg border border-amber-100">
         <div>
-          <div class="flex justify-between items-center mb-1">
-            <label class="block text-sm font-semibold text-slate-700">訂購人姓名 <span class="text-red-500">*</span></label>
-            <button type="button" onclick="openMemberModal()" class="text-xs bg-amber-600 hover:bg-amber-700 text-white px-2 py-0.5 rounded transition">從名單挑選</button>
+          <!-- 「從名單挑選」按鈕緊接在「訂購人姓名 *」後方 -->
+          <div class="flex items-center gap-2 mb-1.5">
+            <label class="text-sm font-semibold text-slate-700">訂購人姓名 <span class="text-red-500">*</span></label>
+            <button type="button" onclick="openMemberModal()" class="text-xs bg-amber-600 hover:bg-amber-700 text-white px-2 py-0.5 rounded shadow-sm transition">從名單挑選</button>
           </div>
           <input type="text" id="buyerNameInput" placeholder="請輸入姓名" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-amber-500">
         </div>
         <div>
-          <label class="block text-sm font-semibold text-slate-700 mb-1">手機號碼 <span class="text-red-500">* (供修改查詢)</span></label>
+          <label class="block text-sm font-semibold text-slate-700 mb-1.5">手機號碼 <span class="text-red-500">* (供修改查詢)</span></label>
           <input type="text" id="buyerPhoneInput" placeholder="如 0912345678" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-amber-500">
         </div>
       </div>
@@ -179,7 +181,7 @@
     </div>
   </div>
 
-  <!-- 常用名單挑選彈窗 -->
+  <!-- 常用名單彈窗 -->
   <div id="memberModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden backdrop-blur-sm">
     <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -196,7 +198,7 @@
 
   <script>
     // ==========================================
-    // ⚙️ 管理者設定區（請在此設定部署網址與試算表 ID）
+    // ⚙️ 管理者設定區（請確認您的部署網址與試算表 ID）
     // ==========================================
     const GAS_URL = "https://script.google.com/macros/s/AKfycbygegAhKyzW6tAROoT29e5LBndEycPZbgLw3Sn8dgXSUk4O9BWgNcHRQINZNUx7PqCiMw/exec"; 
     const SPREADSHEET_ID = "1Z09jyeIgkwHEDUCmYEbLG3PE6UGoPmeAadoCX2lmL3Q";
@@ -311,7 +313,7 @@
           fetchSheetCSV("訂購名單")
         ]);
 
-        // 渲染設定
+        // 渲染設定 (支援 Alt+Enter 換行與超連結)
         if (settingsData && settingsData.length > 1) {
           const headers = settingsData[0];
           const values = settingsData[1];
@@ -322,8 +324,13 @@
             if (headers[i] && values[i]) {
               const val = values[i];
               const isUrl = val.startsWith("http://") || val.startsWith("https://");
-              const content = isUrl ? `<a href="${val}" target="_blank" class="underline text-yellow-300 font-bold">${headers[i]} (點擊前往)</a>` : val;
-              html += `<div><span class="font-bold text-amber-200">★ ${headers[i]}：</span>${content}</div>`;
+              
+              // 處理換行：將 \n 轉為 html 換行，並維持縮排樣式
+              const formattedVal = isUrl 
+                ? `<a href="${val}" target="_blank" class="underline text-yellow-300 font-bold">${headers[i]} (點擊前往)</a>` 
+                : val.replace(/\n/g, "<br>");
+
+              html += `<div class="pt-1"><span class="font-bold text-amber-200">★ ${headers[i]}：</span>${formattedVal}</div>`;
             }
           }
           document.getElementById("shopSettingsBox").innerHTML = html;
@@ -490,7 +497,7 @@
             alert("🎉 訂單已成功寫入試算表，名單已同步更新！");
             stagingList = [];
             renderStagingTable();
-            loadAllData(); // 重新整理名單
+            loadAllData();
           } else {
             alert("❌ 送出失敗：" + (res.error || "未知錯誤"));
           }
