@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鮮茶道寄杯 - 團購訂單系統</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-amber-50/40 text-slate-800 min-h-screen">
+
+  <!-- 1. 管理者主控台 -->
+  <div id="adminPanel" class="bg-slate-900 text-white p-3 text-xs border-b border-slate-700 hidden">
+    <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
+        <span class="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded">管理後台</span>
+        <input type="text" id="adminSheetUrlInput" placeholder="請貼入 Google 試算表完整網址..." class="text-slate-900 px-2.5 py-1.5 rounded flex-1 md:w-80 text-xs focus:outline-none bg-white">
+        <button onclick="bindSpreadsheet()" class="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded font-medium text-white transition">連線</button>
+        <button onclick="initSpreadsheet()" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded font-medium text-white transition">一鍵初始化試算表</button>
+      </div>
+      <div id="shareLinkArea" class="hidden flex items-center gap-2">
+        <button onclick="copyShareUrl()" class="bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded shadow transition">📋 複製訂購專屬網址</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 活動看板橫幅 -->
+  <header class="bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-lg">
+    <div class="max-w-4xl mx-auto p-6">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h1 id="shopMainTitle" class="text-2xl md:text-3xl font-extrabold tracking-wide">🥤 鮮茶道寄杯團購</h1>
+        <span id="shopMerchant" class="bg-amber-800/80 text-amber-200 px-3 py-1 rounded-full text-xs font-semibold">鮮茶道</span>
+      </div>
+      <div id="shopDynamicSettings" class="bg-black/20 p-4 rounded-xl text-sm space-y-1.5 border border-white/10 text-amber-100"></div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
+
+    <!-- 3. 訂購資料查詢區塊 -->
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-5">
+      <h2 class="text-lg font-bold border-b pb-2 mb-3 text-slate-700 flex items-center gap-2">
+        <span>🔍</span> 訂單查詢
+      </h2>
+      <div class="flex flex-col sm:flex-row gap-2">
+        <select id="searchType" onchange="handleSearchTypeChange()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-slate-50 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          <option value="phone">📱 手機號碼 (可查詢、修改、刪除)</option>
+          <option value="name">👤 訂購人姓名 (僅供檢視)</option>
+        </select>
+        <input type="text" id="queryKeywordInput" placeholder="請輸入手機號碼查詢" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        <button onclick="executeQuery()" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition">查詢</button>
+      </div>
+      
+      <div id="queryResultArea" class="mt-4 hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm border-collapse border border-slate-200 rounded-lg">
+            <thead class="bg-amber-50 text-slate-700 font-semibold border-b">
+              <tr>
+                <th class="p-2.5">編號</th>
+                <th class="p-2.5">訂購人</th>
+                <th class="p-2.5">品項</th>
+                <th class="p-2.5">單價</th>
+                <th class="p-2.5">數量</th>
+                <th class="p-2.5">合計</th>
+                <th class="p-2.5">總杯數</th>
+                <th class="p-2.5">備註</th>
+                <th class="p-2.5">狀態</th>
+                <th class="p-2.5 text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="queryTableBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 新增訂購表單 -->
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-5 space-y-4">
+      <h2 class="text-lg font-bold border-b pb-2 text-slate-700 flex items-center gap-2">
+        <span>📝</span> 填寫訂購商品
+      </h2>
+      
+      <!-- 聯絡資料 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-amber-50/50 p-4 rounded-lg border border-amber-100">
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-sm font-semibold text-slate-700">訂購人姓名 <span class="text-red-500">*</span></label>
+            <button type="button" onclick="openMemberModal()" class="text-xs bg-amber-600 hover:bg-amber-700 text-white px-2 py-0.5 rounded transition">從常用名單挑選</button>
+          </div>
+          <input type="text" id="buyerNameInput" placeholder="請輸入姓名" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-1">手機號碼 <span class="text-red-500">* (供日後修改查詢)</span></label>
+          <input type="text" id="buyerPhoneInput" placeholder="請輸入手機號碼 (如 0912345678)" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+        </div>
+      </div>
+
+      <!-- 商品挑選 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+        <div class="md:col-span-1">
+          <label class="block text-sm font-semibold mb-1 text-slate-700">選擇品項</label>
+          <select id="productSelect" onchange="onProductSelectChange()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1 text-slate-700">單價</label>
+          <input type="number" id="productPriceInput" readonly class="w-full border border-slate-200 bg-slate-100 rounded-lg px-3 py-2 text-sm text-slate-600 font-bold">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1 text-slate-700">數量 (組)</label>
+          <input type="number" id="productQtyInput" min="1" value="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1 text-slate-700">備註 (如：統編、分裝需求)</label>
+        <input type="text" id="productNoteInput" placeholder="選填，無則留空" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+      </div>
+
+      <div class="text-right">
+        <button onclick="addToStagingList()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow transition">
+          + 加入暫存訂單
+        </button>
+      </div>
+    </div>
+
+    <!-- 5. 暫存清單區塊 -->
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-5">
+      <h2 class="text-lg font-bold border-b pb-2 mb-3 text-slate-700 flex items-center justify-between">
+        <span class="flex items-center gap-2">📋 本次暫存清單 (待送出)</span>
+        <span id="stagingSummary" class="text-sm font-normal text-amber-700"></span>
+      </h2>
+      
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm border-collapse border border-slate-200 rounded-lg">
+          <thead class="bg-slate-100 text-slate-700 border-b">
+            <tr>
+              <th class="p-2.5">品項</th>
+              <th class="p-2.5">單價</th>
+              <th class="p-2.5">數量</th>
+              <th class="p-2.5">小計</th>
+              <th class="p-2.5">買1送1總杯數</th>
+              <th class="p-2.5">備註</th>
+              <th class="p-2.5 text-center">操作</th>
+            </tr>
+          </thead>
+          <tbody id="stagingTableBody" class="divide-y divide-slate-100">
+            <tr><td colspan="7" class="text-center p-4 text-slate-400">目前尚無暫存商品，請由上方新增</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-5 text-center">
+        <button id="submitBtn" onclick="submitFinalOrders()" class="bg-amber-600 hover:bg-amber-700 text-white px-10 py-3 rounded-xl font-extrabold shadow-md transition disabled:bg-gray-300 text-base" disabled>
+          確認並送出訂單
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 修改訂單視窗 -->
+  <div id="editModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden backdrop-blur-sm">
+    <div class="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-lg font-bold text-slate-800">修改訂單內容（<span id="editIdDisplay" class="text-amber-600"></span>）</h3>
+        <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+      </div>
+      <input type="hidden" id="editOrderId">
+
+      <div>
+        <label class="block text-sm font-semibold mb-1 text-slate-700">訂購人姓名</label>
+        <input type="text" id="editBuyerName" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1 text-slate-700">品項</label>
+        <select id="editProductSelect" onchange="onEditProductChange()" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-semibold mb-1 text-slate-700">單價</label>
+          <input type="number" id="editPriceInput" readonly class="w-full border bg-slate-100 rounded-lg px-3 py-2 text-sm text-slate-600 font-bold">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1 text-slate-700">數量</label>
+          <input type="number" id="editQtyInput" min="1" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1 text-slate-700">備註</label>
+        <input type="text" id="editNoteInput" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t">
+        <button onclick="closeEditModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium">取消</button>
+        <button onclick="submitEditOrder()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-lg text-sm font-bold">儲存修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 常用訂購人名單彈窗 -->
+  <div id="memberModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden backdrop-blur-sm">
+    <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-lg font-bold text-slate-800">選擇常用訂購人</h3>
+        <button onclick="closeMemberModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+      </div>
+      <input type="text" id="memberSearch" oninput="renderMemberList()" placeholder="搜尋姓名或手機..." class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-amber-500 focus:outline-none">
+      <div class="overflow-y-auto flex-1 divide-y border rounded-lg max-h-64" id="memberListContainer"></div>
+      <div class="text-right">
+        <button onclick="closeMemberModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ⚠️ 請填入您部署後的 Apps Script 網址
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbygegAhKyzW6tAROoT29e5LBndEycPZbgLw3Sn8dgXSUk4O9BWgNcHRQINZNUx7PqCiMw/exec";
+    
+    // 預設試算表 ID
+    const DEFAULT_SPREADSHEET_ID = "1Z09jyeIgkwHEDUCmYEbLG3PE6UGoPmeAadoCX2lmL3Q";
+
+    let currentPureSid = "";
+    let membersDatabase = [];
+    let productsDatabase = [];
+    let stagingList = [];
+    let queryRecordsCache = [];
+
+    // JSONP 跨網域溝通
+    function callGAS(action, params = {}) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'gasCallback_' + Math.round(100000 * Math.random());
+        window[callbackName] = function(data) {
+          delete window[callbackName];
+          if (document.body.contains(script)) document.body.removeChild(script);
+          resolve(data);
+        };
+
+        params.action = action;
+        params.callback = callbackName;
+        const queryString = Object.keys(params)
+          .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(params[key]))
+          .join('&');
+
+        const script = document.createElement('script');
+        script.src = `${GAS_URL}?${queryString}`;
+        script.onerror = function() {
+          delete window[callbackName];
+          if (document.body.contains(script)) document.body.removeChild(script);
+          reject(new Error("連線失敗，請檢查網路或 Apps Script 部署網址！"));
+        };
+        document.body.appendChild(script);
+      });
+    }
+
+    function parsePureId(input) {
+      if (!input) return "";
+      input = String(input).trim();
+      const match = input.match(/\/d\/([a-zA-Z0-9-_]+)/) || input.match(/([a-zA-Z0-9-_]{25,})/);
+      return match ? (match[1] || match[0]) : input;
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramSid = urlParams.get('sid') || DEFAULT_SPREADSHEET_ID;
+      
+      if (urlParams.has('admin')) {
+        document.getElementById("adminPanel").classList.remove("hidden");
+      }
+      
+      bindSpreadsheet(paramSid);
+    });
+
+    function bindSpreadsheet(directSid) {
+      const input = directSid || document.getElementById("adminSheetUrlInput").value.trim();
+      const pureId = parsePureId(input);
+      if (!pureId) return alert("請輸入有效的 Google 試算表網址或 ID！");
+
+      currentPureSid = pureId;
+      document.getElementById("shopMainTitle").innerText = "連線讀取中...";
+
+      callGAS('getInitData', { sid: pureId })
+        .then(data => {
+          if (data.success) {
+            const settings = data.settings || [];
+            if (settings.length > 0) {
+              document.getElementById("shopMainTitle").innerText = settings[0].value || "鮮茶道寄杯團購";
+              const detailsContainer = document.getElementById("shopDynamicSettings");
+              detailsContainer.innerHTML = settings.slice(1).map(item => {
+                if (!item.value) return '';
+                const isUrl = item.value.startsWith("http://") || item.value.startsWith("https://");
+                const valHtml = isUrl ? `<a href="${item.value}" target="_blank" class="underline text-yellow-300 font-bold">${item.title} (點擊開啟)</a>` : item.value;
+                return `<div><span class="font-bold text-amber-200">★ ${item.title}：</span>${valHtml}</div>`;
+              }).join("");
+            }
+
+            membersDatabase = data.members || [];
+            productsDatabase = data.products || [];
+
+            renderProductDropdown();
+
+            if (document.getElementById("shareLinkArea")) {
+              document.getElementById("shareLinkArea").classList.remove("hidden");
+            }
+          } else {
+            alert("連線失敗：\n" + data.error);
+            document.getElementById("shopMainTitle").innerText = "連線失敗";
+          }
+        })
+        .catch(err => alert("連線錯誤：" + err.message));
+    }
+
+    function initSpreadsheet() {
+      const input = document.getElementById("adminSheetUrlInput").value.trim() || currentPureSid;
+      const pureId = parsePureId(input);
+      if (!pureId) return alert("請輸入有效的 Google 試算表網址！");
+      if (!confirm("將會在此試算表中自動建立「設定」、「訂購名單」、「產品清單」、「訂購資料」工作表，是否繼續？")) return;
+
+      callGAS('initSheet', { sid: pureId })
+        .then(data => {
+          if (data.success) {
+            alert("🎉 初始化成功！已自動建立商品團購工作表範本。");
+            bindSpreadsheet(pureId);
+          } else {
+            alert("❌ 初始化失敗：\n" + data.error);
+          }
+        })
+        .catch(err => alert("執行錯誤：" + err.message));
+    }
+
+    function copyShareUrl() {
+      const shareUrl = `${window.location.origin}${window.location.pathname}?sid=${currentPureSid}`;
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        alert("✅ 訂購專屬網址已複製到剪貼簿！\n\n" + shareUrl);
+      });
+    }
+
+    function renderProductDropdown() {
+      const select = document.getElementById("productSelect");
+      const editSelect = document.getElementById("editProductSelect");
+
+      const optionsHtml = productsDatabase.map(p => 
+        `<option value="${p.name}" data-price="${p.price}">${p.name} ($${p.price}) ${p.note ? '- ' + p.note : ''}</option>`
+      ).join("");
+
+      select.innerHTML = optionsHtml;
+      editSelect.innerHTML = optionsHtml;
+
+      onProductSelectChange();
+    }
+
+    function onProductSelectChange() {
+      const select = document.getElementById("productSelect");
+      const selectedOption = select.options[select.selectedIndex];
+      if (selectedOption) {
+        document.getElementById("productPriceInput").value = selectedOption.getAttribute("data-price");
+      }
+    }
+
+    function onEditProductChange() {
+      const select = document.getElementById("editProductSelect");
+      const selectedOption = select.options[select.selectedIndex];
+      if (selectedOption) {
+        document.getElementById("editPriceInput").value = selectedOption.getAttribute("data-price");
+      }
+    }
+
+    function openMemberModal() {
+      document.getElementById("memberSearch").value = "";
+      renderMemberList();
+      document.getElementById("memberModal").classList.remove("hidden");
+    }
+
+    function closeMemberModal() {
+      document.getElementById("memberModal").classList.add("hidden");
+    }
+
+    function renderMemberList() {
+      const keyword = document.getElementById("memberSearch").value.trim().toLowerCase();
+      const container = document.getElementById("memberListContainer");
+      container.innerHTML = "";
+
+      const filtered = membersDatabase.filter(m => 
+        m.name.toLowerCase().includes(keyword) || (m.phone && m.phone.includes(keyword))
+      );
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="p-4 text-center text-gray-400 text-sm">查無名單資料 (可直接手動輸入)</div>`;
+        return;
+      }
+
+      filtered.forEach(m => {
+        const div = document.createElement("div");
+        div.className = "p-3 hover:bg-amber-50 cursor-pointer flex justify-between items-center text-sm transition";
+        div.innerHTML = `<span class="font-bold text-slate-800">${m.name}</span><span class="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">${m.phone || '無電話'}</span>`;
+        div.onclick = () => {
+          document.getElementById("buyerNameInput").value = m.name;
+          if (m.phone) document.getElementById("buyerPhoneInput").value = m.phone;
+          closeMemberModal();
+        };
+        container.appendChild(div);
+      });
+    }
+
+    function addToStagingList() {
+      const name = document.getElementById("buyerNameInput").value.trim();
+      const phone = document.getElementById("buyerPhoneInput").value.trim();
+      const product = document.getElementById("productSelect").value;
+      const price = Number(document.getElementById("productPriceInput").value) || 0;
+      const qty = parseInt(document.getElementById("productQtyInput").value, 10) || 1;
+      const note = document.getElementById("productNoteInput").value.trim();
+
+      if (!name) return alert("請輸入訂購人姓名！");
+      if (!phone) return alert("請輸入手機號碼（以供後續查詢與修改）！");
+      if (qty <= 0) return alert("數量必須大於 0！");
+
+      stagingList.push({
+        product: product,
+        price: price,
+        qty: qty,
+        total: price * qty,
+        totalCups: qty * 2,
+        note: note
+      });
+
+      document.getElementById("productNoteInput").value = "";
+      document.getElementById("productQtyInput").value = "1";
+      renderStagingTable();
+    }
+
+    function renderStagingTable() {
+      const tbody = document.getElementById("stagingTableBody");
+      const submitBtn = document.getElementById("submitBtn");
+      const summary = document.getElementById("stagingSummary");
+
+      if (stagingList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-slate-400">目前尚無暫存商品，請由上方新增</td></tr>`;
+        submitBtn.disabled = true;
+        summary.innerText = "";
+        return;
+      }
+
+      submitBtn.disabled = false;
+      let totalAmount = 0;
+      let totalCups = 0;
+
+      tbody.innerHTML = stagingList.map((item, idx) => {
+        totalAmount += item.total;
+        totalCups += item.totalCups;
+        return `
+          <tr class="hover:bg-amber-50/50 transition">
+            <td class="p-2.5 font-bold text-slate-800">${item.product}</td>
+            <td class="p-2.5">$${item.price}</td>
+            <td class="p-2.5 font-bold">${item.qty}</td>
+            <td class="p-2.5 text-amber-700 font-bold">$${item.total}</td>
+            <td class="p-2.5 text-blue-600 font-bold">${item.totalCups} 杯</td>
+            <td class="p-2.5 text-slate-500 text-xs">${item.note || '-'}</td>
+            <td class="p-2.5 text-center">
+              <button onclick="stagingList.splice(${idx}, 1); renderStagingTable();" class="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded border border-red-200 hover:bg-red-50">刪除</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      summary.innerText = `總計金額：$${totalAmount} 元 ｜ 買1送1共 ${totalCups} 杯`;
+    }
+
+    function submitFinalOrders() {
+      if (!currentPureSid) return alert("請先連線試算表！");
+      if (stagingList.length === 0) return alert("暫存清單無項目！");
+
+      const name = document.getElementById("buyerNameInput").value.trim();
+      const phone = document.getElementById("buyerPhoneInput").value.trim();
+
+      if (!name || !phone) return alert("請確認已填寫訂購人姓名與手機號碼！");
+
+      const submitBtn = document.getElementById("submitBtn");
+      submitBtn.disabled = true;
+      submitBtn.innerText = "訂單寫入中...";
+
+      const payload = {
+        op: "add",
+        contact: { name: name, phone: phone },
+        list: stagingList
+      };
+
+      callGAS('submitData', { sid: currentPureSid, payload: JSON.stringify(payload) })
+        .then(data => {
+          if (data.success) {
+            alert("🎉 訂購完成！已成功將訂單寫入試算表。");
+            stagingList = [];
+            renderStagingTable();
+          } else {
+            alert("❌ 訂購失敗：" + data.error);
+          }
+        })
+        .catch(err => alert("送出錯誤：" + err.message))
+        .finally(() => {
+          submitBtn.disabled = false;
+          submitBtn.innerText = "確認並送出訂單";
+        });
+    }
+
+    function handleSearchTypeChange() {
+      const type = document.getElementById("searchType").value;
+      const input = document.getElementById("queryKeywordInput");
+      input.placeholder = type === 'phone' ? "請輸入手機號碼查詢 (可修改/刪除)" : "請輸入訂購人姓名查詢 (僅供檢視)";
+    }
+
+    function executeQuery() {
+      if (!currentPureSid) return alert("請先連線試算表！");
+      const type = document.getElementById("searchType").value;
+      const keyword = document.getElementById("queryKeywordInput").value.trim();
+      if (!keyword) return alert(type === 'phone' ? "請輸入手機號碼！" : "請輸入訂購人姓名！");
+
+      const area = document.getElementById("queryResultArea");
+      const tbody = document.getElementById("queryTableBody");
+      tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-400">資料查詢中...</td></tr>`;
+      area.classList.remove("hidden");
+
+      callGAS('queryData', { sid: currentPureSid, type: type, keyword: keyword })
+        .then(data => {
+          if (data.success && data.records.length > 0) {
+            queryRecordsCache = data.records;
+            const isPhoneQuery = (data.type === "phone");
+
+            tbody.innerHTML = data.records.map((r, idx) => `
+              <tr class="hover:bg-amber-50/50">
+                <td class="p-2.5 font-mono text-xs font-bold text-amber-800">${r.id}</td>
+                <td class="p-2.5 font-bold">${r.name}</td>
+                <td class="p-2.5">${r.product}</td>
+                <td class="p-2.5">$${r.price}</td>
+                <td class="p-2.5 font-bold">${r.qty}</td>
+                <td class="p-2.5 text-amber-700 font-bold">$${r.total}</td>
+                <td class="p-2.5 text-blue-600 font-bold">${r.totalCups} 杯</td>
+                <td class="p-2.5 text-xs text-slate-500">${r.note || '-'}</td>
+                <td class="p-2.5"><span class="px-2 py-0.5 rounded text-xs ${r.payStatus === '已繳費' ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-slate-100 text-slate-600'}">${r.payStatus}</span></td>
+                <td class="p-2.5 text-center">
+                  ${isPhoneQuery ? `
+                    <button onclick="openEditModal(${idx})" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded shadow">✏️ 修改</button>
+                    <button onclick="deleteOrder('${r.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded shadow ml-1">🗑️ 刪除</button>
+                  ` : `<span class="text-xs text-slate-400">唯讀</span>`}
+                </td>
+              </tr>
+            `).join("");
+          } else {
+            tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-red-400">查無相關訂購紀錄</td></tr>`;
+          }
+        })
+        .catch(err => alert("查詢失敗：" + err.message));
+    }
+
+    function openEditModal(idx) {
+      const record = queryRecordsCache[idx];
+      document.getElementById("editOrderId").value = record.id;
+      document.getElementById("editIdDisplay").innerText = record.id;
+      document.getElementById("editBuyerName").value = record.name;
+      document.getElementById("editProductSelect").value = record.product;
+      onEditProductChange();
+      document.getElementById("editQtyInput").value = record.qty;
+      document.getElementById("editNoteInput").value = record.note || "";
+      document.getElementById("editModal").classList.remove("hidden");
+    }
+
+    function closeEditModal() {
+      document.getElementById("editModal").classList.add("hidden");
+    }
+
+    function submitEditOrder() {
+      const id = document.getElementById("editOrderId").value;
+      const name = document.getElementById("editBuyerName").value.trim();
+      const product = document.getElementById("editProductSelect").value;
+      const price = Number(document.getElementById("editPriceInput").value) || 0;
+      const qty = parseInt(document.getElementById("editQtyInput").value, 10) || 1;
+      const note = document.getElementById("editNoteInput").value.trim();
+
+      if (!name) return alert("請輸入訂購人姓名！");
+      if (qty <= 0) return alert("數量必須大於 0！");
+
+      const item = { id, name, product, price, qty, note };
+      const payload = { op: "update", item: item };
+
+      callGAS('submitData', { sid: currentPureSid, payload: JSON.stringify(payload) })
+        .then(data => {
+          if (data.success) {
+            alert(`訂單 ${id} 修改成功！`);
+            closeEditModal();
+            executeQuery();
+          } else {
+            alert("修改失敗：" + data.error);
+          }
+        })
+        .catch(err => alert("修改錯誤：" + err.message));
+    }
+
+    function deleteOrder(id) {
+      if (!confirm(`確定要刪除訂單編號【${id}】嗎？`)) return;
+
+      const payload = { op: "delete", id: id };
+      callGAS('submitData', { sid: currentPureSid, payload: JSON.stringify(payload) })
+        .then(data => {
+          if (data.success) {
+            alert(`訂單 ${id} 已刪除！`);
+            executeQuery();
+          } else {
+            alert("刪除失敗：" + data.error);
+          }
+        })
+        .catch(err => alert("刪除錯誤：" + err.message));
+    }
+  </script>
+</body>
+</html>
