@@ -15,7 +15,7 @@
         <h1 id="shopTitle" class="text-2xl md:text-3xl font-extrabold tracking-wide">🥤 鮮茶道寄杯團購</h1>
         <span id="shopMerchant" class="bg-amber-800 text-amber-200 px-3 py-1 rounded-full text-xs font-semibold">鮮茶道</span>
       </div>
-      <!-- 活動設定與備註區塊 (支援 Alt+Enter 換行顯示) -->
+      <!-- 活動設定與備註 (支援 Alt+Enter 換行) -->
       <div id="shopSettingsBox" class="bg-black/25 p-4 rounded-xl text-sm space-y-2 border border-white/10 text-amber-100 leading-relaxed whitespace-pre-line">
         載入活動資訊中...
       </div>
@@ -69,7 +69,7 @@
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-amber-50/50 p-4 rounded-lg border border-amber-100">
         <div>
-          <!-- 「從名單挑選」按鈕緊接在「訂購人姓名 *」後方 -->
+          <!-- 「從名單挑選」緊接在「訂購人姓名 *」後方 -->
           <div class="flex items-center gap-2 mb-1.5">
             <label class="text-sm font-semibold text-slate-700">訂購人姓名 <span class="text-red-500">*</span></label>
             <button type="button" onclick="openMemberModal()" class="text-xs bg-amber-600 hover:bg-amber-700 text-white px-2 py-0.5 rounded shadow-sm transition">從名單挑選</button>
@@ -181,7 +181,7 @@
     </div>
   </div>
 
-  <!-- 常用名單彈窗 -->
+  <!-- 常用名單彈窗 (支援手機號碼遮罩) -->
   <div id="memberModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden backdrop-blur-sm">
     <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -207,6 +207,19 @@
     let productsDatabase = [];
     let stagingList = [];
     let queryRecordsCache = [];
+
+    // 手機號碼遮罩函式 (將中間 4 碼轉為 ****)
+    function maskPhoneNumber(phone) {
+      if (!phone) return "";
+      const cleaned = String(phone).trim();
+      if (cleaned.length === 10) {
+        // 例: 0912345678 -> 0912****78
+        return cleaned.substring(0, 4) + "****" + cleaned.substring(8);
+      } else if (cleaned.length >= 7) {
+        return cleaned.substring(0, 3) + "****" + cleaned.substring(7);
+      }
+      return cleaned;
+    }
 
     // 極速 CSV 解析器
     function parseCSV(text) {
@@ -241,7 +254,7 @@
       return parseCSV(text);
     }
 
-    // 終極可靠寫入引擎 (JSONP + POST 備援)
+    // 寫入引擎
     function callGAS(action, params = {}) {
       return new Promise((resolve, reject) => {
         const callbackName = 'gasCb_' + Math.round(100000 * Math.random());
@@ -313,7 +326,7 @@
           fetchSheetCSV("訂購名單")
         ]);
 
-        // 渲染設定 (支援 Alt+Enter 換行與超連結)
+        // 渲染設定 (支援 Alt+Enter 換行)
         if (settingsData && settingsData.length > 1) {
           const headers = settingsData[0];
           const values = settingsData[1];
@@ -325,7 +338,6 @@
               const val = values[i];
               const isUrl = val.startsWith("http://") || val.startsWith("https://");
               
-              // 處理換行：將 \n 轉為 html 換行，並維持縮排樣式
               const formattedVal = isUrl 
                 ? `<a href="${val}" target="_blank" class="underline text-yellow-300 font-bold">${headers[i]} (點擊前往)</a>` 
                 : val.replace(/\n/g, "<br>");
@@ -402,6 +414,7 @@
       document.getElementById("memberModal").classList.add("hidden");
     }
 
+    // 渲染常用名單 (手機中間 4 碼遮罩處理)
     function renderMemberList() {
       const keyword = document.getElementById("memberSearch").value.trim().toLowerCase();
       const container = document.getElementById("memberListContainer");
@@ -415,10 +428,16 @@
 
       filtered.forEach(m => {
         const div = document.createElement("div");
-        div.className = "p-3 hover:bg-amber-50 cursor-pointer flex justify-between items-center text-sm";
-        div.innerHTML = `<span class="font-bold text-slate-800">${m.name}</span><span class="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${m.phone || '無電話'}</span>`;
+        div.className = "p-3 hover:bg-amber-50 cursor-pointer flex justify-between items-center text-sm transition";
+        // 顯示遮罩後的手機號碼
+        const maskedPhone = maskPhoneNumber(m.phone);
+        div.innerHTML = `
+          <span class="font-bold text-slate-800">${m.name}</span>
+          <span class="text-xs font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded tracking-wide">${maskedPhone || '無電話'}</span>
+        `;
         div.onclick = () => {
           document.getElementById("buyerNameInput").value = m.name;
+          // 點擊後依然帶入真實完整的電話號碼
           if (m.phone) document.getElementById("buyerPhoneInput").value = m.phone;
           closeMemberModal();
         };
