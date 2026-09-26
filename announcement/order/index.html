@@ -8,18 +8,16 @@
 </head>
 <body class="bg-amber-50/40 text-slate-800 min-h-screen">
 
-  <!-- 1. 管理者主控台 -->
-  <div id="adminPanel" class="bg-slate-900 text-white p-3 text-xs border-b border-slate-700 hidden">
-    <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+  <!-- 1. 快捷控制列 (一鍵建立與設定) -->
+  <div class="bg-slate-900 text-white p-3 text-xs shadow-md">
+    <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
       <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
-        <span class="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded">管理後台</span>
-        <input type="text" id="adminSheetUrlInput" placeholder="請貼入 Google 試算表完整網址..." class="text-slate-900 px-2.5 py-1.5 rounded flex-1 md:w-80 text-xs focus:outline-none bg-white">
-        <button onclick="bindSpreadsheet()" class="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded font-medium text-white transition">連線</button>
-        <button onclick="initSpreadsheet()" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded font-medium text-white transition">一鍵初始化試算表</button>
+        <span class="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded">系統工具</span>
+        <input type="text" id="sheetUrlInput" value="1Z09jyeIgkwHEDUCmYEbLG3PE6UGoPmeAadoCX2lmL3Q" placeholder="試算表 ID 或 網址" class="text-slate-900 px-2 py-1 rounded w-64 text-xs bg-white">
+        <button onclick="loadAllData()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded font-medium transition">🔄 重新讀取</button>
+        <button onclick="initSheetTemplate()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded font-bold transition">⚡ 一鍵建立所需工作表</button>
       </div>
-      <div id="shareLinkArea" class="hidden flex items-center gap-2">
-        <button onclick="copyShareUrl()" class="bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded shadow transition">📋 複製訂購專屬網址</button>
-      </div>
+      <span id="loadStatusTag" class="text-amber-300 font-mono">連線檢查中...</span>
     </div>
   </div>
 
@@ -27,10 +25,12 @@
   <header class="bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-lg">
     <div class="max-w-4xl mx-auto p-6">
       <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
-        <h1 id="shopMainTitle" class="text-2xl md:text-3xl font-extrabold tracking-wide">🥤 鮮茶道寄杯團購</h1>
-        <span id="shopMerchant" class="bg-amber-800/80 text-amber-200 px-3 py-1 rounded-full text-xs font-semibold">鮮茶道</span>
+        <h1 id="shopTitle" class="text-2xl md:text-3xl font-extrabold">🥤 鮮茶道寄杯團購</h1>
+        <span id="shopMerchant" class="bg-amber-800 text-amber-200 px-3 py-1 rounded-full text-xs font-semibold">鮮茶道</span>
       </div>
-      <div id="shopDynamicSettings" class="bg-black/20 p-4 rounded-xl text-sm space-y-1.5 border border-white/10 text-amber-100"></div>
+      <div id="shopSettingsBox" class="bg-black/25 p-4 rounded-xl text-sm space-y-1.5 border border-white/10 text-amber-100 leading-relaxed">
+        載入活動資訊中...
+      </div>
     </div>
   </header>
 
@@ -42,11 +42,11 @@
         <span>🔍</span> 訂單查詢
       </h2>
       <div class="flex flex-col sm:flex-row gap-2">
-        <select id="searchType" onchange="handleSearchTypeChange()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-slate-50 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        <select id="searchType" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-slate-50 font-medium focus:ring-2 focus:ring-amber-500">
           <option value="phone">📱 手機號碼 (可查詢、修改、刪除)</option>
           <option value="name">👤 訂購人姓名 (僅供檢視)</option>
         </select>
-        <input type="text" id="queryKeywordInput" placeholder="請輸入手機號碼查詢" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        <input type="text" id="queryKeyword" placeholder="請輸入完整手機號碼或姓名" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500">
         <button onclick="executeQuery()" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg text-sm font-semibold transition">查詢</button>
       </div>
       
@@ -79,54 +79,54 @@
         <span>📝</span> 填寫訂購商品
       </h2>
       
-      <!-- 聯絡資料 -->
+      <!-- 訂購人資訊 -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-amber-50/50 p-4 rounded-lg border border-amber-100">
         <div>
           <div class="flex justify-between items-center mb-1">
             <label class="block text-sm font-semibold text-slate-700">訂購人姓名 <span class="text-red-500">*</span></label>
             <button type="button" onclick="openMemberModal()" class="text-xs bg-amber-600 hover:bg-amber-700 text-white px-2 py-0.5 rounded transition">從常用名單挑選</button>
           </div>
-          <input type="text" id="buyerNameInput" placeholder="請輸入姓名" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+          <input type="text" id="buyerNameInput" placeholder="請輸入姓名" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-amber-500">
         </div>
         <div>
           <label class="block text-sm font-semibold text-slate-700 mb-1">手機號碼 <span class="text-red-500">* (供日後修改查詢)</span></label>
-          <input type="text" id="buyerPhoneInput" placeholder="請輸入手機號碼 (如 0912345678)" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+          <input type="text" id="buyerPhoneInput" placeholder="如 0912345678" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-amber-500">
         </div>
       </div>
 
       <!-- 商品挑選 -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-        <div class="md:col-span-1">
+        <div>
           <label class="block text-sm font-semibold mb-1 text-slate-700">選擇品項</label>
-          <select id="productSelect" onchange="onProductSelectChange()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></select>
+          <select id="productSelect" onchange="onProductChange()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500"></select>
         </div>
         <div>
           <label class="block text-sm font-semibold mb-1 text-slate-700">單價</label>
-          <input type="number" id="productPriceInput" readonly class="w-full border border-slate-200 bg-slate-100 rounded-lg px-3 py-2 text-sm text-slate-600 font-bold">
+          <input type="number" id="productPrice" readonly class="w-full border border-slate-200 bg-slate-100 rounded-lg px-3 py-2 text-sm font-bold text-slate-600">
         </div>
         <div>
-          <label class="block text-sm font-semibold mb-1 text-slate-700">數量 (組)</label>
-          <input type="number" id="productQtyInput" min="1" value="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          <label class="block text-sm font-semibold mb-1 text-slate-700">數量</label>
+          <input type="number" id="productQty" min="1" value="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500">
         </div>
       </div>
 
       <div>
-        <label class="block text-sm font-semibold mb-1 text-slate-700">備註 (如：統編、分裝需求)</label>
-        <input type="text" id="productNoteInput" placeholder="選填，無則留空" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        <label class="block text-sm font-semibold mb-1 text-slate-700">備註 (如統編、特製需求)</label>
+        <input type="text" id="productNote" placeholder="選填" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500">
       </div>
 
       <div class="text-right">
-        <button onclick="addToStagingList()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow transition">
+        <button onclick="addToStaging()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow transition">
           + 加入暫存訂單
         </button>
       </div>
     </div>
 
-    <!-- 5. 暫存清單區塊 -->
+    <!-- 5. 暫存購物車清單 -->
     <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-5">
       <h2 class="text-lg font-bold border-b pb-2 mb-3 text-slate-700 flex items-center justify-between">
-        <span class="flex items-center gap-2">📋 本次暫存清單 (待送出)</span>
-        <span id="stagingSummary" class="text-sm font-normal text-amber-700"></span>
+        <span>📋 本次暫存清單 (待送出)</span>
+        <span id="stagingSummary" class="text-sm font-bold text-amber-700"></span>
       </h2>
       
       <div class="overflow-x-auto">
@@ -143,7 +143,7 @@
             </tr>
           </thead>
           <tbody id="stagingTableBody" class="divide-y divide-slate-100">
-            <tr><td colspan="7" class="text-center p-4 text-slate-400">目前尚無暫存商品，請由上方新增</td></tr>
+            <tr><td colspan="7" class="text-center p-4 text-slate-400">目前尚無暫存商品</td></tr>
           </tbody>
         </table>
       </div>
@@ -157,7 +157,7 @@
 
   </main>
 
-  <!-- 修改訂單視窗 -->
+  <!-- 修改訂單彈窗 -->
   <div id="editModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden backdrop-blur-sm">
     <div class="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -168,32 +168,28 @@
 
       <div>
         <label class="block text-sm font-semibold mb-1 text-slate-700">訂購人姓名</label>
-        <input type="text" id="editBuyerName" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        <input type="text" id="editBuyerName" class="w-full border rounded-lg px-3 py-2 text-sm">
       </div>
-
       <div>
         <label class="block text-sm font-semibold mb-1 text-slate-700">品項</label>
-        <select id="editProductSelect" onchange="onEditProductChange()" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></select>
+        <select id="editProductSelect" onchange="onEditProductChange()" class="w-full border rounded-lg px-3 py-2 text-sm"></select>
       </div>
-
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-sm font-semibold mb-1 text-slate-700">單價</label>
-          <input type="number" id="editPriceInput" readonly class="w-full border bg-slate-100 rounded-lg px-3 py-2 text-sm text-slate-600 font-bold">
+          <input type="number" id="editPrice" readonly class="w-full border bg-slate-100 rounded-lg px-3 py-2 text-sm font-bold text-slate-600">
         </div>
         <div>
           <label class="block text-sm font-semibold mb-1 text-slate-700">數量</label>
-          <input type="number" id="editQtyInput" min="1" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          <input type="number" id="editQty" min="1" class="w-full border rounded-lg px-3 py-2 text-sm">
         </div>
       </div>
-
       <div>
         <label class="block text-sm font-semibold mb-1 text-slate-700">備註</label>
-        <input type="text" id="editNoteInput" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        <input type="text" id="editNote" class="w-full border rounded-lg px-3 py-2 text-sm">
       </div>
-
       <div class="flex justify-end gap-2 pt-2 border-t">
-        <button onclick="closeEditModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium">取消</button>
+        <button onclick="closeEditModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">取消</button>
         <button onclick="submitEditOrder()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-lg text-sm font-bold">儲存修改</button>
       </div>
     </div>
@@ -206,7 +202,7 @@
         <h3 class="text-lg font-bold text-slate-800">選擇常用訂購人</h3>
         <button onclick="closeMemberModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
       </div>
-      <input type="text" id="memberSearch" oninput="renderMemberList()" placeholder="搜尋姓名或手機..." class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-amber-500 focus:outline-none">
+      <input type="text" id="memberSearch" oninput="renderMemberList()" placeholder="搜尋姓名或手機..." class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-full">
       <div class="overflow-y-auto flex-1 divide-y border rounded-lg max-h-64" id="memberListContainer"></div>
       <div class="text-right">
         <button onclick="closeMemberModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">取消</button>
@@ -215,11 +211,8 @@
   </div>
 
   <script>
-    // ⚠️ 請填入您部署後的 Apps Script 網址
+    // ⚠️ 部署 Apps Script 後取得的網頁應用程式 URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbygegAhKyzW6tAROoT29e5LBndEycPZbgLw3Sn8dgXSUk4O9BWgNcHRQINZNUx7PqCiMw/exec";
-    
-    // 預設試算表 ID
-    const DEFAULT_SPREADSHEET_ID = "1Z09jyeIgkwHEDUCmYEbLG3PE6UGoPmeAadoCX2lmL3Q";
 
     let currentPureSid = "";
     let membersDatabase = [];
@@ -227,31 +220,38 @@
     let stagingList = [];
     let queryRecordsCache = [];
 
-    // JSONP 跨網域溝通
-    function callGAS(action, params = {}) {
-      return new Promise((resolve, reject) => {
-        const callbackName = 'gasCallback_' + Math.round(100000 * Math.random());
-        window[callbackName] = function(data) {
-          delete window[callbackName];
-          if (document.body.contains(script)) document.body.removeChild(script);
-          resolve(data);
-        };
+    // 極速 CSV 解析器
+    function parseCSV(text) {
+      let p = '', c = '', r = [];
+      let q = false;
+      let row = [''];
+      for (let i = 0; i < text.length; i++) {
+        c = text[i];
+        let next = text[i+1];
+        if (c === '"') {
+          if (q && next === '"') { row[row.length - 1] += '"'; i++; }
+          else { q = !q; }
+        } else if (c === ',' && !q) {
+          row.push('');
+        } else if ((c === '\r' || c === '\n') && !q) {
+          if (c === '\r' && next === '\n') { i++; }
+          r.push(row);
+          row = [''];
+        } else {
+          row[row.length - 1] += c;
+        }
+      }
+      if (row.length > 1 || row[0] !== '') r.push(row);
+      return r;
+    }
 
-        params.action = action;
-        params.callback = callbackName;
-        const queryString = Object.keys(params)
-          .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(params[key]))
-          .join('&');
-
-        const script = document.createElement('script');
-        script.src = `${GAS_URL}?${queryString}`;
-        script.onerror = function() {
-          delete window[callbackName];
-          if (document.body.contains(script)) document.body.removeChild(script);
-          reject(new Error("連線失敗，請檢查網路或 Apps Script 部署網址！"));
-        };
-        document.body.appendChild(script);
-      });
+    // 透過 Google CSV 引擎極速載入工作表
+    async function fetchSheetCSV(sheetName) {
+      const url = `https://docs.google.com/spreadsheets/d/${currentPureSid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&t=${Date.now()}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`無法讀取「${sheetName}」，請確認試算表共用權限設為「知道連結的使用者均可查看」！`);
+      const text = await res.text();
+      return parseCSV(text);
     }
 
     function parsePureId(input) {
@@ -261,109 +261,149 @@
       return match ? (match[1] || match[0]) : input;
     }
 
-    window.addEventListener("DOMContentLoaded", () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const paramSid = urlParams.get('sid') || DEFAULT_SPREADSHEET_ID;
-      
-      if (urlParams.has('admin')) {
-        document.getElementById("adminPanel").classList.remove("hidden");
-      }
-      
-      bindSpreadsheet(paramSid);
-    });
-
-    function bindSpreadsheet(directSid) {
-      const input = directSid || document.getElementById("adminSheetUrlInput").value.trim();
-      const pureId = parsePureId(input);
-      if (!pureId) return alert("請輸入有效的 Google 試算表網址或 ID！");
-
-      currentPureSid = pureId;
-      document.getElementById("shopMainTitle").innerText = "連線讀取中...";
-
-      callGAS('getInitData', { sid: pureId })
-        .then(data => {
-          if (data.success) {
-            const settings = data.settings || [];
-            if (settings.length > 0) {
-              document.getElementById("shopMainTitle").innerText = settings[0].value || "鮮茶道寄杯團購";
-              const detailsContainer = document.getElementById("shopDynamicSettings");
-              detailsContainer.innerHTML = settings.slice(1).map(item => {
-                if (!item.value) return '';
-                const isUrl = item.value.startsWith("http://") || item.value.startsWith("https://");
-                const valHtml = isUrl ? `<a href="${item.value}" target="_blank" class="underline text-yellow-300 font-bold">${item.title} (點擊開啟)</a>` : item.value;
-                return `<div><span class="font-bold text-amber-200">★ ${item.title}：</span>${valHtml}</div>`;
-              }).join("");
-            }
-
-            membersDatabase = data.members || [];
-            productsDatabase = data.products || [];
-
-            renderProductDropdown();
-
-            if (document.getElementById("shareLinkArea")) {
-              document.getElementById("shareLinkArea").classList.remove("hidden");
-            }
-          } else {
-            alert("連線失敗：\n" + data.error);
-            document.getElementById("shopMainTitle").innerText = "連線失敗";
-          }
-        })
-        .catch(err => alert("連線錯誤：" + err.message));
+    // JSONP 寫入引擎
+    function callGAS(action, params = {}) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'gasCb_' + Math.round(100000 * Math.random());
+        window[callbackName] = function(data) {
+          delete window[callbackName];
+          if (document.body.contains(script)) document.body.removeChild(script);
+          resolve(data);
+        };
+        params.action = action;
+        params.callback = callbackName;
+        const queryString = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+        const script = document.createElement('script');
+        script.src = `${GAS_URL}?${queryString}`;
+        script.onerror = () => {
+          delete window[callbackName];
+          if (document.body.contains(script)) document.body.removeChild(script);
+          reject(new Error("後端連線超時，請檢查 GAS 部署權限"));
+        };
+        document.body.appendChild(script);
+      });
     }
 
-    function initSpreadsheet() {
-      const input = document.getElementById("adminSheetUrlInput").value.trim() || currentPureSid;
-      const pureId = parsePureId(input);
-      if (!pureId) return alert("請輸入有效的 Google 試算表網址！");
-      if (!confirm("將會在此試算表中自動建立「設定」、「訂購名單」、「產品清單」、「訂購資料」工作表，是否繼續？")) return;
+    window.addEventListener("DOMContentLoaded", () => {
+      loadAllData();
+    });
 
-      callGAS('initSheet', { sid: pureId })
-        .then(data => {
-          if (data.success) {
-            alert("🎉 初始化成功！已自動建立商品團購工作表範本。");
-            bindSpreadsheet(pureId);
+    async function loadAllData() {
+      const input = document.getElementById("sheetUrlInput").value.trim();
+      currentPureSid = parsePureId(input);
+      if (!currentPureSid) return alert("請輸入有效的試算表網址或 ID！");
+
+      const statusTag = document.getElementById("loadStatusTag");
+      statusTag.innerText = "⚡ 正在以 CSV 極速載入...";
+
+      try {
+        const startTime = performance.now();
+
+        // 平行載入 設定、產品清單、訂購名單
+        const [settingsData, productsData, membersData] = await Promise.all([
+          fetchSheetCSV("設定"),
+          fetchSheetCSV("產品清單"),
+          fetchSheetCSV("訂購名單")
+        ]);
+
+        const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+        statusTag.innerText = `✅ 載入成功 (${elapsed}s)`;
+
+        // 1. 渲染設定看板
+        if (settingsData && settingsData.length > 1) {
+          const headers = settingsData[0];
+          const values = settingsData[1];
+          document.getElementById("shopTitle").innerText = values[0] || "鮮茶道寄杯團購";
+          
+          let html = "";
+          for (let i = 1; i < headers.length; i++) {
+            if (headers[i] && values[i]) {
+              const val = values[i];
+              const isUrl = val.startsWith("http://") || val.startsWith("https://");
+              const content = isUrl ? `<a href="${val}" target="_blank" class="underline text-yellow-300 font-bold">${headers[i]} (點擊前往)</a>` : val;
+              html += `<div><span class="font-bold text-amber-200">★ ${headers[i]}：</span>${content}</div>`;
+            }
+          }
+          document.getElementById("shopSettingsBox").innerHTML = html;
+        }
+
+        // 2. 渲染產品選單
+        productsDatabase = [];
+        for (let i = 1; i < productsData.length; i++) {
+          if (productsData[i][0]) {
+            productsDatabase.push({
+              name: productsData[i][0],
+              price: Number(productsData[i][1]) || 0,
+              note: productsData[i][2] || ""
+            });
+          }
+        }
+        renderProductDropdown();
+
+        // 3. 儲存名單
+        membersDatabase = [];
+        for (let i = 1; i < membersData.length; i++) {
+          if (membersData[i][0]) {
+            membersDatabase.push({
+              name: membersData[i][0],
+              phone: membersData[i][1] || ""
+            });
+          }
+        }
+
+      } catch (err) {
+        statusTag.innerText = "❌ 載入失敗";
+        document.getElementById("shopSettingsBox").innerHTML = `
+          <div class="text-red-300 font-bold">讀取失敗：${err.message}</div>
+          <div class="text-xs text-amber-200 mt-1">💡 解決方式：請至 Google 試算表點擊右上角「共用」設為「知道連結的任何人均可查看」，或點擊上方「⚡ 一鍵建立所需工作表」。</div>
+        `;
+      }
+    }
+
+    // 一鍵建立所有工作表
+    function initSheetTemplate() {
+      const input = document.getElementById("sheetUrlInput").value.trim();
+      const pureId = parsePureId(input);
+      if (!pureId) return alert("請先填入試算表網址！");
+      if (!confirm("將會在試算表中自動建立「設定」、「訂購名單」、「產品清單」、「訂購資料」4 個工作表，是否繼續？")) return;
+
+      const statusTag = document.getElementById("loadStatusTag");
+      statusTag.innerText = "⏳ 正在初始化試算表結構...";
+
+      callGAS("initSheet", { sid: pureId })
+        .then(res => {
+          if (res.success) {
+            alert("🎉 初始化完成！已自動建立 4 個標準工作表。");
+            loadAllData();
           } else {
-            alert("❌ 初始化失敗：\n" + data.error);
+            alert("❌ 初始化失敗：" + res.error);
           }
         })
         .catch(err => alert("執行錯誤：" + err.message));
     }
 
-    function copyShareUrl() {
-      const shareUrl = `${window.location.origin}${window.location.pathname}?sid=${currentPureSid}`;
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        alert("✅ 訂購專屬網址已複製到剪貼簿！\n\n" + shareUrl);
-      });
-    }
-
     function renderProductDropdown() {
       const select = document.getElementById("productSelect");
       const editSelect = document.getElementById("editProductSelect");
-
-      const optionsHtml = productsDatabase.map(p => 
-        `<option value="${p.name}" data-price="${p.price}">${p.name} ($${p.price}) ${p.note ? '- ' + p.note : ''}</option>`
+      const html = productsDatabase.map(p => 
+        `<option value="${p.name}" data-price="${p.price}">${p.name} ($${p.price}) ${p.note ? ' - ' + p.note : ''}</option>`
       ).join("");
 
-      select.innerHTML = optionsHtml;
-      editSelect.innerHTML = optionsHtml;
-
-      onProductSelectChange();
+      select.innerHTML = html;
+      editSelect.innerHTML = html;
+      onProductChange();
     }
 
-    function onProductSelectChange() {
+    function onProductChange() {
       const select = document.getElementById("productSelect");
-      const selectedOption = select.options[select.selectedIndex];
-      if (selectedOption) {
-        document.getElementById("productPriceInput").value = selectedOption.getAttribute("data-price");
-      }
+      const opt = select.options[select.selectedIndex];
+      if (opt) document.getElementById("productPrice").value = opt.getAttribute("data-price");
     }
 
     function onEditProductChange() {
       const select = document.getElementById("editProductSelect");
-      const selectedOption = select.options[select.selectedIndex];
-      if (selectedOption) {
-        document.getElementById("editPriceInput").value = selectedOption.getAttribute("data-price");
-      }
+      const opt = select.options[select.selectedIndex];
+      if (opt) document.getElementById("editPrice").value = opt.getAttribute("data-price");
     }
 
     function openMemberModal() {
@@ -381,19 +421,16 @@
       const container = document.getElementById("memberListContainer");
       container.innerHTML = "";
 
-      const filtered = membersDatabase.filter(m => 
-        m.name.toLowerCase().includes(keyword) || (m.phone && m.phone.includes(keyword))
-      );
-
+      const filtered = membersDatabase.filter(m => m.name.toLowerCase().includes(keyword) || m.phone.includes(keyword));
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="p-4 text-center text-gray-400 text-sm">查無名單資料 (可直接手動輸入)</div>`;
+        container.innerHTML = `<div class="p-4 text-center text-gray-400 text-sm">查無名單</div>`;
         return;
       }
 
       filtered.forEach(m => {
         const div = document.createElement("div");
-        div.className = "p-3 hover:bg-amber-50 cursor-pointer flex justify-between items-center text-sm transition";
-        div.innerHTML = `<span class="font-bold text-slate-800">${m.name}</span><span class="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">${m.phone || '無電話'}</span>`;
+        div.className = "p-3 hover:bg-amber-50 cursor-pointer flex justify-between items-center text-sm";
+        div.innerHTML = `<span class="font-bold text-slate-800">${m.name}</span><span class="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${m.phone}</span>`;
         div.onclick = () => {
           document.getElementById("buyerNameInput").value = m.name;
           if (m.phone) document.getElementById("buyerPhoneInput").value = m.phone;
@@ -403,29 +440,21 @@
       });
     }
 
-    function addToStagingList() {
+    function addToStaging() {
       const name = document.getElementById("buyerNameInput").value.trim();
       const phone = document.getElementById("buyerPhoneInput").value.trim();
       const product = document.getElementById("productSelect").value;
-      const price = Number(document.getElementById("productPriceInput").value) || 0;
-      const qty = parseInt(document.getElementById("productQtyInput").value, 10) || 1;
-      const note = document.getElementById("productNoteInput").value.trim();
+      const price = Number(document.getElementById("productPrice").value) || 0;
+      const qty = parseInt(document.getElementById("productQty").value, 10) || 1;
+      const note = document.getElementById("productNote").value.trim();
 
-      if (!name) return alert("請輸入訂購人姓名！");
-      if (!phone) return alert("請輸入手機號碼（以供後續查詢與修改）！");
-      if (qty <= 0) return alert("數量必須大於 0！");
+      if (!name) return alert("請填寫訂購人姓名！");
+      if (!phone) return alert("請填寫手機號碼！");
+      if (qty <= 0) return alert("數量需大於 0！");
 
-      stagingList.push({
-        product: product,
-        price: price,
-        qty: qty,
-        total: price * qty,
-        totalCups: qty * 2,
-        note: note
-      });
-
-      document.getElementById("productNoteInput").value = "";
-      document.getElementById("productQtyInput").value = "1";
+      stagingList.push({ product, price, qty, total: price * qty, totalCups: qty * 2, note });
+      document.getElementById("productNote").value = "";
+      document.getElementById("productQty").value = "1";
       renderStagingTable();
     }
 
@@ -435,120 +464,134 @@
       const summary = document.getElementById("stagingSummary");
 
       if (stagingList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-slate-400">目前尚無暫存商品，請由上方新增</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-slate-400">目前尚無暫存商品</td></tr>`;
         submitBtn.disabled = true;
         summary.innerText = "";
         return;
       }
 
       submitBtn.disabled = false;
-      let totalAmount = 0;
-      let totalCups = 0;
+      let totalAmount = 0, totalCups = 0;
 
       tbody.innerHTML = stagingList.map((item, idx) => {
         totalAmount += item.total;
         totalCups += item.totalCups;
         return `
-          <tr class="hover:bg-amber-50/50 transition">
-            <td class="p-2.5 font-bold text-slate-800">${item.product}</td>
+          <tr class="hover:bg-amber-50/50">
+            <td class="p-2.5 font-bold">${item.product}</td>
             <td class="p-2.5">$${item.price}</td>
             <td class="p-2.5 font-bold">${item.qty}</td>
             <td class="p-2.5 text-amber-700 font-bold">$${item.total}</td>
             <td class="p-2.5 text-blue-600 font-bold">${item.totalCups} 杯</td>
-            <td class="p-2.5 text-slate-500 text-xs">${item.note || '-'}</td>
+            <td class="p-2.5 text-xs text-slate-500">${item.note || '-'}</td>
             <td class="p-2.5 text-center">
-              <button onclick="stagingList.splice(${idx}, 1); renderStagingTable();" class="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded border border-red-200 hover:bg-red-50">刪除</button>
+              <button onclick="stagingList.splice(${idx}, 1); renderStagingTable();" class="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded border border-red-200">刪除</button>
             </td>
           </tr>
         `;
       }).join("");
 
-      summary.innerText = `總計金額：$${totalAmount} 元 ｜ 買1送1共 ${totalCups} 杯`;
+      summary.innerText = `合計：$${totalAmount} 元 ｜ 共 ${totalCups} 杯`;
     }
 
     function submitFinalOrders() {
-      if (!currentPureSid) return alert("請先連線試算表！");
-      if (stagingList.length === 0) return alert("暫存清單無項目！");
-
       const name = document.getElementById("buyerNameInput").value.trim();
       const phone = document.getElementById("buyerPhoneInput").value.trim();
-
-      if (!name || !phone) return alert("請確認已填寫訂購人姓名與手機號碼！");
+      if (!name || !phone) return alert("請填寫姓名與電話！");
 
       const submitBtn = document.getElementById("submitBtn");
       submitBtn.disabled = true;
-      submitBtn.innerText = "訂單寫入中...";
+      submitBtn.innerText = "送出中...";
 
-      const payload = {
-        op: "add",
-        contact: { name: name, phone: phone },
-        list: stagingList
-      };
+      const payload = { op: "add", contact: { name, phone }, list: stagingList };
 
-      callGAS('submitData', { sid: currentPureSid, payload: JSON.stringify(payload) })
-        .then(data => {
-          if (data.success) {
-            alert("🎉 訂購完成！已成功將訂單寫入試算表。");
+      callGAS("submitData", { sid: currentPureSid, payload: JSON.stringify(payload) })
+        .then(res => {
+          if (res.success) {
+            alert("🎉 訂單已成功送出！");
             stagingList = [];
             renderStagingTable();
           } else {
-            alert("❌ 訂購失敗：" + data.error);
+            alert("❌ 送出失敗：" + res.error);
           }
         })
-        .catch(err => alert("送出錯誤：" + err.message))
+        .catch(err => alert("錯誤：" + err.message))
         .finally(() => {
           submitBtn.disabled = false;
           submitBtn.innerText = "確認並送出訂單";
         });
     }
 
-    function handleSearchTypeChange() {
+    // 透過 CSV 引擎極速查詢
+    async function executeQuery() {
       const type = document.getElementById("searchType").value;
-      const input = document.getElementById("queryKeywordInput");
-      input.placeholder = type === 'phone' ? "請輸入手機號碼查詢 (可修改/刪除)" : "請輸入訂購人姓名查詢 (僅供檢視)";
-    }
-
-    function executeQuery() {
-      if (!currentPureSid) return alert("請先連線試算表！");
-      const type = document.getElementById("searchType").value;
-      const keyword = document.getElementById("queryKeywordInput").value.trim();
-      if (!keyword) return alert(type === 'phone' ? "請輸入手機號碼！" : "請輸入訂購人姓名！");
+      const keyword = document.getElementById("queryKeyword").value.trim();
+      if (!keyword) return alert("請輸入查詢關鍵字！");
 
       const area = document.getElementById("queryResultArea");
       const tbody = document.getElementById("queryTableBody");
-      tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-400">資料查詢中...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-400">正在極速查詢中...</td></tr>`;
       area.classList.remove("hidden");
 
-      callGAS('queryData', { sid: currentPureSid, type: type, keyword: keyword })
-        .then(data => {
-          if (data.success && data.records.length > 0) {
-            queryRecordsCache = data.records;
-            const isPhoneQuery = (data.type === "phone");
+      try {
+        const rows = await fetchSheetCSV("訂購資料");
+        queryRecordsCache = [];
+        const cleanKeyword = keyword.replace(/^0+/, "");
 
-            tbody.innerHTML = data.records.map((r, idx) => `
-              <tr class="hover:bg-amber-50/50">
-                <td class="p-2.5 font-mono text-xs font-bold text-amber-800">${r.id}</td>
-                <td class="p-2.5 font-bold">${r.name}</td>
-                <td class="p-2.5">${r.product}</td>
-                <td class="p-2.5">$${r.price}</td>
-                <td class="p-2.5 font-bold">${r.qty}</td>
-                <td class="p-2.5 text-amber-700 font-bold">$${r.total}</td>
-                <td class="p-2.5 text-blue-600 font-bold">${r.totalCups} 杯</td>
-                <td class="p-2.5 text-xs text-slate-500">${r.note || '-'}</td>
-                <td class="p-2.5"><span class="px-2 py-0.5 rounded text-xs ${r.payStatus === '已繳費' ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-slate-100 text-slate-600'}">${r.payStatus}</span></td>
-                <td class="p-2.5 text-center">
-                  ${isPhoneQuery ? `
-                    <button onclick="openEditModal(${idx})" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded shadow">✏️ 修改</button>
-                    <button onclick="deleteOrder('${r.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded shadow ml-1">🗑️ 刪除</button>
-                  ` : `<span class="text-xs text-slate-400">唯讀</span>`}
-                </td>
-              </tr>
-            `).join("");
-          } else {
-            tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-red-400">查無相關訂購紀錄</td></tr>`;
+        for (let i = 1; i < rows.length; i++) {
+          const r = rows[i];
+          const rowId = r[0];
+          const name = r[1];
+          const product = r[2];
+          const price = r[3];
+          const qty = r[4];
+          const total = r[5];
+          const totalCups = r[6];
+          const note = r[7];
+          const payStatus = r[8] || "未繳費";
+          const phone = String(r[9] || "").trim();
+          const cleanPhone = phone.replace(/^0+/, "");
+
+          let isMatch = false;
+          if (type === "phone") {
+            if (phone === keyword || (cleanKeyword !== "" && cleanPhone === cleanKeyword)) isMatch = true;
+          } else if (type === "name") {
+            if (name === keyword) isMatch = true;
           }
-        })
-        .catch(err => alert("查詢失敗：" + err.message));
+
+          if (isMatch) {
+            queryRecordsCache.push({ id: rowId, name, product, price, qty, total, totalCups, note, payStatus, phone });
+          }
+        }
+
+        if (queryRecordsCache.length > 0) {
+          const isPhone = (type === "phone");
+          tbody.innerHTML = queryRecordsCache.map((r, idx) => `
+            <tr class="hover:bg-amber-50/50">
+              <td class="p-2.5 font-mono text-xs font-bold text-amber-800">${r.id}</td>
+              <td class="p-2.5 font-bold">${r.name}</td>
+              <td class="p-2.5">${r.product}</td>
+              <td class="p-2.5">$${r.price}</td>
+              <td class="p-2.5 font-bold">${r.qty}</td>
+              <td class="p-2.5 text-amber-700 font-bold">$${r.total}</td>
+              <td class="p-2.5 text-blue-600 font-bold">${r.totalCups} 杯</td>
+              <td class="p-2.5 text-xs text-slate-500">${r.note || '-'}</td>
+              <td class="p-2.5"><span class="px-2 py-0.5 rounded text-xs ${r.payStatus === '已繳費' ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-slate-100 text-slate-600'}">${r.payStatus}</span></td>
+              <td class="p-2.5 text-center">
+                ${isPhone ? `
+                  <button onclick="openEditModal(${idx})" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded shadow">✏️ 修改</button>
+                  <button onclick="deleteOrder('${r.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded shadow ml-1">🗑️ 刪除</button>
+                ` : `<span class="text-xs text-slate-400">唯讀</span>`}
+              </td>
+            </tr>
+          `).join("");
+        } else {
+          tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-red-400">查無相關訂購紀錄</td></tr>`;
+        }
+
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-red-500">查詢失敗：${err.message}</td></tr>`;
+      }
     }
 
     function openEditModal(idx) {
@@ -558,8 +601,8 @@
       document.getElementById("editBuyerName").value = record.name;
       document.getElementById("editProductSelect").value = record.product;
       onEditProductChange();
-      document.getElementById("editQtyInput").value = record.qty;
-      document.getElementById("editNoteInput").value = record.note || "";
+      document.getElementById("editQty").value = record.qty;
+      document.getElementById("editNote").value = record.note || "";
       document.getElementById("editModal").classList.remove("hidden");
     }
 
@@ -571,40 +614,33 @@
       const id = document.getElementById("editOrderId").value;
       const name = document.getElementById("editBuyerName").value.trim();
       const product = document.getElementById("editProductSelect").value;
-      const price = Number(document.getElementById("editPriceInput").value) || 0;
-      const qty = parseInt(document.getElementById("editQtyInput").value, 10) || 1;
-      const note = document.getElementById("editNoteInput").value.trim();
-
-      if (!name) return alert("請輸入訂購人姓名！");
-      if (qty <= 0) return alert("數量必須大於 0！");
+      const price = Number(document.getElementById("editPrice").value) || 0;
+      const qty = parseInt(document.getElementById("editQty").value, 10) || 1;
+      const note = document.getElementById("editNote").value.trim();
 
       const item = { id, name, product, price, qty, note };
-      const payload = { op: "update", item: item };
-
-      callGAS('submitData', { sid: currentPureSid, payload: JSON.stringify(payload) })
-        .then(data => {
-          if (data.success) {
+      callGAS("submitData", { sid: currentPureSid, payload: JSON.stringify({ op: "update", item }) })
+        .then(res => {
+          if (res.success) {
             alert(`訂單 ${id} 修改成功！`);
             closeEditModal();
             executeQuery();
           } else {
-            alert("修改失敗：" + data.error);
+            alert("修改失敗：" + res.error);
           }
         })
         .catch(err => alert("修改錯誤：" + err.message));
     }
 
     function deleteOrder(id) {
-      if (!confirm(`確定要刪除訂單編號【${id}】嗎？`)) return;
-
-      const payload = { op: "delete", id: id };
-      callGAS('submitData', { sid: currentPureSid, payload: JSON.stringify(payload) })
-        .then(data => {
-          if (data.success) {
+      if (!confirm(`確定要刪除訂單【${id}】嗎？`)) return;
+      callGAS("submitData", { sid: currentPureSid, payload: JSON.stringify({ op: "delete", id }) })
+        .then(res => {
+          if (res.success) {
             alert(`訂單 ${id} 已刪除！`);
             executeQuery();
           } else {
-            alert("刪除失敗：" + data.error);
+            alert("刪除失敗：" + res.error);
           }
         })
         .catch(err => alert("刪除錯誤：" + err.message));
