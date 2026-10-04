@@ -6,7 +6,7 @@
   <title>羽球賽報名系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen">
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
 
   <!-- 頂部賽事資訊 -->
   <header class="bg-blue-600 text-white shadow-md">
@@ -18,18 +18,19 @@
 
   <main class="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
 
-    <!-- 1. 報名資料查詢區塊 (支援手機號碼 / 學生姓名切換) -->
+    <!-- 系統開放狀態提醒橫幅 -->
+    <div id="statusBanner" class="p-4 rounded-lg font-medium text-sm flex items-center shadow hidden"></div>
+
+    <!-- 1. 報名資料查詢區塊 (任何時候皆可查詢) -->
     <div class="bg-white rounded-lg shadow p-5">
       <h2 class="text-lg font-bold border-b pb-2 mb-3 text-slate-700">🔍 報名資料查詢</h2>
       
       <div class="flex flex-col sm:flex-row gap-2">
-        <!-- 查詢模式切換 -->
         <select id="searchType" onchange="handleSearchTypeChange()" class="border rounded px-3 py-2 text-sm bg-slate-50 font-medium focus:outline-blue-500">
           <option value="phone">📱 手機號碼 (可修改/刪除)</option>
           <option value="name">👤 學生姓名 (僅供檢視)</option>
         </select>
         
-        <!-- 查詢輸入框 -->
         <input type="text" id="queryKeywordInput" placeholder="請輸入手機號碼查詢" class="flex-1 border rounded px-3 py-2 text-sm focus:outline-blue-500">
         
         <button onclick="executeQuery()" class="bg-slate-700 hover:bg-slate-800 text-white px-6 py-2 rounded text-sm transition">查詢</button>
@@ -54,8 +55,8 @@
       </div>
     </div>
 
-    <!-- 2. 新增報名表單區塊 -->
-    <div class="bg-white rounded-lg shadow p-5 space-y-4">
+    <!-- 2. 新增報名表單區塊 (截止後會被鎖定) -->
+    <fieldset id="regFormFieldset" class="bg-white rounded-lg shadow p-5 space-y-4">
       <h2 class="text-lg font-bold border-b pb-2 text-slate-700">📝 新增報名項目</h2>
       
       <div>
@@ -78,21 +79,21 @@
         <div class="flex items-center gap-3">
           <span class="text-sm font-semibold w-20">選手一：</span>
           <input type="text" id="player1Input" readonly placeholder="點擊按鈕選擇學生" class="flex-1 bg-white border rounded px-3 py-2 text-sm">
-          <button type="button" onclick="openStudentModal('add', 1)" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">選擇選手</button>
+          <button type="button" id="btnSelectPlayer1" onclick="openStudentModal('add', 1)" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">選擇選手</button>
         </div>
         <div id="player2Row" class="flex items-center gap-3 hidden">
           <span class="text-sm font-semibold w-20">選手二：</span>
           <input type="text" id="player2Input" readonly placeholder="點擊按鈕選擇學生" class="flex-1 bg-white border rounded px-3 py-2 text-sm">
-          <button type="button" onclick="openStudentModal('add', 2)" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">選擇選手</button>
+          <button type="button" id="btnSelectPlayer2" onclick="openStudentModal('add', 2)" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm">選擇選手</button>
         </div>
       </div>
 
       <div class="text-right">
-        <button onclick="addToStagingList()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded text-sm font-medium transition">
+        <button type="button" id="btnAddToList" onclick="addToStagingList()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded text-sm font-medium transition">
           + 加入報名清單
         </button>
       </div>
-    </div>
+    </fieldset>
 
     <!-- 3. 暫存清單區塊 -->
     <div class="bg-white rounded-lg shadow p-5">
@@ -122,7 +123,7 @@
 
   </main>
 
-  <!-- 修改報名彈跳視窗 (z-50) -->
+  <!-- 修改報名彈跳視窗 -->
   <div id="editModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden">
     <div class="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -158,12 +159,12 @@
 
       <div class="flex justify-end gap-3 pt-2 border-t">
         <button onclick="closeEditModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm">取消</button>
-        <button onclick="submitEditRegistration()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded text-sm font-medium">確認修改送出</button>
+        <button id="btnConfirmEdit" onclick="submitEditRegistration()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded text-sm font-medium">確認修改送出</button>
       </div>
     </div>
   </div>
 
-  <!-- 學生選擇彈跳視窗 (z-[70] 頂層) -->
+  <!-- 學生選擇彈跳視窗 -->
   <div id="studentModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[70] hidden">
     <div class="bg-white rounded-lg max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
@@ -179,9 +180,10 @@
   </div>
 
   <script>
-    // ⚠️ 請填入您的 Apps Script URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbw8fg9SwUvLrPZbtPIW4GNON1mqbZLeP3PrjbBjv9DoBaEcF5XSyqlzUUZLHoAE2JP8-Q/exec";
 
+    let isSystemOpen = true;
+    let systemStatusMessage = "";
     let studentDatabase = [];
     let allCategories = [];
     let allEvents = [];
@@ -196,6 +198,13 @@
         .then(res => res.json())
         .then(data => {
           if (data.success) {
+            // 處理開放狀態
+            if (data.statusInfo) {
+              isSystemOpen = data.statusInfo.isOpen;
+              systemStatusMessage = data.statusInfo.message;
+              applySystemStatus(data.statusInfo);
+            }
+
             const settings = data.settings || [];
             if (settings.length > 0) {
               document.getElementById("tourMainTitle").innerText = settings[0].value || settings[0].title;
@@ -218,13 +227,37 @@
         });
     });
 
-    // 切換查詢模式
+    // 依據時間狀態凍結或開放介面
+    function applySystemStatus(statusInfo) {
+      const banner = document.getElementById("statusBanner");
+      banner.classList.remove("hidden", "bg-green-100", "text-green-800", "border-green-300", "bg-red-100", "text-red-800", "border-red-300", "bg-amber-100", "text-amber-800", "border-amber-300");
+
+      if (statusInfo.isOpen) {
+        banner.className = "bg-green-50 text-green-700 border border-green-300 p-4 rounded-lg font-medium text-sm flex items-center shadow";
+        banner.innerHTML = `🟢 <strong>系統狀態：</strong>${statusInfo.message}`;
+      } else {
+        if (statusInfo.status === "ended") {
+          banner.className = "bg-red-50 text-red-700 border border-red-300 p-4 rounded-lg font-bold text-sm flex items-center shadow";
+          banner.innerHTML = `⛔ <strong>系統提示：</strong>${statusInfo.message}，目前僅供查詢。`;
+        } else {
+          banner.className = "bg-amber-50 text-amber-700 border border-amber-300 p-4 rounded-lg font-bold text-sm flex items-center shadow";
+          banner.innerHTML = `⏳ <strong>系統提示：</strong>${statusInfo.message}，目前僅供查詢。`;
+        }
+
+        // 鎖定填寫表單區塊
+        const fieldset = document.getElementById("regFormFieldset");
+        fieldset.disabled = true;
+        fieldset.classList.add("opacity-50", "cursor-not-allowed");
+        document.getElementById("btnAddToList").disabled = true;
+      }
+    }
+
     function handleSearchTypeChange() {
       const type = document.getElementById("searchType").value;
       currentSearchType = type;
       const input = document.getElementById("queryKeywordInput");
       if (type === "phone") {
-        input.placeholder = "請輸入手機號碼查詢 (可修改/刪除)";
+        input.placeholder = isSystemOpen ? "請輸入手機號碼查詢 (可修改/刪除)" : "請輸入手機號碼查詢";
       } else {
         input.placeholder = "請輸入學生完整姓名查詢 (僅供檢視)";
       }
@@ -264,6 +297,7 @@
     }
 
     function openStudentModal(mode, slot) {
+      if (!isSystemOpen && mode === 'add') return;
       currentModalTarget = { mode, slot };
       document.getElementById("studentSearch").value = "";
       renderStudentList();
@@ -299,6 +333,8 @@
     }
 
     function addToStagingList() {
+      if (!isSystemOpen) return alert(systemStatusMessage);
+
       const category = document.getElementById("categorySelect").value;
       const eventVal = document.getElementById("eventSelect").value;
       const isDouble = eventVal.includes("雙");
@@ -319,8 +355,10 @@
       const tbody = document.getElementById("stagingTableBody");
       const submitBtn = document.getElementById("submitBtn");
 
-      if (stagingList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-slate-400">目前尚無暫存資料，請由上方新增</td></tr>`;
+      if (stagingList.length === 0 || !isSystemOpen) {
+        if (stagingList.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-slate-400">目前尚無暫存資料，請由上方新增</td></tr>`;
+        }
         submitBtn.disabled = true;
         return;
       }
@@ -339,6 +377,8 @@
     }
 
     function submitFinalRegistrations() {
+      if (!isSystemOpen) return alert(systemStatusMessage);
+
       const phone = document.getElementById("mainPhone").value.trim();
       if (!phone) return alert("請填寫手機號碼！");
       if (stagingList.length === 0) return alert("暫存清單無項目！");
@@ -366,12 +406,11 @@
         }
       })
       .finally(() => {
-        submitBtn.disabled = false;
+        submitBtn.disabled = !isSystemOpen;
         submitBtn.innerText = "正式送出報名";
       });
     }
 
-    // 執行查詢 (依手機或姓名)
     function executeQuery() {
       const type = document.getElementById("searchType").value;
       const keyword = document.getElementById("queryKeywordInput").value.trim();
@@ -398,10 +437,12 @@
                 <td class="p-2">${r.event}</td>
                 <td class="p-2 font-medium">${r.players.join(" / ")}</td>
                 <td class="p-2 text-center">
-                  ${isPhoneQuery ? `
-                    <button onclick="openEditModal(${idx})" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2.5 py-1 rounded shadow">✏️ 修改</button>
-                    <button onclick="deleteRegistration('${r.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs px-2.5 py-1 rounded shadow ml-1">🗑️ 刪除</button>
-                  ` : `
+                  ${isPhoneQuery ? (
+                    isSystemOpen ? `
+                      <button onclick="openEditModal(${idx})" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2.5 py-1 rounded shadow">✏️ 修改</button>
+                      <button onclick="deleteRegistration('${r.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs px-2.5 py-1 rounded shadow ml-1">🗑️ 刪除</button>
+                    ` : `<span class="text-xs text-red-400 font-medium">已截止修改</span>`
+                  ) : `
                     <span class="text-xs text-slate-400 italic">僅供檢視</span>
                   `}
                 </td>
@@ -414,6 +455,8 @@
     }
 
     function openEditModal(idx) {
+      if (!isSystemOpen) return alert(systemStatusMessage);
+
       const record = queryRecordsCache[idx];
       document.getElementById("editRegId").value = record.id;
       document.getElementById("editIdDisplay").innerText = record.id;
@@ -437,6 +480,8 @@
     }
 
     function submitEditRegistration() {
+      if (!isSystemOpen) return alert(systemStatusMessage);
+
       const id = document.getElementById("editRegId").value;
       const category = document.getElementById("editCategorySelect").value;
       const eventVal = document.getElementById("editEventSelect").value;
@@ -468,6 +513,7 @@
     }
 
     function deleteRegistration(id) {
+      if (!isSystemOpen) return alert(systemStatusMessage);
       if (!confirm(`確定要刪除報名編號【${id}】的資料嗎？`)) return;
 
       fetch(GAS_URL, {
