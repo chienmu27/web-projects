@@ -13,8 +13,16 @@
     <div class="max-w-4xl mx-auto p-6">
       <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
         <h1 id="shopTitle" class="text-2xl md:text-3xl font-extrabold tracking-wide">🥤 鮮茶道寄杯團購</h1>
-        <span id="shopMerchant" class="bg-amber-800 text-amber-200 px-3 py-1 rounded-full text-xs font-semibold">鮮茶道</span>
+        
+        <!-- 右側功能區：管理者按鈕 (紅框處) + 商家標籤 -->
+        <div class="flex items-center gap-2">
+          <button onclick="openAdminAuthModal()" class="bg-amber-800/90 hover:bg-amber-950 text-amber-200 hover:text-white border border-amber-400/40 text-xs px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1 shadow-sm">
+            <span>👑</span> 管理者查詢
+          </button>
+          <span id="shopMerchant" class="bg-amber-800 text-amber-200 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm">鮮茶道</span>
+        </div>
       </div>
+
       <!-- 活動設定與備註 (支援 Alt+Enter 換行) -->
       <div id="shopSettingsBox" class="bg-black/25 p-4 rounded-xl text-sm space-y-2 border border-white/10 text-amber-100 leading-relaxed whitespace-pre-line">
         載入活動資訊中...
@@ -24,7 +32,7 @@
 
   <main class="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
 
-    <!-- 1. 訂單查詢區塊 -->
+    <!-- 1. 一般訂單查詢區塊 -->
     <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-5">
       <h2 class="text-lg font-bold border-b pb-2 mb-3 text-slate-700 flex items-center gap-2">
         <span>🔍</span> 訂單查詢
@@ -144,8 +152,100 @@
 
   </main>
 
+  <!-- 👑 管理者驗證彈窗 -->
+  <div id="adminAuthModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden backdrop-blur-sm">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-amber-200">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-lg font-extrabold text-slate-800 flex items-center gap-1.5">
+          <span>🔐</span> 管理者身分驗證
+        </h3>
+        <button onclick="closeAdminAuthModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+      </div>
+      <p class="text-xs text-slate-500">請輸入管理驗證碼（取自試算表「設定」工作表 I2 儲存格）：</p>
+      <div>
+        <input type="password" id="adminPasswordInput" placeholder="請輸入驗證碼" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none text-center font-mono text-base tracking-widest">
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeAdminAuthModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium">取消</button>
+        <button onclick="verifyAdminAccess()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-lg text-sm font-bold shadow">確認送出</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 📊 管理者所有訂單檢視彈窗 -->
+  <div id="adminOrdersModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-3 md:p-6 z-50 hidden backdrop-blur-sm">
+    <div class="bg-white rounded-2xl max-w-5xl w-full p-5 md:p-6 space-y-4 shadow-2xl max-h-[92vh] flex flex-col">
+      <div class="flex justify-between items-center border-b pb-3">
+        <div>
+          <h3 class="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+            <span>📊</span> 全體訂單管理總覽
+          </h3>
+          <span class="text-xs text-slate-500">管理者模式：可檢視所有人、完整手機號碼與進行資料編修</span>
+        </div>
+        <button onclick="closeAdminOrdersModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+      </div>
+
+      <!-- 統計儀表板卡片 -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+        <div class="bg-amber-50 p-3 rounded-xl border border-amber-200">
+          <div class="text-xs text-amber-800 font-bold">總訂單筆數</div>
+          <div id="statTotalOrders" class="text-lg md:text-xl font-black text-amber-700">0 筆</div>
+        </div>
+        <div class="bg-blue-50 p-3 rounded-xl border border-blue-200">
+          <div class="text-xs text-blue-800 font-bold">總杯數 (買1送1)</div>
+          <div id="statTotalCups" class="text-lg md:text-xl font-black text-blue-700">0 杯</div>
+        </div>
+        <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+          <div class="text-xs text-emerald-800 font-bold">總合計金額</div>
+          <div id="statTotalAmount" class="text-lg md:text-xl font-black text-emerald-700">$0</div>
+        </div>
+        <div class="bg-rose-50 p-3 rounded-xl border border-rose-200">
+          <div class="text-xs text-rose-800 font-bold">未繳費筆數</div>
+          <div id="statUnpaidCount" class="text-lg md:text-xl font-black text-rose-700">0 筆</div>
+        </div>
+      </div>
+
+      <!-- 快速篩選與搜尋列 -->
+      <div class="flex flex-col sm:flex-row justify-between gap-2 pt-1">
+        <div class="flex gap-1.5 text-xs font-bold">
+          <button onclick="filterAdminOrders('all')" id="btnFilterAll" class="px-3 py-1.5 rounded-lg bg-amber-600 text-white">全部</button>
+          <button onclick="filterAdminOrders('unpaid')" id="btnFilterUnpaid" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">未繳費</button>
+          <button onclick="filterAdminOrders('paid')" id="btnFilterPaid" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">已繳費</button>
+        </div>
+        <input type="text" id="adminSearchInput" oninput="renderAdminOrdersTable()" placeholder="快速篩選姓名、電話或品項..." class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs w-full sm:w-64 focus:outline-none focus:ring-1 focus:ring-amber-500">
+      </div>
+
+      <!-- 訂單表格區 -->
+      <div class="overflow-y-auto flex-1 border border-slate-200 rounded-xl">
+        <table class="w-full text-left text-xs md:text-sm border-collapse">
+          <thead class="bg-slate-100 text-slate-700 font-semibold sticky top-0 shadow-sm border-b">
+            <tr>
+              <th class="p-2.5">編號</th>
+              <th class="p-2.5">訂購人</th>
+              <th class="p-2.5">手機號碼</th>
+              <th class="p-2.5">品項</th>
+              <th class="p-2.5">單價</th>
+              <th class="p-2.5">數量</th>
+              <th class="p-2.5">合計</th>
+              <th class="p-2.5">總杯數</th>
+              <th class="p-2.5">備註</th>
+              <th class="p-2.5">狀態</th>
+              <th class="p-2.5 text-center">操作</th>
+            </tr>
+          </thead>
+          <tbody id="adminOrdersTableBody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-between items-center text-xs text-slate-400 pt-2 border-t">
+        <span>資料更新時間：以試算表即時連線為主</span>
+        <button onclick="loadAdminOrdersData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold transition">🔄 重新整理</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 修改訂單彈窗 -->
-  <div id="editModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden backdrop-blur-sm">
+  <div id="editModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60] hidden backdrop-blur-sm">
     <div class="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl">
       <div class="flex justify-between items-center border-b pb-2">
         <h3 class="text-lg font-bold text-slate-800">修改訂單內容（<span id="editIdDisplay" class="text-amber-600"></span>）</h3>
@@ -203,17 +303,20 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbygegAhKyzW6tAROoT29e5LBndEycPZbgLw3Sn8dgXSUk4O9BWgNcHRQINZNUx7PqCiMw/exec"; 
     const SPREADSHEET_ID = "1Z09jyeIgkwHEDUCmYEbLG3PE6UGoPmeAadoCX2lmL3Q";
 
+    let adminPasswordExpected = "8888"; // 預設密碼，將由「設定」工作表 I2 自動載入替換
+    let allOrdersCache = [];
+    let currentAdminFilter = "all";
+
     let membersDatabase = [];
     let productsDatabase = [];
     let stagingList = [];
     let queryRecordsCache = [];
 
-    // 手機號碼遮罩函式 (將中間 4 碼轉為 ****)
+    // 手機號碼遮罩函式 (中間 4 碼轉為 ****)
     function maskPhoneNumber(phone) {
       if (!phone) return "";
       const cleaned = String(phone).trim();
       if (cleaned.length === 10) {
-        // 例: 0912345678 -> 0912****78
         return cleaned.substring(0, 4) + "****" + cleaned.substring(8);
       } else if (cleaned.length >= 7) {
         return cleaned.substring(0, 3) + "****" + cleaned.substring(7);
@@ -326,18 +429,25 @@
           fetchSheetCSV("訂購名單")
         ]);
 
-        // 渲染設定 (支援 Alt+Enter 換行)
+        // 渲染設定 (並抓取 I2 驗證碼)
         if (settingsData && settingsData.length > 1) {
           const headers = settingsData[0];
           const values = settingsData[1];
           document.getElementById("shopTitle").innerText = values[0] || "鮮茶道寄杯團購";
           
+          // ★ 抓取「設定」工作表第 I 欄 (第 9 欄，index 8) 列 2 的密碼
+          if (values[8] && values[8].trim() !== "") {
+            adminPasswordExpected = String(values[8]).trim();
+          }
+
           let html = "";
           for (let i = 1; i < headers.length; i++) {
+            // 排除第 9 欄管理密碼顯示在前端首頁
+            if (i === 8 || headers[i].includes("密碼") || headers[i].includes("驗證碼")) continue;
+
             if (headers[i] && values[i]) {
               const val = values[i];
               const isUrl = val.startsWith("http://") || val.startsWith("https://");
-              
               const formattedVal = isUrl 
                 ? `<a href="${val}" target="_blank" class="underline text-yellow-300 font-bold">${headers[i]} (點擊前往)</a>` 
                 : val.replace(/\n/g, "<br>");
@@ -380,6 +490,165 @@
       }
     }
 
+    // ==========================================
+    // 👑 管理者身分驗證與查看所有訂單邏輯
+    // ==========================================
+    function openAdminAuthModal() {
+      document.getElementById("adminPasswordInput").value = "";
+      document.getElementById("adminAuthModal").classList.remove("hidden");
+      setTimeout(() => document.getElementById("adminPasswordInput").focus(), 100);
+    }
+
+    function closeAdminAuthModal() {
+      document.getElementById("adminAuthModal").classList.add("hidden");
+    }
+
+    function verifyAdminAccess() {
+      const inputPwd = document.getElementById("adminPasswordInput").value.trim();
+      if (!inputPwd) return alert("請輸入驗證碼！");
+
+      if (inputPwd === adminPasswordExpected) {
+        closeAdminAuthModal();
+        openAdminOrdersModal();
+      } else {
+        alert("❌ 驗證碼錯誤，請重新確認！\n（驗證碼由試算表「設定」工作表 I2 儲存格設定）");
+      }
+    }
+
+    // 支援按 Enter 直接送出驗證
+    document.getElementById("adminPasswordInput")?.addEventListener("keyup", function(e) {
+      if (e.key === "Enter") verifyAdminAccess();
+    });
+
+    async function openAdminOrdersModal() {
+      document.getElementById("adminOrdersModal").classList.remove("hidden");
+      await loadAdminOrdersData();
+    }
+
+    function closeAdminOrdersModal() {
+      document.getElementById("adminOrdersModal").classList.add("hidden");
+    }
+
+    async function loadAdminOrdersData() {
+      const tbody = document.getElementById("adminOrdersTableBody");
+      tbody.innerHTML = `<tr><td colspan="11" class="p-6 text-center text-slate-400">正在極速讀取所有訂單中...</td></tr>`;
+
+      try {
+        const rows = await fetchSheetCSV("訂購資料");
+        allOrdersCache = [];
+
+        for (let i = 1; i < rows.length; i++) {
+          const r = rows[i];
+          if (!r[0]) continue;
+          allOrdersCache.push({
+            id: r[0],
+            name: r[1] || "",
+            product: r[2] || "",
+            price: Number(r[3]) || 0,
+            qty: Number(r[4]) || 1,
+            total: Number(r[5]) || 0,
+            totalCups: Number(r[6]) || 0,
+            note: r[7] || "",
+            payStatus: r[8] || "未繳費",
+            phone: String(r[9] || "").trim()
+          });
+        }
+
+        renderAdminOrdersTable();
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="11" class="p-6 text-center text-red-500">載入失敗：${err.message}</td></tr>`;
+      }
+    }
+
+    function filterAdminOrders(filterType) {
+      currentAdminFilter = filterType;
+      
+      const btnAll = document.getElementById("btnFilterAll");
+      const btnUnpaid = document.getElementById("btnFilterUnpaid");
+      const btnPaid = document.getElementById("btnFilterPaid");
+
+      btnAll.className = "px-3 py-1.5 rounded-lg " + (filterType === 'all' ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200");
+      btnUnpaid.className = "px-3 py-1.5 rounded-lg " + (filterType === 'unpaid' ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200");
+      btnPaid.className = "px-3 py-1.5 rounded-lg " + (filterType === 'paid' ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200");
+
+      renderAdminOrdersTable();
+    }
+
+    function renderAdminOrdersTable() {
+      const tbody = document.getElementById("adminOrdersTableBody");
+      const searchKey = (document.getElementById("adminSearchInput").value || "").trim().toLowerCase();
+
+      // 1. 儀表板全域統計
+      const totalOrders = allOrdersCache.length;
+      let totalCups = 0;
+      let totalAmount = 0;
+      let unpaidCount = 0;
+
+      allOrdersCache.forEach(o => {
+        totalCups += o.totalCups;
+        totalAmount += o.total;
+        if (o.payStatus !== "已繳費") unpaidCount++;
+      });
+
+      document.getElementById("statTotalOrders").innerText = `${totalOrders} 筆`;
+      document.getElementById("statTotalCups").innerText = `${totalCups} 杯`;
+      document.getElementById("statTotalAmount").innerText = `$${totalAmount}`;
+      document.getElementById("statUnpaidCount").innerText = `${unpaidCount} 筆`;
+
+      // 2. 篩選資料
+      let filtered = allOrdersCache.filter(o => {
+        if (currentAdminFilter === "unpaid" && o.payStatus === "已繳費") return false;
+        if (currentAdminFilter === "paid" && o.payStatus !== "已繳費") return false;
+
+        if (searchKey) {
+          const matchStr = (o.name + o.phone + o.product + o.note + o.id).toLowerCase();
+          return matchStr.includes(searchKey);
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="p-6 text-center text-slate-400">查無任何訂單紀錄</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map((r, idx) => `
+        <tr class="hover:bg-amber-50/50">
+          <td class="p-2.5 font-mono text-xs font-bold text-amber-800">${r.id}</td>
+          <td class="p-2.5 font-bold">${r.name}</td>
+          <td class="p-2.5 font-mono text-xs text-slate-600">${r.phone || '-'}</td>
+          <td class="p-2.5">${r.product}</td>
+          <td class="p-2.5">$${r.price}</td>
+          <td class="p-2.5 font-bold">${r.qty}</td>
+          <td class="p-2.5 text-amber-700 font-bold">$${r.total}</td>
+          <td class="p-2.5 text-blue-600 font-bold">${r.totalCups} 杯</td>
+          <td class="p-2.5 text-xs text-slate-500">${r.note || '-'}</td>
+          <td class="p-2.5"><span class="px-2 py-0.5 rounded text-xs ${r.payStatus === '已繳費' ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-rose-100 text-rose-700 font-bold'}">${r.payStatus}</span></td>
+          <td class="p-2.5 text-center">
+            <button onclick="openEditModalDirect('${r.id}')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded shadow">✏️ 修改</button>
+            <button onclick="deleteOrder('${r.id}', true)" class="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded shadow ml-1">🗑️ 刪除</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function openEditModalDirect(orderId) {
+      const record = allOrdersCache.find(o => o.id === orderId) || queryRecordsCache.find(o => o.id === orderId);
+      if (!record) return;
+
+      document.getElementById("editOrderId").value = record.id;
+      document.getElementById("editIdDisplay").innerText = record.id;
+      document.getElementById("editBuyerName").value = record.name;
+      document.getElementById("editProductSelect").value = record.product;
+      onEditProductChange();
+      document.getElementById("editQty").value = record.qty;
+      document.getElementById("editNote").value = record.note || "";
+      document.getElementById("editModal").classList.remove("hidden");
+    }
+
+    // ==========================================
+    // 一般表單與下單邏輯
+    // ==========================================
     function renderProductDropdown() {
       const select = document.getElementById("productSelect");
       const editSelect = document.getElementById("editProductSelect");
@@ -414,7 +683,6 @@
       document.getElementById("memberModal").classList.add("hidden");
     }
 
-    // 渲染常用名單 (手機中間 4 碼遮罩處理)
     function renderMemberList() {
       const keyword = document.getElementById("memberSearch").value.trim().toLowerCase();
       const container = document.getElementById("memberListContainer");
@@ -429,7 +697,6 @@
       filtered.forEach(m => {
         const div = document.createElement("div");
         div.className = "p-3 hover:bg-amber-50 cursor-pointer flex justify-between items-center text-sm transition";
-        // 顯示遮罩後的手機號碼
         const maskedPhone = maskPhoneNumber(m.phone);
         div.innerHTML = `
           <span class="font-bold text-slate-800">${m.name}</span>
@@ -437,7 +704,6 @@
         `;
         div.onclick = () => {
           document.getElementById("buyerNameInput").value = m.name;
-          // 點擊後依然帶入真實完整的電話號碼
           if (m.phone) document.getElementById("buyerPhoneInput").value = m.phone;
           closeMemberModal();
         };
@@ -584,7 +850,7 @@
               <td class="p-2.5"><span class="px-2 py-0.5 rounded text-xs ${r.payStatus === '已繳費' ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-slate-100 text-slate-600'}">${r.payStatus}</span></td>
               <td class="p-2.5 text-center">
                 ${isPhone ? `
-                  <button onclick="openEditModal(${idx})" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded shadow">✏️ 修改</button>
+                  <button onclick="openEditModalDirect('${r.id}')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded shadow">✏️ 修改</button>
                   <button onclick="deleteOrder('${r.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded shadow ml-1">🗑️ 刪除</button>
                 ` : `<span class="text-xs text-slate-400">唯讀</span>`}
               </td>
@@ -597,18 +863,6 @@
       } catch (err) {
         tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-red-500">查詢失敗：${err.message}</td></tr>`;
       }
-    }
-
-    function openEditModal(idx) {
-      const record = queryRecordsCache[idx];
-      document.getElementById("editOrderId").value = record.id;
-      document.getElementById("editIdDisplay").innerText = record.id;
-      document.getElementById("editBuyerName").value = record.name;
-      document.getElementById("editProductSelect").value = record.product;
-      onEditProductChange();
-      document.getElementById("editQty").value = record.qty;
-      document.getElementById("editNote").value = record.note || "";
-      document.getElementById("editModal").classList.remove("hidden");
     }
 
     function closeEditModal() {
@@ -630,6 +884,9 @@
             alert(`訂單 ${id} 修改成功！`);
             closeEditModal();
             executeQuery();
+            if (!document.getElementById("adminOrdersModal").classList.contains("hidden")) {
+              loadAdminOrdersData();
+            }
           } else {
             alert("修改失敗：" + (res.error || ""));
           }
@@ -637,13 +894,17 @@
         .catch(err => alert("修改錯誤：" + err.message));
     }
 
-    function deleteOrder(id) {
+    function deleteOrder(id, isAdmin = false) {
       if (!confirm(`確定要刪除訂單【${id}】嗎？`)) return;
       callGAS("submitData", { payload: JSON.stringify({ op: "delete", id }) })
         .then(res => {
           if (res.success) {
             alert(`訂單 ${id} 已刪除！`);
-            executeQuery();
+            if (isAdmin) {
+              loadAdminOrdersData();
+            } else {
+              executeQuery();
+            }
           } else {
             alert("刪除失敗：" + (res.error || ""));
           }
