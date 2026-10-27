@@ -14,7 +14,7 @@
       <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
         <h1 id="shopTitle" class="text-2xl md:text-3xl font-extrabold tracking-wide">🥤 鮮茶道寄杯團購</h1>
         
-        <!-- 右側功能區：管理者按鈕 (紅框處) + 商家標籤 -->
+        <!-- 右側功能區：管理者按鈕 + 商家標籤 -->
         <div class="flex items-center gap-2">
           <button onclick="openAdminAuthModal()" class="bg-amber-800/90 hover:bg-amber-950 text-amber-200 hover:text-white border border-amber-400/40 text-xs px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1 shadow-sm">
             <span>👑</span> 訂單查詢
@@ -69,11 +69,19 @@
       </div>
     </div>
 
-    <!-- 2. 新增訂購表單 -->
+    <!-- 2. 新增訂購表單 (受訂購時間限制控制) -->
     <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-5 space-y-4">
-      <h2 class="text-lg font-bold border-b pb-2 text-slate-700 flex items-center gap-2">
-        <span>📝</span> 填寫訂購商品
-      </h2>
+      <div class="flex items-center justify-between border-b pb-2 flex-wrap gap-2">
+        <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+          <span>📝</span> 填寫訂購商品
+        </h2>
+        <span id="orderStatusBadge" class="text-xs px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-600">
+          檢查訂購時間中...
+        </span>
+      </div>
+
+      <!-- 訂購時間提示橫幅 (當非開放時間時醒目顯示) -->
+      <div id="orderTimeAlertBanner" class="hidden p-3.5 rounded-xl text-sm font-bold flex items-center gap-2.5 shadow-sm"></div>
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-amber-50/50 p-4 rounded-lg border border-amber-100">
         <div>
@@ -111,7 +119,7 @@
       </div>
 
       <div class="text-right">
-        <button onclick="addToStaging()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow transition">
+        <button id="addToStagingBtn" onclick="addToStaging()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow transition">
           + 加入暫存訂單
         </button>
       </div>
@@ -161,7 +169,7 @@
         </h3>
         <button onclick="closeAdminAuthModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
       </div>
-      <p class="text-xs text-slate-500">請輸入管理驗證碼</p>
+      <p class="text-xs text-slate-500">請輸入管理驗證碼（取自試算表「設定」I2 儲存格）：</p>
       <div>
         <input type="password" id="adminPasswordInput" placeholder="請輸入驗證碼" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none text-center font-mono text-base tracking-widest">
       </div>
@@ -303,7 +311,9 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbygegAhKyzW6tAROoT29e5LBndEycPZbgLw3Sn8dgXSUk4O9BWgNcHRQINZNUx7PqCiMw/exec"; 
     const SPREADSHEET_ID = "1Z09jyeIgkwHEDUCmYEbLG3PE6UGoPmeAadoCX2lmL3Q";
 
-    let adminPasswordExpected = "8888"; // 預設密碼，將由「設定」工作表 I2 自動載入替換
+    let adminPasswordExpected = "8888"; // 由「設定」工作表 I2 自動載入
+    let orderTimeStatus = { allowed: true, status: 'none', message: '開放訂購中' };
+
     let allOrdersCache = [];
     let currentAdminFilter = "all";
 
@@ -312,7 +322,7 @@
     let stagingList = [];
     let queryRecordsCache = [];
 
-    // 手機號碼遮罩函式 (中間 4 碼轉為 ****)
+    // 手機號碼遮罩函式
     function maskPhoneNumber(phone) {
       if (!phone) return "";
       const cleaned = String(phone).trim();
@@ -355,6 +365,143 @@
       if (!res.ok) throw new Error(`讀取「${sheetName}」失敗`);
       const text = await res.text();
       return parseCSV(text);
+    }
+
+    // ★ 徹底支援「上午/下午/AM/PM/時分秒」之強大日期時間解析器
+    function parseDateTime(str, isEnd = false) {
+      if (!str) return null;
+      let s = String(str).trim();
+      if (!s) return null;
+
+      const isPM = /下午|pm/i.test(s);
+      const isAM = /上午|am/i.test(s);
+
+      // 去除中文字元標籤，保留數字與分隔號
+      s = s.replace(/(止|起|開始|截止|上午|下午|am|pm|\(.*\)|（.*）)/gi, ' ').trim().replace(/[-.]/g, '/');
+
+      // 1. 抓取日期部分
+      const dateMatch = s.match(/(\d{2,4}\/)?(\d{1,2})\/(\d{1,2})/);
+      if (!dateMatch) return null;
+
+      const now = new Date();
+      let year = dateMatch[1] ? parseInt(dateMatch[1].replace('/', ''), 10) : now.getFullYear();
+      if (year < 100) year += 2000;
+      const month = parseInt(dateMatch[2], 10) - 1;
+      const day = parseInt(dateMatch[3], 10);
+
+      // 2. 抓取時間部分
+      const timeMatch = s.match(/(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
+      let hour = isEnd ? 23 : 0;
+      let min = isEnd ? 59 : 0;
+      let sec = isEnd ? 59 : 0;
+
+      if (timeMatch) {
+        hour = parseInt(timeMatch[1], 10);
+        min = parseInt(timeMatch[2], 10);
+        sec = timeMatch[3] ? parseInt(timeMatch[3], 10) : (isEnd ? 59 : 0);
+
+        // 下午 / AM / PM 自動換算
+        if (isPM) {
+          if (hour < 12) hour += 12; // 05:00 -> 17:00；若原先就是 17:00 則保持 17:00
+        } else if (isAM) {
+          if (hour === 12) hour = 0;
+        }
+      }
+
+      const d = new Date(year, month, day, hour, min, sec);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    // 格式化輸出日期時間
+    function formatDisplayDate(date) {
+      if (!date) return '';
+      const Y = date.getFullYear();
+      const M = ('0' + (date.getMonth() + 1)).slice(-2);
+      const D = ('0' + date.getDate()).slice(-2);
+      const h = ('0' + date.getHours()).slice(-2);
+      const m = ('0' + date.getMinutes()).slice(-2);
+      return `${Y}/${M}/${D} ${h}:${m}`;
+    }
+
+    // 評估訂購時間狀態
+    function evaluateOrderTime(startStr, endStr) {
+      const startDate = parseDateTime(startStr, false);
+      const endDate = parseDateTime(endStr, true);
+      const now = new Date();
+
+      // 若兩者皆未設定，代表無限制
+      if (!startDate && !endDate) {
+        return { allowed: true, status: 'none', message: '開放訂購中（無時間限制）' };
+      }
+
+      if (startDate && now < startDate) {
+        return {
+          allowed: false,
+          status: 'not_started',
+          message: `尚未開放訂購（開放時間：${formatDisplayDate(startDate)}）`,
+          startDate: startDate
+        };
+      }
+
+      if (endDate && now > endDate) {
+        return {
+          allowed: false,
+          status: 'ended',
+          message: `訂購已截止（截止時間：${formatDisplayDate(endDate)}）`,
+          endDate: endDate
+        };
+      }
+
+      let msg = '開放訂購中';
+      if (endDate) {
+        msg += `（截止時間：${formatDisplayDate(endDate)}）`;
+      }
+      return { allowed: true, status: 'active', message: msg, endDate: endDate };
+    }
+
+    // 更新訂購時間控制與按鈕狀態
+    function updateOrderTimeUI(timeStatus) {
+      orderTimeStatus = timeStatus;
+      const badge = document.getElementById("orderStatusBadge");
+      const banner = document.getElementById("orderTimeAlertBanner");
+      const addBtn = document.getElementById("addToStagingBtn");
+      const submitBtn = document.getElementById("submitBtn");
+
+      if (timeStatus.status === 'not_started') {
+        badge.className = "text-xs px-2.5 py-1 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-300";
+        badge.innerText = "⏳ 尚未開放訂購";
+
+        banner.className = "p-3.5 rounded-xl text-sm font-bold flex items-center gap-2.5 bg-amber-100 text-amber-900 border border-amber-300 shadow-sm";
+        banner.innerHTML = `<span>⏰</span><span>本次訂購尚未開始！開放訂購時間為：<strong>${formatDisplayDate(timeStatus.startDate)}</strong>。</span>`;
+        banner.classList.remove("hidden");
+
+        addBtn.disabled = true;
+        addBtn.className = "bg-slate-300 text-slate-500 px-5 py-2.5 rounded-lg text-sm font-bold shadow cursor-not-allowed";
+        addBtn.innerText = "尚未開放訂購";
+        submitBtn.disabled = true;
+
+      } else if (timeStatus.status === 'ended') {
+        badge.className = "text-xs px-2.5 py-1 rounded-full font-bold bg-rose-100 text-rose-800 border border-rose-300";
+        badge.innerText = "⛔ 訂購已截止";
+
+        banner.className = "p-3.5 rounded-xl text-sm font-bold flex items-center gap-2.5 bg-rose-100 text-rose-900 border border-rose-300 shadow-sm";
+        banner.innerHTML = `<span>⛔</span><span>本次訂購已結束截止（截止時間：<strong>${formatDisplayDate(timeStatus.endDate)}</strong>），停止受理新訂單。</span>`;
+        banner.classList.remove("hidden");
+
+        addBtn.disabled = true;
+        addBtn.className = "bg-slate-300 text-slate-500 px-5 py-2.5 rounded-lg text-sm font-bold shadow cursor-not-allowed";
+        addBtn.innerText = "訂購已截止";
+        submitBtn.disabled = true;
+
+      } else {
+        badge.className = "text-xs px-2.5 py-1 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-300";
+        badge.innerText = "🟢 開放訂購中";
+        banner.classList.add("hidden");
+
+        addBtn.disabled = false;
+        addBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow transition";
+        addBtn.innerText = "+ 加入暫存訂單";
+      }
     }
 
     // 寫入引擎
@@ -429,24 +576,44 @@
           fetchSheetCSV("訂購名單")
         ]);
 
-        // 渲染設定 (並抓取 I2 驗證碼)
+        let endDateTimeStr = "";   // B2
+        let startDateTimeStr = ""; // B3
+
+        // 渲染設定 (抓取 B2 截止、B3 開始、I2 驗證碼)
         if (settingsData && settingsData.length > 1) {
           const headers = settingsData[0];
-          const values = settingsData[1];
-          document.getElementById("shopTitle").innerText = values[0] || "鮮茶道寄杯團購";
+          const valuesRow2 = settingsData[1];
+          const valuesRow3 = settingsData.length > 2 ? settingsData[2] : [];
+
+          document.getElementById("shopTitle").innerText = valuesRow2[0] || "鮮茶道寄杯團購";
           
-          // ★ 抓取「設定」工作表第 I 欄 (第 9 欄，index 8) 列 2 的密碼
-          if (values[8] && values[8].trim() !== "") {
-            adminPasswordExpected = String(values[8]).trim();
+          // 抓取 B2 結束日期時間
+          endDateTimeStr = valuesRow2[1] ? String(valuesRow2[1]).trim() : "";
+          // 抓取 B3 開始日期時間
+          startDateTimeStr = valuesRow3[1] ? String(valuesRow3[1]).trim() : "";
+
+          // 抓取 I2 驗證碼 (第 9 欄)
+          if (valuesRow2[8] && valuesRow2[8].trim() !== "") {
+            adminPasswordExpected = String(valuesRow2[8]).trim();
           }
 
+          // 評估訂購時間狀態
+          const timeEval = evaluateOrderTime(startDateTimeStr, endDateTimeStr);
+          updateOrderTimeUI(timeEval);
+
           let html = "";
+          // 頂端顯示訂購期間與當前狀態
+          if (startDateTimeStr || endDateTimeStr) {
+            const timeDesc = `${startDateTimeStr || '即刻起'} ～ ${endDateTimeStr || '無截止'}`;
+            const statusColor = timeEval.status === 'ended' ? 'text-rose-300 font-bold' : (timeEval.status === 'not_started' ? 'text-amber-300 font-bold' : 'text-emerald-300 font-bold');
+            html += `<div class="pt-1"><span class="font-bold text-amber-200">★ 訂購時間：</span><span class="text-yellow-200 font-bold">${timeDesc}</span> <span class="text-xs bg-black/40 px-2 py-0.5 rounded ${statusColor} ml-1">【${timeEval.message}】</span></div>`;
+          }
+
           for (let i = 1; i < headers.length; i++) {
-            // 排除第 9 欄管理密碼顯示在前端首頁
             if (i === 8 || headers[i].includes("密碼") || headers[i].includes("驗證碼")) continue;
 
-            if (headers[i] && values[i]) {
-              const val = values[i];
+            if (headers[i] && valuesRow2[i]) {
+              const val = valuesRow2[i];
               const isUrl = val.startsWith("http://") || val.startsWith("https://");
               const formattedVal = isUrl 
                 ? `<a href="${val}" target="_blank" class="underline text-yellow-300 font-bold">${headers[i]} (點擊前往)</a>` 
@@ -491,7 +658,7 @@
     }
 
     // ==========================================
-    // 👑 管理者身分驗證與查看所有訂單邏輯
+    // 👑 管理者驗證與查看
     // ==========================================
     function openAdminAuthModal() {
       document.getElementById("adminPasswordInput").value = "";
@@ -515,7 +682,6 @@
       }
     }
 
-    // 支援按 Enter 直接送出驗證
     document.getElementById("adminPasswordInput")?.addEventListener("keyup", function(e) {
       if (e.key === "Enter") verifyAdminAccess();
     });
@@ -578,7 +744,6 @@
       const tbody = document.getElementById("adminOrdersTableBody");
       const searchKey = (document.getElementById("adminSearchInput").value || "").trim().toLowerCase();
 
-      // 1. 儀表板全域統計
       const totalOrders = allOrdersCache.length;
       let totalCups = 0;
       let totalAmount = 0;
@@ -595,7 +760,6 @@
       document.getElementById("statTotalAmount").innerText = `$${totalAmount}`;
       document.getElementById("statUnpaidCount").innerText = `${unpaidCount} 筆`;
 
-      // 2. 篩選資料
       let filtered = allOrdersCache.filter(o => {
         if (currentAdminFilter === "unpaid" && o.payStatus === "已繳費") return false;
         if (currentAdminFilter === "paid" && o.payStatus !== "已繳費") return false;
@@ -712,6 +876,10 @@
     }
 
     function addToStaging() {
+      if (!orderTimeStatus.allowed) {
+        return alert(`⚠️ 目前非開放訂購時間！\n\n${orderTimeStatus.message}`);
+      }
+
       const name = document.getElementById("buyerNameInput").value.trim();
       const phone = document.getElementById("buyerPhoneInput").value.trim();
       const product = document.getElementById("productSelect").value;
@@ -741,7 +909,7 @@
         return;
       }
 
-      submitBtn.disabled = false;
+      submitBtn.disabled = !orderTimeStatus.allowed;
       let totalAmount = 0, totalCups = 0;
 
       tbody.innerHTML = stagingList.map((item, idx) => {
@@ -766,6 +934,10 @@
     }
 
     function submitFinalOrders() {
+      if (!orderTimeStatus.allowed) {
+        return alert(`⚠️ 目前非開放訂購時間，無法送出訂單！\n\n${orderTimeStatus.message}`);
+      }
+
       const name = document.getElementById("buyerNameInput").value.trim();
       const phone = document.getElementById("buyerPhoneInput").value.trim();
       if (!name || !phone) return alert("請填寫姓名與電話！");
