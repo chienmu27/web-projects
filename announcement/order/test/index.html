@@ -367,50 +367,52 @@
       return parseCSV(text);
     }
 
-    // 前端日期時間彈性解析器
+    // ★ 徹底支援「上午/下午/AM/PM/時分秒」之強大日期時間解析器
     function parseDateTime(str, isEnd = false) {
       if (!str) return null;
       let s = String(str).trim();
       if (!s) return null;
-      s = s.replace(/(止|起|開始|截止|\(.*\)|（.*）)/g, '').trim().replace(/-/g, '/');
+
+      const isPM = /下午|pm/i.test(s);
+      const isAM = /上午|am/i.test(s);
+
+      // 去除中文字元標籤，保留數字與分隔號
+      s = s.replace(/(止|起|開始|截止|上午|下午|am|pm|\(.*\)|（.*）)/gi, ' ').trim().replace(/[-.]/g, '/');
+
+      // 1. 抓取日期部分
+      const dateMatch = s.match(/(\d{2,4}\/)?(\d{1,2})\/(\d{1,2})/);
+      if (!dateMatch) return null;
 
       const now = new Date();
-      const currentYear = now.getFullYear();
-      const parts = s.split(/[\sT]+/);
-      const datePart = parts[0];
-      const timePart = parts[1] || '';
+      let year = dateMatch[1] ? parseInt(dateMatch[1].replace('/', ''), 10) : now.getFullYear();
+      if (year < 100) year += 2000;
+      const month = parseInt(dateMatch[2], 10) - 1;
+      const day = parseInt(dateMatch[3], 10);
 
-      const dateSegments = datePart.split('/');
-      let fullDateStr = '';
+      // 2. 抓取時間部分
+      const timeMatch = s.match(/(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
+      let hour = isEnd ? 23 : 0;
+      let min = isEnd ? 59 : 0;
+      let sec = isEnd ? 59 : 0;
 
-      if (dateSegments.length === 3) {
-        let year = dateSegments[0];
-        if (year.length === 2) year = '20' + year;
-        fullDateStr = `${year}/${dateSegments[1].padStart(2, '0')}/${dateSegments[2].padStart(2, '0')}`;
-      } else if (dateSegments.length === 2) {
-        fullDateStr = `${currentYear}/${dateSegments[0].padStart(2, '0')}/${dateSegments[1].padStart(2, '0')}`;
-      } else {
-        const d = new Date(s);
-        return isNaN(d.getTime()) ? null : d;
-      }
+      if (timeMatch) {
+        hour = parseInt(timeMatch[1], 10);
+        min = parseInt(timeMatch[2], 10);
+        sec = timeMatch[3] ? parseInt(timeMatch[3], 10) : (isEnd ? 59 : 0);
 
-      let fullTimeStr = timePart;
-      if (!fullTimeStr) {
-        fullTimeStr = isEnd ? '23:59:59' : '00:00:00';
-      } else {
-        const timeSegments = fullTimeStr.split(':');
-        if (timeSegments.length === 2) {
-          fullTimeStr = `${timeSegments[0].padStart(2, '0')}:${timeSegments[1].padStart(2, '0')}:${isEnd ? '59' : '00'}`;
-        } else if (timeSegments.length === 3) {
-          fullTimeStr = `${timeSegments[0].padStart(2, '0')}:${timeSegments[1].padStart(2, '0')}:${timeSegments[2].padStart(2, '0')}`;
+        // 下午 / AM / PM 自動換算
+        if (isPM) {
+          if (hour < 12) hour += 12; // 05:00 -> 17:00；若原先就是 17:00 則保持 17:00
+        } else if (isAM) {
+          if (hour === 12) hour = 0;
         }
       }
 
-      const result = new Date(`${fullDateStr} ${fullTimeStr}`);
-      return isNaN(result.getTime()) ? null : result;
+      const d = new Date(year, month, day, hour, min, sec);
+      return isNaN(d.getTime()) ? null : d;
     }
 
-    // 格式化顯示時間
+    // 格式化輸出日期時間
     function formatDisplayDate(date) {
       if (!date) return '';
       const Y = date.getFullYear();
@@ -421,13 +423,13 @@
       return `${Y}/${M}/${D} ${h}:${m}`;
     }
 
-    // 檢查訂購開始與截止時間
+    // 評估訂購時間狀態
     function evaluateOrderTime(startStr, endStr) {
       const startDate = parseDateTime(startStr, false);
       const endDate = parseDateTime(endStr, true);
       const now = new Date();
 
-      // 若未設定任何時間，無限制
+      // 若兩者皆未設定，代表無限制
       if (!startDate && !endDate) {
         return { allowed: true, status: 'none', message: '開放訂購中（無時間限制）' };
       }
@@ -603,7 +605,8 @@
           // 頂端顯示訂購期間與當前狀態
           if (startDateTimeStr || endDateTimeStr) {
             const timeDesc = `${startDateTimeStr || '即刻起'} ～ ${endDateTimeStr || '無截止'}`;
-            html += `<div class="pt-1"><span class="font-bold text-amber-200">★ 訂購時間：</span><span class="text-yellow-200 font-bold">${timeDesc}</span> <span class="text-xs bg-black/40 px-2 py-0.5 rounded text-amber-100 ml-1">【${timeEval.message}】</span></div>`;
+            const statusColor = timeEval.status === 'ended' ? 'text-rose-300 font-bold' : (timeEval.status === 'not_started' ? 'text-amber-300 font-bold' : 'text-emerald-300 font-bold');
+            html += `<div class="pt-1"><span class="font-bold text-amber-200">★ 訂購時間：</span><span class="text-yellow-200 font-bold">${timeDesc}</span> <span class="text-xs bg-black/40 px-2 py-0.5 rounded ${statusColor} ml-1">【${timeEval.message}】</span></div>`;
           }
 
           for (let i = 1; i < headers.length; i++) {
@@ -873,7 +876,6 @@
     }
 
     function addToStaging() {
-      // 檢查訂購時間
       if (!orderTimeStatus.allowed) {
         return alert(`⚠️ 目前非開放訂購時間！\n\n${orderTimeStatus.message}`);
       }
@@ -907,7 +909,6 @@
         return;
       }
 
-      // 若在開放時間內才可啟用送出按鈕
       submitBtn.disabled = !orderTimeStatus.allowed;
       let totalAmount = 0, totalCups = 0;
 
